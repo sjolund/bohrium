@@ -26,6 +26,14 @@
 #include <algorithm>
 #include <cmath>
 
+#ifdef _WIN32
+#define STD_MIN(a, b) ((a) < (b) ? (a) : (b))
+#define STD_MAX(a, b) ((a) >= (b) ? (a) : (b))
+#else
+#define STD_MIN(a, b) std::min(a, b)
+#define STD_MAX(a, b) std::max(a, b)
+#endif
+
 ResourceManager::ResourceManager(cphvb_component* _component) 
     : component(_component)
 {
@@ -64,12 +72,12 @@ ResourceManager::ResourceManager(cphvb_component* _component)
             }
             else {
                 size_t mwgs = dit->getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();
-                maxWorkGroupSize = std::min(maxWorkGroupSize,mwgs);
+                maxWorkGroupSize = STD_MIN(maxWorkGroupSize,mwgs);
                 cl_uint mwid = dit->getInfo<CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS>();
-                maxWorkItemDims = std::min(maxWorkItemDims,mwid);
+                maxWorkItemDims = STD_MIN(maxWorkItemDims,mwid);
                 std::vector<size_t> mwis = dit->getInfo<CL_DEVICE_MAX_WORK_ITEM_SIZES >();
                 for (cl_uint d = 0; d < maxWorkItemDims; ++d)
-                    maxWorkItemSizes[d] = std::min(maxWorkItemSizes[d],mwis[d]);
+                    maxWorkItemSizes[d] = STD_MIN(maxWorkItemSizes[d],mwis[d]);
             }
         }
     } else {
@@ -77,24 +85,24 @@ ResourceManager::ResourceManager(cphvb_component* _component)
     }
     
     // Calculate "sane" localShapes
-    size_t lsx = std::min(256UL,maxWorkItemSizes[0]);
+    size_t lsx = STD_MIN(256UL,maxWorkItemSizes[0]);
 #ifdef DEBUG
     std::cout << "ResourceManager.localShape1D[" << lsx << "]" << std::endl;
 #endif
     localShape1D.push_back(lsx);
-    lsx = std::min(32UL,maxWorkItemSizes[0]);
-    size_t lsy = std::min(maxWorkGroupSize/lsx,maxWorkItemSizes[1]);
+    lsx = STD_MIN(32UL,maxWorkItemSizes[0]);
+    size_t lsy = STD_MIN(maxWorkGroupSize/lsx,maxWorkItemSizes[1]);
 #ifdef DEBUG
     std::cout << "ResourceManager.localShape2D[" << lsx << ", " << lsy << "]" << std::endl;
 #endif
     localShape2D.push_back(lsx);
     localShape2D.push_back(lsy);
-    lsx = std::min(16UL,maxWorkItemSizes[0]);
+    lsx = STD_MIN(16UL,maxWorkItemSizes[0]);
     lsy = 1;
     while(lsy < std::sqrt((float)(maxWorkGroupSize/lsx)))
         lsy <<= 1;
-    lsy = std::min(lsy,maxWorkItemSizes[1]);
-    size_t lsz = std::min(maxWorkGroupSize/(lsx*lsy),maxWorkItemSizes[2]); 
+    lsy = STD_MIN(lsy,maxWorkItemSizes[1]);
+    size_t lsz = STD_MIN(maxWorkGroupSize/(lsx*lsy),maxWorkItemSizes[2]); 
 #ifdef DEBUG
     std::cout << "ResourceManager.localShape3D[" << lsx << ", " << lsy << ", " << lsz << "]" << std::endl;
 #endif
@@ -113,11 +121,9 @@ ResourceManager::ResourceManager(cphvb_component* _component)
 #endif
 }
 
+#ifdef STATS
 ResourceManager::~ResourceManager()
 {
-    for(BufferCache::iterator bit = bufferCache.begin(); bit != bufferCache.end(); ++bit)
-        delete bit->second;
-#ifdef STATS
     std::cout << std::fixed;
     std::cout << "------------------ STATS ------------------------" << std::endl;
     std::cout << "Batch building:           " << batchBuild / 1000000.0 << std::endl;
@@ -126,24 +132,15 @@ ResourceManager::~ResourceManager()
     std::cout << "Writing buffers:          " << resourceBufferWrite / 1000000.0 << std::endl;
     std::cout << "Reading buffers:          " << resourceBufferRead / 1000000.0 << std::endl;
     std::cout << "Executing kernels:        " << resourceKernelExecute / 1000000.0 << std::endl;
+}
 #endif
-}
 
-cl::Buffer* ResourceManager::newBuffer(size_t size)
+cl::Buffer ResourceManager::createBuffer(size_t size)
 {
-    BufferCache::iterator bit = bufferCache.find(size);
-    if (bit == bufferCache.end())
-        return new cl::Buffer(context, CL_MEM_READ_WRITE, size);
-    else
-        return bit->second;
+    return cl::Buffer(context, CL_MEM_READ_WRITE, size);
 }
 
-void ResourceManager::bufferDone(cl::Buffer* buffer)
-{
-    bufferCache.insert(std::make_pair(buffer->getInfo<CL_MEM_SIZE>(), buffer));
-}
-
-void ResourceManager::readBuffer(const cl::Buffer* buffer,
+void ResourceManager::readBuffer(const cl::Buffer& buffer,
                                  void* hostPtr, 
                                  cl::Event waitFor,
                                  unsigned int device)
@@ -151,13 +148,13 @@ void ResourceManager::readBuffer(const cl::Buffer* buffer,
 #ifdef DEBUG
     std::cout << "readBuffer(" << hostPtr << ")" << std::endl;
 #endif
-    size_t size = buffer->getInfo<CL_MEM_SIZE>();
+    size_t size = buffer.getInfo<CL_MEM_SIZE>();
     std::vector<cl::Event> readerWaitFor(1,waitFor);
 #ifdef STATS
     cl::Event event;
 #endif
     try {
-        commandQueues[device].enqueueReadBuffer(*buffer, CL_TRUE, 0, size, hostPtr, &readerWaitFor, 
+        commandQueues[device].enqueueReadBuffer(buffer, CL_TRUE, 0, size, hostPtr, &readerWaitFor, 
 #ifdef STATS
                                                 &event
 #else
@@ -172,7 +169,7 @@ void ResourceManager::readBuffer(const cl::Buffer* buffer,
 #endif
 }
 
-cl::Event ResourceManager::enqueueWriteBuffer(cl::Buffer* buffer,
+cl::Event ResourceManager::enqueueWriteBuffer(const cl::Buffer& buffer,
                                               const void* hostPtr, 
                                               std::vector<cl::Event> waitFor, 
                                               unsigned int device)
@@ -181,9 +178,9 @@ cl::Event ResourceManager::enqueueWriteBuffer(cl::Buffer* buffer,
     std::cout << "enqueueWriteBuffer(" << hostPtr << ")" << std::endl;
 #endif
     cl::Event event;
-    size_t size = buffer->getInfo<CL_MEM_SIZE>();
+    size_t size = buffer.getInfo<CL_MEM_SIZE>();
     try {
-        commandQueues[device].enqueueWriteBuffer(*buffer, CL_FALSE, 0, size, hostPtr, &waitFor, &event);
+        commandQueues[device].enqueueWriteBuffer(buffer, CL_FALSE, 0, size, hostPtr, &waitFor, &event);
     } catch (cl::Error e) {
         std::cerr << "[VE-GPU] Could not enqueueWriteBuffer: \"" << e.what() << "\"" << std::endl;
         throw e;

@@ -18,6 +18,14 @@ namespace NumCIL
         /// </summary>
         public static bool DisableUnsafeAPI { get; set; }
         /// <summary>
+        /// Gets or sets a value indicating if use of unsafe arrays is disabled
+        /// </summary>
+        public static bool DisableUnsafeArrays { get; set; }
+        /// <summary>
+        /// Gets or sets a value indicating at what size unsafe arrays are created (in bytes)
+        /// </summary>
+        public static long UnsafeArraysLargerThan { get; set; }
+        /// <summary>
         /// Gets a value indicating if unsafe operations are supported by the runtime/environment
         /// </summary>
         public static readonly bool IsUnsafeSupported;
@@ -49,6 +57,14 @@ namespace NumCIL
         /// The method used to retrieve copyToManaged methods
         /// </summary>
         private static readonly MethodInfo _getCopyFromManaged;
+        /// <summary>
+        /// The method used to retrieve the createAccessor methods
+        /// </summary>
+        private static readonly MethodInfo _getCreateAccessorSize;
+        /// <summary>
+        /// The method used to retrieve the createAccessor methods
+        /// </summary>
+        private static readonly MethodInfo _getCreateAccessorData;
 
         /// <summary>
         /// Cache of compiled unsafe binary methods bound to a particular operator
@@ -78,6 +94,14 @@ namespace NumCIL
         /// Cache of compiled unsafe copy methods bound to a particular type
         /// </summary>
         private static readonly Dictionary<Type, MethodInfo> _copyFromManagedMethodCache = new Dictionary<Type, MethodInfo>();
+        /// <summary>
+        /// Cache of compiled unsafe copy methods bound to a particular type
+        /// </summary>
+        private static readonly Dictionary<Type, MethodInfo> _createAccessorSizeMethodCache = new Dictionary<Type, MethodInfo>();
+        /// <summary>
+        /// Cache of compiled unsafe copy methods bound to a particular type
+        /// </summary>
+        private static readonly Dictionary<Type, MethodInfo> _createAccessorDataMethodCache = new Dictionary<Type, MethodInfo>();
 
         /// <summary>
         /// Static constructor, loads the unsafe dll and probes for support,
@@ -93,6 +117,8 @@ namespace NumCIL
             MethodInfo supportsReduce = null;
             MethodInfo supportsCopyToManaged = null;
             MethodInfo supportsCopyFromManaged = null;
+            MethodInfo supportsCreateAccessorSize = null;
+            MethodInfo supportsCreateAccessorData = null;
 
             try
             {
@@ -110,11 +136,15 @@ namespace NumCIL
                     supportsReduce = utilityType.GetMethod("GetReduce");
                     supportsCopyToManaged = utilityType.GetMethod("GetCopyToManaged");
                     supportsCopyFromManaged = utilityType.GetMethod("GetCopyFromManaged");
+                    supportsCreateAccessorSize = utilityType.GetMethod("GetCreateAccessorSize");
+                    supportsCreateAccessorData = utilityType.GetMethod("GetCreateAccessorData");
                     unsafeSupported &= supportsBinaryApply != null;
                     unsafeSupported &= supportsUnaryApply != null;
                     unsafeSupported &= supportsNullaryApply != null;
                     unsafeSupported &= supportsAggregate != null;
                     unsafeSupported &= supportsReduce != null;
+                    unsafeSupported &= supportsCreateAccessorSize != null;
+                    unsafeSupported &= supportsCreateAccessorData != null;
                 }
             }
             catch
@@ -133,6 +163,8 @@ namespace NumCIL
                 _getReduce = supportsReduce;
                 _getCopyFromManaged = supportsCopyFromManaged;
                 _getCopyToManaged = supportsCopyToManaged;
+                _getCreateAccessorSize = supportsCreateAccessorSize;
+                _getCreateAccessorData = supportsCreateAccessorData;
             }
             else
             {
@@ -143,10 +175,21 @@ namespace NumCIL
                 _getReduce = null;
                 _getCopyFromManaged = null;
                 _getCopyToManaged = null;
+                _getCreateAccessorSize = null;
+                _getCreateAccessorData = null;
             }
 
             if (Environment.GetEnvironmentVariable("NUMCIL_DISABLE_UNSAFE") != null)
                 DisableUnsafeAPI = true;
+
+            if (Environment.GetEnvironmentVariable("NUMCIL_DISABLE_UNSAFE_ARRAYS") != null)
+                DisableUnsafeArrays = true;
+
+            long size;
+            if (long.TryParse(Environment.GetEnvironmentVariable("NUMCIL_UNSAFE_SIZELIMIT"), out size))
+                UnsafeArraysLargerThan = size;
+            else
+                UnsafeArraysLargerThan = 100 * 1024 * 1024; //Default, larger than 100MB makes unsafe
         }
 
         /// <summary>
@@ -376,6 +419,54 @@ namespace NumCIL
 
             mi.Invoke(null, new object[] { data, source, length });
             return true;
+        }
+
+        /// <summary>
+        /// Creates an unmanaged data accessor
+        /// </summary>
+        /// <typeparam name="T">The type of data to allocate</typeparam>
+        /// <param name="size">The size of the array to allocate</param>
+        /// <returns>An accessor for the array</returns>
+        public static IDataAccessor<T> CreateAccessor<T>(long size)
+        {
+            if (DisableUnsafeAPI || !IsUnsafeSupported)
+                return null;
+
+            MethodInfo mi;
+            if (!_createAccessorSizeMethodCache.TryGetValue(typeof(T), out mi))
+            {
+                mi = (MethodInfo)_getCreateAccessorSize.MakeGenericMethod(typeof(T)).Invoke(null, null);
+                _createAccessorSizeMethodCache[typeof(T)] = mi;
+            }
+
+            if (mi == null)
+                return null;
+
+            return (IDataAccessor<T>)mi.Invoke(null, new object[] { size });
+        }
+
+        /// <summary>
+        /// Creates an unmanaged data accessor
+        /// </summary>
+        /// <typeparam name="T">The type of data to allocate</typeparam>
+        /// <param name="data">The data to pre-fill the accessor with</param>
+        /// <returns>An accessor for the array</returns>
+        public static IDataAccessor<T> CreateAccessor<T>(T[] data)
+        {
+            if (DisableUnsafeAPI || !IsUnsafeSupported)
+                return null;
+
+            MethodInfo mi;
+            if (!_createAccessorDataMethodCache.TryGetValue(typeof(T), out mi))
+            {
+                mi = (MethodInfo)_getCreateAccessorData.MakeGenericMethod(typeof(T)).Invoke(null, null);
+                _createAccessorDataMethodCache[typeof(T)] = mi;
+            }
+
+            if (mi == null)
+                return null;
+
+            return (IDataAccessor<T>)mi.Invoke(null, new object[] { data });
         }
     }
 }
