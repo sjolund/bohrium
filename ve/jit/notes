@@ -1,0 +1,49 @@
+
+
+nametable = chpvb_array*  <-> Exp
+
+handle_instruction(nametable,instruction) {
+    op1,op2,op3 = instruction_to_operands(instruction)    
+    inst_name = operand_name(op1)
+    inst_exp.operation = instruction_operation(instruction)    
+    
+    for each oprand in operands(op2,op3):
+        name = operand_name(op)
+        exp = nametable.get(name)
+        
+        if not exp:
+            exp = operand_to_exp(op)
+            nametable.register(name,exp)
+        
+        inst_exp.oprands.add(exp) // add in correct order
+        
+    nametable.register(inst_name,inst_exp)    
+}
+
+
+
+
+
+# With Single Static Assignment
+# ======================================================================
+
+handle_instruction(nametable,instruction) {
+    op1,op2,op3 = instruction_to_operands(instruction)    
+    inst_name = operand_name(op1)
+    if nametable.has_name(inst_name):
+        inst_name = increment_version(inst_name)
+        
+    inst_exp.operation = instruction_operation(instruction)    
+    
+    for each oprand in operands(op2,op3):
+        name = operand_name(op)
+        exp = nametable.get(name) // gets the exp from the name with the newest version
+        
+        if not exp:
+            exp = operand_to_exp(op)
+            nametable.register(name,exp)
+        
+        inst_exp.oprands.add(exp) // add in correct order
+        
+    nametable.register(inst_name,inst_exp)    
+}

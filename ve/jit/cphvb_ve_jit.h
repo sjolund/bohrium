@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Simon Andreas Frimann Lund <safl@safl.dk> 
+ * Copyright 2011 Mads R. B. Kristensen <madsbk@gmail.com>
  *
  * This file is part of cphVB <http://code.google.com/p/cphvb/>.
  *
@@ -17,21 +17,22 @@
  * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __CPHVB_COMPUTE_H
-#define __CPHVB_COMPUTE_H
+#ifndef __CPHVB_VE_SIMPLE_H
+#define __CPHVB_VE_SIMPLE_H
+
+#include <cphvb.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef cphvb_error (*computeloop)( cphvb_instruction*, cphvb_index, cphvb_index );
+DLLEXPORT cphvb_error cphvb_ve_jit_init(cphvb_component *self);
 
-computeloop cphvb_compute_get( cphvb_instruction *instr );
-cphvb_error cphvb_compute_apply( cphvb_instruction *instr );
-cphvb_error cphvb_compute_reduce(cphvb_userfunc *arg, void* ve_arg);
-cphvb_error cphvb_compute_random(cphvb_userfunc *arg, void* ve_arg);
-cphvb_error cphvb_compute_matmul(cphvb_userfunc *arg, void* ve_arg);
-cphvb_error cphvb_compute_jacstenc(cphvb_userfunc *arg, void* ve_arg);
+DLLEXPORT cphvb_error cphvb_ve_jit_execute(cphvb_intp instruction_count, cphvb_instruction* instruction_list);
+
+DLLEXPORT cphvb_error cphvb_ve_jit_shutdown(void);
+
+DLLEXPORT cphvb_error cphvb_ve_jit_reg_func(char *lib, char *fun, cphvb_intp *id);
 
 #ifdef __cplusplus
 }

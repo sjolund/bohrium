@@ -64,6 +64,23 @@ typedef struct
 
 DLLEXPORT cphvb_error cphvb_matmul(cphvb_userfunc* arg, void* ve_arg);
 
+// TESTING!
+// Creating a in-hand userfunc for a specific problem. To test the best 
+// JIT optimization possible
+typedef struct
+{
+    //User-defined function header with three operands.
+    CPHVB_USER_FUNC_HEADER(6)
+    cphvb_float64 mult;
+    
+} cphvb_jacstenc_type;
+
+DLLEXPORT cphvb_error cphvb_jacstenc(cphvb_userfunc* arg, void* ve_arg);
+
+
+
+
+
 #ifdef __cplusplus
 }
 #endif
