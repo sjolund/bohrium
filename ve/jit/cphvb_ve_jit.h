@@ -17,6 +17,10 @@
  * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef _JIT_LOG_LEVEL
+#define _JIT_LOG_LEVEL 4 // 0 NO LOGGING, 1 ERROR, 2 WARNING, 3 INFO, 4 DEBUG
+#endif
+
 #ifndef __CPHVB_VE_SIMPLE_H
 #define __CPHVB_VE_SIMPLE_H
 

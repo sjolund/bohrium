@@ -11,28 +11,26 @@
 
 typedef enum  { bin_op = 0, un_op = 1, const_val = 2, array_val = 3} ExprType;
 
+typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4} LOG_LEVEL;
+
 typedef struct Exp {
     ExprType                                        tag;
     cphvb_intp                                      id;  
+    cphvb_intp                                      depth;
                                                    
     union { cphvb_constant*                         constant;
             cphvb_array*                            array;
                                 
             struct {    cphvb_opcode    opcode;
                         struct Exp*     left;
-                        struct Exp*     right; }    expression;
-            
-    } op;
+                        struct Exp*     right; }    expression;            
+    } op;    
 } ast;
 
+typedef ast jit_expr;
+typedef ExprType jit_expr_tag;
 
-typedef struct Stm {
-    cphvb_array* array;    
-    Exp* exp;
-} stm;
-
-
-
+void ast_log(char* buff, LOG_LEVEL level);
 
 cphvb_error array_to_exp(cphvb_array *array, ast *result);
 
@@ -46,12 +44,13 @@ char* expr_type_to_string(ExprType enumval);
 
 cphvb_error print_ast_node(ast* node);
 
-
+    
 bool at_add(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array, ast* ast);
 ast* at_lookup(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array);
 
 
 void test_constant_to_string(void);
 void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_array*,ast*>* nametable, cphvb_instruction* instr);
+ExprType ast_operand_count_to_tag(cphvb_intp operand_count) ;
 
 #endif

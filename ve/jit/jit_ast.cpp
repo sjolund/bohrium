@@ -1,5 +1,8 @@
 // jit_ast.cpp
 
+#ifndef _JIT_LOG_LEVEL
+#define _JIT_LOG_LEVEL 1
+#endif
 
 #include "cphvb.h"
 #include "jit_ast.h"
@@ -7,6 +10,8 @@
 #include <iostream>
 #include <map>
 #include <list>
+#include "jit_ssa_analyser.h"
+#include <stdarg.h>
 //#include <utility>
 
 char* constant_value_text(cphvb_constant* constant);
@@ -14,12 +19,34 @@ void print_nametable(std::map<cphvb_array*,ast*> nametable);
 void print_ast_recursive(int step, ast* node);
 char* opcode_symbol_text(cphvb_opcode opcode);
 
+
+char* log_level_text(LOG_LEVEL level) {
+    switch(level) 
+    {
+        case LOG_ERROR: return "Error"; break;
+        case LOG_WARNING: return "Warning"; break;
+        case LOG_INFO: return "Info"; break;
+        case LOG_DEBUG: return "Debug"; break;
+        default: return ""; break;
+    }
+}
+
+
+void ast_log(char* buff, LOG_LEVEL level) {
+    //printf("_JIT_LOG_LEVEL: %d , logging @: %d\n", _JIT_LOG_LEVEL, level);
+    if (_JIT_LOG_LEVEL >= level) {
+        printf(buff);
+        //printf("\n");
+    }
+}
+
 cphvb_error array_to_exp(cphvb_array* array, ast* result) {     
     try 
     {               
         result->tag = array_val;
         result->id = 0;
         result->op.array = array;
+        result->depth = 0;
         
         //std::cout << "--"  << sizeof(exp) << "\n";
         //std::cout << "--"  << result << "\n";
@@ -37,14 +64,13 @@ cphvb_error array_to_exp(cphvb_array* array, ast* result) {
     return CPHVB_SUCCESS;
 }
 
-cphvb_error const_to_exp(cphvb_constant* constant, ast* result) {   
-    
-        
+cphvb_error const_to_exp(cphvb_constant* constant, ast* result) {       
     result->tag = const_val;
     result->id = 0;
-    result->op.constant = constant;    
+    result->op.constant = constant;
+    result->depth = 0;    
     
-    printf("p: %p tag: %d id %d: op.const: %s\n",result,result->tag, result->id, " hh ");    
+    //printf("p: %p tag: %d id %d: op.const: %s\n",result,result->tag, result->id, " hh ");    
     return CPHVB_SUCCESS;
 }
 
@@ -81,8 +107,10 @@ int nametable_register(std::map<cphvb_array*,ast*>* nametable, cphvb_array* arra
     return 0;
 }
 
+
+
 void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_array*,ast*>* nametable, cphvb_instruction* instr) {
-    
+    ast_log(">ast_handle_instruction()",LOG_DEBUG);    
     cphvb_array* name_array = instr->operand[0];
     ast* expr = new ast();    
     expr->tag = ast_operand_count_to_tag(cphvb_operands(instr->opcode));
@@ -99,7 +127,7 @@ void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_arr
     
     
     if (expr1 == NULL) {
-        printf("expr1 == null\n");
+        //printf("expr1 == null\n");
         expr1 = new ast();        
         operand_to_exp(instr,1,expr1);                
         if (!cphvb_is_constant(instr->operand[1])) {
@@ -116,7 +144,7 @@ void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_arr
         }
     
         if (expr2 == NULL) {
-            printf("expr2  == null\n");
+            //printf("expr2  == null\n");
             expr2 = new ast();            
             operand_to_exp(instr,2,expr2);            
             if (!cphvb_is_constant(instr->operand[2])) {
@@ -129,9 +157,9 @@ void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_arr
     expr->op.expression.left = expr1;
     expr->op.expression.right = expr2;
     
-    printf("! %p\n",instr->operand[0]);
-    printf("¤ L %p\n",expr->op.expression.left);
-    printf("¤ R %p\n",expr->op.expression.right);
+    //printf("! %p\n",instr->operand[0]);
+    //printf("¤ L %p\n",expr->op.expression.left);
+    //printf("¤ R %p\n",expr->op.expression.right);
     
     nametable_register(nametable,instr->operand[0],expr);
      
@@ -141,7 +169,7 @@ void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_arr
     //print_ast_node(expr1);    
     //print_ast_node(expr2);
 
-    print_nametable(*nametable);   
+    //print_nametable(*nametable);   
     
     
     
@@ -173,11 +201,7 @@ void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_arr
         //~ 
         //~ inst_exp.oprands.add(exp) // add in correct order
         //~ 
-    //~ nametable.register(inst_name,inst_exp)    
-
-    
-    
-    
+    //~ nametable.register(inst_name,inst_exp)        
 }
 
 
@@ -186,6 +210,9 @@ void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_arr
  * Instructions with 2 or 3 operands. 
  **/
 cphvb_error create_ast_from_instruction(cphvb_instruction *inst, ast* result) {                
+    
+    int printlevel = 0;
+    
     if (cphvb_operands(inst->opcode) < 2) {
         //printf(".. Not a valid instruction to create a Exp node from: %d\n", inst->opcode);
         return CPHVB_SUCCESS;
@@ -199,14 +226,14 @@ cphvb_error create_ast_from_instruction(cphvb_instruction *inst, ast* result) {
         
         exp->tag = bin_op;
         exp->op.expression.opcode = inst->opcode;
-        std::cout << "inst->opcode: " << inst->opcode << "\n";
+        //std::cout << "inst->opcode: " << inst->opcode << "\n";
         exp->op.expression.left = new ast;
         if (operand_to_exp(inst,1,exp->op.expression.left) != CPHVB_SUCCESS) {
             // print a error message ??
             return CPHVB_ERROR;
         }
         
-        std::cout << "exp->op.binary.left:" << exp->op.expression.opcode << "\n"; 
+        //std::cout << "exp->op.binary.left:" << exp->op.expression.opcode << "\n"; 
         exp->op.expression.right = new ast;        
         if (operand_to_exp(inst,2,exp->op.expression.right) != CPHVB_SUCCESS) {
             // print a error message ??
@@ -224,14 +251,14 @@ cphvb_error create_ast_from_instruction(cphvb_instruction *inst, ast* result) {
         }
     }
 
-    std::cout << "tag:" <<  exp->tag << "\n";
-    std::cout << "id:" <<   exp->id << "\n";
+    //std::cout << "tag:" <<  exp->tag << "\n";
+    //std::cout << "id:" <<   exp->id << "\n";
     //std::cout << "opcode:" << cphvb_opcode_text(exp->op.binary.opcode) << "\n";
     //std::cout << "opcode:" << exp->op.binary.opcode << "\n";
     
     //result->tag = exp->tag;
     *result = *exp;
-    std::cout << "tag:" <<  result << "\n";
+    //std::cout << "tag:" <<  result << "\n";
     return CPHVB_SUCCESS;
 }
 
@@ -250,7 +277,7 @@ ast* at_lookup(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array) {
 }
 
 bool at_add(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array, ast* ast) {
-    
+     
     try {
         if (at_lookup(assignments,array)  == NULL) {                    
             (*assignments)[array] = ast;
@@ -277,10 +304,15 @@ char* constant_to_string(cphvb_constant* constant) {
     return buff;
 }
 
-void print_nametable(std::map<cphvb_array*,ast*> nametable) {
-    
+void print_nametable(std::map<cphvb_array*,ast*> nametable) {    
     std::map<cphvb_array*,ast*>::iterator it;
-    printf("print_nametable size() == %d\n",nametable.size());
+    
+    char* buff = new char[50];
+    printf("øøøøøøøøøøøøøøøøøøøøøøøøøøøøøøø\n");
+    sprintf(buff,"print_nametable size() == %d\n",nametable.size());
+    ast_log(buff,LOG_DEBUG);
+    
+    //printf("print_nametable size() == %d\n",nametable.size());
     for ( it=nametable.begin(); it != nametable.end(); it++ ) {
         
         cphvb_array* key = it->first;

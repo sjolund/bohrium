@@ -5,11 +5,12 @@ import time
 type=np.float32
 
 def jacobi_stencil_fixed(H,W,Dist):
+    elems = 5;
     full = np.zeros((H+2,W+2), dtype=type)
     work = np.zeros((H,W), dtype=type)
     diff = np.zeros((H,W), dtype=type)
     tmpdelta = np.zeros((H), dtype=type)
-
+    
     if Dist:
         cphvbbridge.handle_array(full)
         cphvbbridge.handle_array(work)
@@ -31,21 +32,24 @@ def jacobi_stencil_fixed(H,W,Dist):
     delta=epsilon+1
     i=0
     #while epsilon<delta:
-    for i in xrange(4000):
-      i+=1
-      work[:] = cells
-      work += up
-      work += left
-      work += right
-      work += down
-      work *= 0.2      
-      cells[:] = work    
-      # cells = (cells + up + left + right + down)*0.2
+    for i in xrange(elems):
+        #~ cphvbbridge.flush();
+        i+=1
+        #~ 
+        work[:] = cells
+        work += up
+        work += left
+        work += right
+        work += down
+        work *= 0.2      
+        cells[:] = work    
       
+        #~ work[:] = (cells + up + left + right + down)*0.2
+        #~ cells[:] = work  
       
     return cells
 
-def jacobi_sencil(H,W,Dist):
+def jacobi_stencil(H,W,Dist):
     full = np.zeros((H+2,W+2), dtype=type)
     work = np.zeros((H,W), dtype=type)
     diff = np.zeros((H,W), dtype=type)
@@ -72,7 +76,7 @@ def jacobi_sencil(H,W,Dist):
     delta=epsilon+1
     i=0
     #while epsilon<delta:
-    for i in xrange(4000):
+    for i in xrange(400):
       i+=1
       work[:] = cells
       work += up
@@ -80,6 +84,10 @@ def jacobi_sencil(H,W,Dist):
       work += right
       work += down
       work *= 0.2
+      
+      # alternative writing:      
+      #~ work[:] = (cells + up + left + right + down) * 0.2
+      
       np.subtract(cells,work,diff)
       diff = np.absolute(diff)
       np.add.reduce(diff, out=tmpdelta)
@@ -91,9 +99,11 @@ def jacobi_sencil(H,W,Dist):
 def run():
     #Seq = jacobi_sencil(20,20,False)
     #print Seq.shape
-    #Par = jacobi_sencil(4000,4000,True)
-    Par = jacobi_stencil_fixed(1000,1000,True)
-
+    #Par = jacobi_stencil(4000,4000,True)
+    #Par = jacobi_stencil_fixed(1000,1000,True)
+    Par = jacobi_stencil_fixed(10,10,True)
+    #Par = jacobi_stencil(10,10,True)
+    print Par
     #if not numpytest.array_equal(Seq,Par):
     #    raise Exception("Uncorrect result matrix\n")
 

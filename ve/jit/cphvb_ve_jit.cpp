@@ -18,16 +18,21 @@
  * 
  * modified by Johannes Lund. Based on the cphvb_ve_simple.cpp
  */
- 
+
+#ifndef _JIT_LOG_LEVEL
+#define _JIT_LOG_LEVEL 4 // 0 NO LOGGING, 1 ERROR, 2 WARNING, 3 INFO, 4 DEBUG
+#endif
+
 #include <stdio.h>
 #include <iostream>
 #include <cphvb.h>
 #include "cphvb_ve_jit.h"
 #include <cphvb_compute.h>
-//#include "bc_analyze2.cpp"
 #include "jit_ast.h"
 #include "jit_ssa_analyser.h"
+#include "jit_analyser.h"
 #include <list>
+
 
 
 static cphvb_component *myself = NULL;
@@ -43,7 +48,7 @@ static cphvb_intp jacstenc_impl_id = 0;
 
 std::map<cphvb_array*,ssavt*> _ssalist;
 std::map<cphvb_array*,ast*> _attable;
-
+ssalist_t _ssaua_table;
 
 template <typename Type> cphvb_error do_jacstenc(cphvb_array *out, 
     cphvb_array *cells, cphvb_array *u, cphvb_array *l, cphvb_array *r, 
@@ -267,7 +272,8 @@ cphvb_error instruction_handler_tree_builder(cphvb_instruction *inst) {
 cphvb_error instruction_handler(cphvb_instruction *inst) {
     // the inst->status must be set on exit
     
-    return instruction_handler_tree_builder(inst);
+    //return instruction_handler_tree_builder(inst);
+    return instruction_handler_print_simple(inst);
 }
 
 
@@ -373,38 +379,93 @@ std::list<ast*>* instruction_list_to_ast(cphvb_instruction* instructionlist) {
 
 
 cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
-
-    bool do_test = true;
+    
+    
+    bool do_test = false;;
     cphvb_intp count;
     cphvb_error status;    
     
     
-    std::list<ast*>* expression_list = new std::list<ast*>();
-    
-    std::map<cphvb_array*,ast*>* nametable = new std::map<cphvb_array*,ast*>();
+    //return CPHVB_SUCCESS;
+    printf("\n\n------- Instr count = %d --------\n", instruction_count);
+    cphvb_pprint_instr_list(instruction_list,instruction_count,"");
+    printf("-------------------------------------\n\n");    
+    ast_log("t",LOG_DEBUG);
     
     if (do_test) {
+        std::list<ast*>* expression_list = new std::list<ast*>();    
+        std::map<cphvb_array*,ast*>* nametable = new std::map<cphvb_array*,ast*>();
+        std::map<cphvb_array*,ssavt*>* ssa_nametable = new std::map<cphvb_array*,ssavt*>();
+        
         for(count=0; count < instruction_count; count++)
         {
-            print_instruction(&instruction_list[count]);
-            printf(">>> %d \n ",count);        
+            //print_instruction(&instruction_list[count]);
+            printf(">>> %d \n",count);        
             
             //printf("-------- %d\n",cphvb_operands(instruction_list[count].opcode));
             
             // it makes no sense to use the AST_HAndle function on instructions not suitable for building a AST.        
             if ( cphvb_operands(instruction_list[count].opcode) > 1) {    
-                ast_handle_instruction( expression_list, nametable, &instruction_list[count]);            
+                //ast_handle_instruction( expression_list, nametable, &instruction_list[count]);            
+                ast_handle_instruction_ssa(expression_list, ssa_nametable, &instruction_list[count]);            
+                //ast_handle_instruction_ssa_ua(_ssaua_table ,expression_list, ssa_nametable, &instruction_list[count]);            
+                
             }        
         }
         
         printf("done with ast_handle_instruction for the whole instruction list\n");
-        printf("nametable size: %d", (int) (*nametable).size());
         
+        //printf("nametable size: %d\n", (int) (*ssa_nametable).size());        
                 
         //std::list<ast*> astreelist = instruction_list_to_ast(instruction_list);
         
         return CPHVB_SUCCESS;
     }
+        
+    jit_ssa_map* jitssamap = new jit_ssa_map();
+    jit_name_table* jitnametable = new jit_name_table();
+    jit_execute_list* jitexecutelist = new jit_execute_list();    
+    for(count=0; count < instruction_count; count++)
+    {
+        if(jita_is_controll(&instruction_list[count])) {
+            
+            jita_handle_controll_instruction(jitnametable,jitssamap,jitexecutelist,&instruction_list[count]);            
+        } else {
+            jita_handle_arithmetic_instruction(jitnametable,jitssamap,&instruction_list[count]);
+        }                
+    }
+    
+    
+    
+    printf("***  ssamap ***\n");
+    printf("size = %d\n",(int)jitssamap->size());    
+    
+    printf("***  nametable ***\n");
+    printf("size = %d\n",(int)jitnametable->size());
+    
+    jit_name_entry* ent;
+    for (int i=0; i < (int)jitnametable->size(); i++) {
+        ent = jitnametable->at(i);
+        printf("entry:[%d]  %p\n version %d\n expr* %p\n status %d\n ",i,ent->arrayp,ent->version,ent->expr,ent->status);         
+        _print_used_at(ent->used_at);
+    }
+    
+    printf("\n*** execution list ***\n[");
+    for(int i=0;i<jitexecutelist->size();i++) {
+        printf("%d,",jitexecutelist->at(i)); 
+    }
+    printf("]\n");
+    
+        
+    //~ cphvb_array*                arrayp;
+    //~ cphvb_intp                  version;
+    //~ jit_expr*                   expr;
+    //~ jit_entry_status            status;
+    //~ std::vector<cphvb_intp>*    used_at;
+    
+    
+    
+    
         
     for(count=0; count < instruction_count; count++)
     {        
@@ -418,7 +479,10 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     
     
     
+    //jita_run_tests();
+    
     testing_stuff();
+    
     
     if (count == instruction_count) {
         return CPHVB_SUCCESS;
