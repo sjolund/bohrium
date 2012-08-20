@@ -1,3 +1,33 @@
+notes 
+
+
+void do_expr_compute(e1,e2,e3,e4,e5,Array* out) {
+    out_t = new array(get_dim(e1)); // assume the same dimensionality of all input.
+    dims = get_dim(e1);
+
+    // loop over the matrices.
+    for(int i_1=0;i_1<dim[0];i_1++) {
+        for(int i_2=0;i_2<dim[1];i_2++) {
+            ...
+            
+        }        
+    }
+    
+    out[i,j] = (((e1 op e2) op e3) op (e4 op e5));
+    out = out_t;
+}
+
+
+
+15-08-2012
+
+implement a method to handle when to do calculations.
+when should a 
+
+
+implement a method to manage the discard's effect on the 
+on the list_of_expr_tree's.
+
 
 
 nametable = chpvb_array*  <-> Exp
