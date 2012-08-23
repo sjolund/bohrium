@@ -224,7 +224,6 @@ cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_m
         case CPHVB_NONE:
             break;
     }
-
 }
 
 cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, cphvb_instruction* instr) {
