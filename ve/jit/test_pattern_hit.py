@@ -5,15 +5,18 @@ import cphvbbridge
 type=np.float32
 def test_pattern_001(H,W):
     print "- test_pattern_001()";
+    type = np.int32;
     work = np.zeros((H,W), dtype=type)    
-    ones = np.ones((H,W),dtype=type)    
-    cphvbbridge.handle_array(work)    
-    cphvbbridge.handle_array(ones)      
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    A = A * 5;
     
-    work += ones    
-    work -= ones
-    work *= 0.2 
-    return work,ones
+    cphvbbridge.handle_array(work)    
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    
+    work = A + B    
+    return work
     
     
 def test_pattern_002(H,W):     
@@ -30,9 +33,8 @@ def test_pattern_002(H,W):
     cphvbbridge.handle_array(D)
         
     
-    A = A + B + C
-    C = B + B * 2
-    
+    A = A + B + C * 2
+   
     return (A,B)
 
 
@@ -248,7 +250,7 @@ if __name__ == "__main__":
     
     
     if do_num == 1:
-        test_pattern_001(5,5)
+        test_pattern_001(1,5)
     if do_num == 2:
         test_pattern_002(5,5)
     #test_pattern_hit(5,5)

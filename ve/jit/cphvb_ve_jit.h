@@ -25,6 +25,8 @@
 #define __CPHVB_VE_SIMPLE_H
 
 #include <cphvb.h>
+#include <sstream>
+#include <iostream>
 
 #ifdef __cplusplus
 extern "C" {

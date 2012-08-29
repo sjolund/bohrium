@@ -32,8 +32,11 @@
 #include "jit_ssa_analyser.h"
 #include "jit_analyser.h"
 #include <list>
+#include "jit_codegenerator.h"
+#include <iostream>
+#include <sstream>
 
-
+using namespace std;
 
 static cphvb_component *myself = NULL;
 static cphvb_userfunc_impl reduce_impl = NULL;
@@ -350,7 +353,37 @@ cphvb_instruction create_customfunc_instr(cphvb_array* OUT, cphvb_array*
 
 
 void testing_stuff() {
-    //test_constant_to_string();
+    
+    //printf("Testing offset calculations:\n");
+   
+    
+    //~ 
+       //~ 
+    //~ int itest[10];
+    //~ memset(itest, 0, 10 * sizeof(int));
+    //~ 
+    //~ float ftest[10];
+    //~ memset(ftest, 0, 10 * sizeof(float));
+    //~ 
+    //~ double dtest[10];
+    //~ memset(dtest, 0, 10 * sizeof(double));
+    //~ 
+    //~ 
+    //~ for(int i=0;i<10;i++) {
+        //~ dtest[i] = (double) i+10;
+        //~ itest[i] = (int) i+5;
+        //~ ftest[i] = (float) i;
+    //~ }
+    //~ 
+    //~ float* d0 = (float*) dtest; 
+    //~ int* d1 = (int*) itest;
+    //~ 
+    //~ printf("double: %f , int: %d, float: %f\n",dtest[1],itest[2],ftest[3    ]);
+    //~ //printf("%f\n", (double) *(d0+1sizeof(double)) );
+    //~ printf("%f -- %d\n", (float) *(d0+1), (int) *(d1+3));
+    //~ 
+    //~ // &(d_out+off_out) = add(off_0+da_0, add( add(off_1+da_1, off_2+da_2), add(off_3+da_3,off_4+da_4)))    
+    //~ //test_constant_to_string();
 }
 
 
@@ -378,9 +411,7 @@ std::list<ast*>* instruction_list_to_ast(cphvb_instruction* instructionlist) {
 
 
 
-cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
-    
-    
+cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {        
     bool do_test = false;;
     cphvb_intp count;
     cphvb_error status;    
@@ -393,6 +424,7 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     ast_log("t",LOG_DEBUG);
     
     if (do_test) {
+        printf("DOING TEST!!! \n");
         std::list<ast*>* expression_list = new std::list<ast*>();    
         std::map<cphvb_array*,ast*>* nametable = new std::map<cphvb_array*,ast*>();
         std::map<cphvb_array*,ssavt*>* ssa_nametable = new std::map<cphvb_array*,ssavt*>();
@@ -421,6 +453,10 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
         
         return CPHVB_SUCCESS;
     }
+    
+    // =================================================================
+    // =================================================================
+    
         
     jit_ssa_map* jitssamap = new jit_ssa_map();
     jit_name_table* jitnametable = new jit_name_table();
@@ -438,7 +474,7 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     
     
     printf("***  ssamap ***\n");
-    printf("size = %d\n",(int)jitssamap->size());    
+    printf("size = %d\n",(int)jitssamap->size());
     
     printf("***  nametable ***\n");
     printf("size = %d\n",(int)jitnametable->size());
@@ -446,16 +482,45 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     jit_name_entry* ent;
     for (int i=0; i < (int)jitnametable->size(); i++) {
         ent = jitnametable->at(i);
-        printf("entry:[%d]  %p\n version %d\n expr* %p\n status %d\n ",i,ent->arrayp,ent->version,ent->expr,ent->status);         
+        printf("entry:[%d]  %p\n version %d\n expr* %p\n status %d\n ",i,ent->arrayp,ent->version,ent->expr,ent->status);
         _print_used_at(ent->used_at);
     }
     
-    printf("\n*** execution list ***\n[");
+    printf("\n*** execution list (%d)***\n[",(int)jitexecutelist->size());
     for(int i=0;i<jitexecutelist->size();i++) {
-        printf("%d,",jitexecutelist->at(i)); 
-    }
+        printf("%d,",jitexecutelist->at(i));
+    }    
     printf("]\n");
     
+    jit_expr* e = jitnametable->at(jitexecutelist->at(0))->expr;
+    cphvb_array* output_array = jitnametable->at(jitexecutelist->at(0))->arrayp;      
+        
+    jitcg_expr_codetext(output_array, e, jitssamap , "first_kernel");
+    printf("\n\n");
+    
+    if (CPHVB_SUCCESS != cphvb_data_malloc(output_array)) {
+        printf("ERROR: Failed to allocate return array.");
+        return -1;
+    }    
+    
+    kernel_function_first_kernel(output_array, e->op.expression.left->op.array, e->op.expression.right->op.array, 0, 0);    
+    
+    stringstream pss;                 
+    jitcg_print_cphvb_array( (e->op.expression.left->op.array),5, &pss);    
+    printf("%s\n",pss.str().c_str());
+    pss.seekp(0);
+
+    
+    jitcg_print_cphvb_array( (e->op.expression.right->op.array),5, &pss);    
+    printf("%s\n",pss.str().c_str());
+    pss.seekp(0);
+    
+    jitcg_print_cphvb_array( output_array,5, &pss);
+    printf("%s\n",pss.str().c_str());
+    
+    
+    // =================================================================
+    // =================================================================
         
     //~ cphvb_array*                arrayp;
     //~ cphvb_intp                  version;
@@ -465,7 +530,7 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     
     
     
-    
+            
         
     for(count=0; count < instruction_count; count++)
     {        
@@ -481,7 +546,7 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     
     //jita_run_tests();
     
-    testing_stuff();
+    //testing_stuff();
     
     
     if (count == instruction_count) {

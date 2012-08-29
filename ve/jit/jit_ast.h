@@ -15,7 +15,8 @@ typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_D
 
 typedef struct Exp {
     ExprType                                        tag;
-    cphvb_intp                                      id;  
+    cphvb_intp                                      id; 
+    cphvb_intp                                      name; 
     cphvb_intp                                      depth;
                                                    
     union { cphvb_constant*                         constant;
@@ -29,6 +30,11 @@ typedef struct Exp {
 
 typedef ast jit_expr;
 typedef ExprType jit_expr_tag;
+
+bool is_bin_op(jit_expr* expr);
+bool is_un_op(jit_expr* expr);
+bool is_array(jit_expr* expr);
+bool is_constant(jit_expr* expr);
 
 void ast_log(char* buff, LOG_LEVEL level);
 
@@ -47,7 +53,7 @@ cphvb_error print_ast_node(ast* node);
     
 bool at_add(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array, ast* ast);
 ast* at_lookup(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array);
-
+char* constant_value_text(cphvb_constant* constant);
 
 void test_constant_to_string(void);
 void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_array*,ast*>* nametable, cphvb_instruction* instr);

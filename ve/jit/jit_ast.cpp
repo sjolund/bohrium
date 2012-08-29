@@ -19,6 +19,18 @@ void print_nametable(std::map<cphvb_array*,ast*> nametable);
 void print_ast_recursive(int step, ast* node);
 char* opcode_symbol_text(cphvb_opcode opcode);
 
+bool is_bin_op(jit_expr* expr) {
+    return expr->tag == bin_op;
+}
+bool is_un_op(jit_expr* expr) {
+    return expr->tag == un_op;
+}
+bool is_array(jit_expr* expr) {
+    return expr->tag == array_val;
+}
+bool is_constant(jit_expr* expr) {
+    return expr->tag == const_val;
+}
 
 char* log_level_text(LOG_LEVEL level) {
     switch(level) 

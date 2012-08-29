@@ -251,16 +251,16 @@ cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa
         first = new jit_expr();            
         operand_to_exp(instr,1,first);                      
         if (loglevel >= DEBUG) printf("first created\n");     
-        if (!cphvb_is_constant(instr->operand[1])) {        
+        if (!cphvb_is_constant(instr->operand[1])) {
             name_first = jita_insert_name(nametable,ssamap,instr->operand[1],first);
-        }        
+        }
                         
     } else {
         first = first_entry->expr;
         if (loglevel >= DEBUG) printf("first looked up.\n");
     }            
     instr_tag = un_op;
-    expr_depth = first->depth + 1;                        
+    expr_depth = first->depth;                        
     
     // binary
     jit_name_entry* second_entry;
@@ -280,15 +280,15 @@ cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa
             
         }                    
         instr_tag = bin_op;
-        expr_depth = std::max(first->depth,second->depth) + 1;
+        expr_depth = std::max(first->depth,second->depth);
     }
     
     // create expr. 
     expr->tag = instr_tag;
     expr->op.expression.opcode = instr->opcode;          
     expr->op.expression.left = first;
-    expr->op.expression.left = second;
-    expr->depth = expr_depth;    
+    expr->op.expression.right = second;
+    expr->depth = expr_depth + 1;    
     if (loglevel >= DEBUG) printf("expr created: %p\n",expr);     
     
     // insert the new expression    
@@ -297,26 +297,23 @@ cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa
     // update first and second expression entries with used_at, 
     // if not constant.    
     
+    
+    // update used_at entries
     if(!cphvb_is_constant(instr->operand[1])) {
         if (first_entry == NULL) {
             first_entry = jita_nametable_lookup(nametable,name_first);
         }
-        if (loglevel >= DEBUG) printf("first_entry->used_at->push_back(%d);\n",name); 
-        if (loglevel >= DEBUG) printf("%p \n",first_entry); 
+            if (loglevel >= DEBUG) printf("first_entry->used_at->push_back(%d);\n",name); 
+            if (loglevel >= DEBUG) printf("%p \n",first_entry); 
         first_entry->used_at->push_back(name);
-        
-        //_jita_update_used_at(nametable,ssamap,first_entry,name);
     }
     
     if(second != NULL && !cphvb_is_constant(instr->operand[2])) {
         if (second_entry == NULL) {
             second_entry = jita_nametable_lookup(nametable,name_second);
-        }
-        
-        if (loglevel >= DEBUG) printf("second_entry->used_at->push_back(%d);\n",name); 
-        second_entry->used_at->push_back(name);
-            
-        //_jita_update_used_at(nametable,ssamap,second_entry,name);
+        }        
+            if (loglevel >= DEBUG) printf("second_entry->used_at->push_back(%d);\n",name); 
+        second_entry->used_at->push_back(name);                
     }
     
     return 1;
@@ -355,9 +352,11 @@ cphvb_intp jita_insert_name(jit_name_table* nametable, jit_ssa_map* ssamap, cphv
     // insert into ssamap
     cphvb_intp added_version = _jita_ssamap_insert(ssamap,array,name);    
     
+    // set the name given to the assignment, to the expr.
+    expr->name = name;
+    
     return name;
 }
-
 
 // Test methods
 void _print_used_at(std::vector<cphvb_intp>* vec) {

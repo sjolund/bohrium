@@ -20,14 +20,14 @@ typedef struct {
 } jit_name_entry;
 
 typedef std::vector<jit_name_entry*> jit_name_table;
-typedef std::map<cphvb_array*, std::vector<cphvb_intp>*> jit_ssa_map;
+typedef std::map<cphvb_array*, std::vector<cphvb_intp>*> jit_ssa_map; // array* key with value being a vector of names, where the index is the version.
 typedef std::vector<cphvb_intp> jit_execute_list; 
 
 cphvb_intp jita_insert_name(jit_name_table* nametable,jit_ssa_map* ssamap, cphvb_array* array, jit_expr* expr);
 cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, cphvb_instruction* instr);
 
 cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_instruction* instr);
-
+cphvb_intp jita_ssamap_version_lookup(jit_ssa_map* ssamap, cphvb_array* array, cphvb_intp version);
 
 bool jita_is_controll(cphvb_instruction* instr);
 // testing stuff
