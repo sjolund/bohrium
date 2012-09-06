@@ -13,22 +13,6 @@
 
 using namespace std;
 
-
-
-//cphvb_error ssa_lookup(map<cphvb_array*,ssavt*> ssalist, cphvb_array* array, ssavt* out) 
-//{    
-    //// error handling missing
-    
-    //std::map<cphvb_array*,ssavt*>::iterator it = ssalist.find(array);
-    //if(it == ssalist.end()) {
-        //out = NULL;        
-    //} else {
-        //out = it->second;
-    //}
-    
-    //return CPHVB_SUCCESS;
-//}
-
 /** 
  * ssa lookup version table. 
  * Lookup array* in ssalist.
@@ -67,7 +51,7 @@ ast* ssa_lookup(map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array, cphvb_int
 ast* ssa_lookup_latest(map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array) {        
     cphvb_intp version = ssa_lookup_array_version(ssalist,array);    
     if (version == -1) {
-        ast_log("> ssa_lookup_latest() = nothing\n",LOG_INFO);
+        //ast_log("> ssa_lookup_latest() = nothing\n",LOG_INFO);
         return NULL;    
     }   
     
@@ -193,7 +177,7 @@ void print_ssa_nametable(std::map<cphvb_array*,ssavt*> nametable) {
 
 
 void ast_handle_instruction_ssa_ua(ssa_used_at_t ssauaTable, std::list<ast*>* expression_list,std::map<cphvb_array*,ssavt*>* nametable, cphvb_instruction* instr) {
-    ast_log("> ast_handle_instruction_ssa()\n",LOG_INFO);    
+    
     
     // parse controll instructions
     cphvb_intp num_operands = cphvb_operands(instr->opcode);
@@ -295,7 +279,7 @@ void ast_handle_instruction_ssa_ua(ssa_used_at_t ssauaTable, std::list<ast*>* ex
 }
 
 void ast_handle_instruction_ssa(std::list<ast*>* expression_list,std::map<cphvb_array*,ssavt*>* nametable, cphvb_instruction* instr) {
-    ast_log("> ast_handle_instruction_ssa()\n",LOG_INFO);    
+    //ast_log("> ast_handle_instruction_ssa()\n",LOG_INFO);    
     
     // parse controll instructions
     cphvb_intp num_operands = cphvb_operands(instr->opcode);
@@ -420,6 +404,13 @@ void print_ssavt(ssavt* version_table) {
 bool ssa_remove(cphvb_array* array_name) {
     return true;
 }
+
+
+
+
+
+
+
 
 
 // Expr* ssa_lookup_latest(ssalist,array) (use pair<version,expr> ? )

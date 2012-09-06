@@ -19,25 +19,100 @@ def test_pattern_001(H,W):
     return work
     
     
-def test_pattern_002(H,W):     
+def test_pattern_002(H,W):    
+    type = np.float32; 
+    A = np.ones((H,W),dtype=type)    
+    cphvbbridge.handle_array(A)        
+    A = A + 2.0        
+    return A
+
+
+def test_pattern_003(H,W):   
+    print "- test_pattern_003()";
+    type = np.float32;
     A = np.ones((H,W),dtype=type)
     B = np.ones((H,W),dtype=type)
-    C = np.ones((H,W),dtype=type);
-    D = np.ones((H,W),dtype=type);
+    B = B * 2;
+    cphvbbridge.handle_array(A)
+    cphvbbridge.handle_array(B)
+
+    A = B * 2 
+    
+    return A
+
+def test_pattern_004(H,W):    
+    type = np.float32; 
+    A = np.ones((H,W),dtype=type)
+    B = np.ones((H,W),dtype=type)
     B = B*2;
-    D = D*3
+
     
     cphvbbridge.handle_array(A)
     cphvbbridge.handle_array(B)
-    cphvbbridge.handle_array(C)
-    cphvbbridge.handle_array(D)
-        
+
+    A += B 
     
-    A = A + B + C * 2
-   
-    return (A,B)
+    return A
 
 
+def test_pattern_005(H,W):
+    print "- test_pattern_001()";
+    type = np.float32;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    A = A * 5;
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    
+    A = A + A   
+    return A
+
+
+def test_pattern_006(H,W):
+    print "- test_pattern_006()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    D = np.ones((H,W),dtype=type)    
+    A = A * 5;
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    
+    cphvbbridge.handle_array(D)   
+    
+    D = (A + B + A + D) * 4
+    return D
+
+#
+# In this example, only the B is calculated. A is not, since it is used
+# after it has been used elsewhere. This it not how it should work. Both
+# A and B should be computed.
+
+# compute the last versions of 'handled arrays' on discard. How is it 
+# possible to detect the 'is handles'?
+def test_pattern_007(H,W):
+    print "- test_pattern_007()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    C = np.ones((H,W),dtype=type)    
+
+    B = B * 2;
+    C = C * 3
+            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)   
+    
+    A = B + C + A  # 6
+    B = A * 2  # 12
+    return A,B 
+    
 
 
 
@@ -252,7 +327,17 @@ if __name__ == "__main__":
     if do_num == 1:
         test_pattern_001(1,5)
     if do_num == 2:
-        test_pattern_002(5,5)
+        test_pattern_002(1,5)
+    if do_num == 3:
+        test_pattern_003(1,5)
+    if do_num == 4:
+        test_pattern_004(1,5)        
+    if do_num == 5:
+        test_pattern_005(1,5)        
+    if do_num == 6:
+        test_pattern_006(1,5)        
+    if do_num == 7:
+        test_pattern_007(1,5)                                    
     #test_pattern_hit(5,5)
     
     #test_pattern_miss_a(5,5)

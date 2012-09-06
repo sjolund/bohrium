@@ -30,6 +30,9 @@ cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_m
 cphvb_intp jita_ssamap_version_lookup(jit_ssa_map* ssamap, cphvb_array* array, cphvb_intp version);
 
 bool jita_is_controll(cphvb_instruction* instr);
+
+jit_name_entry* jita_nametable_lookup(jit_name_table* nametable, cphvb_intp index);
+
 // testing stuff
 void jita_run_tests();
 void _print_used_at(std::vector<cphvb_intp>* vec);

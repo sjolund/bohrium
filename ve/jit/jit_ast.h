@@ -11,7 +11,7 @@
 
 typedef enum  { bin_op = 0, un_op = 1, const_val = 2, array_val = 3} ExprType;
 
-typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4} LOG_LEVEL;
+//typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4} _LOG_LEVEL;
 
 typedef struct Exp {
     ExprType                                        tag;
@@ -36,7 +36,7 @@ bool is_un_op(jit_expr* expr);
 bool is_array(jit_expr* expr);
 bool is_constant(jit_expr* expr);
 
-void ast_log(char* buff, LOG_LEVEL level);
+//void ast_log(char* buff, _LOG_LEVEL level);
 
 cphvb_error array_to_exp(cphvb_array *array, ast *result);
 

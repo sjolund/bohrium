@@ -17,7 +17,7 @@
 char* constant_value_text(cphvb_constant* constant);
 void print_nametable(std::map<cphvb_array*,ast*> nametable);
 void print_ast_recursive(int step, ast* node);
-char* opcode_symbol_text(cphvb_opcode opcode);
+const char* opcode_symbol_text(cphvb_opcode opcode);
 
 bool is_bin_op(jit_expr* expr) {
     return expr->tag == bin_op;
@@ -32,25 +32,7 @@ bool is_constant(jit_expr* expr) {
     return expr->tag == const_val;
 }
 
-char* log_level_text(LOG_LEVEL level) {
-    switch(level) 
-    {
-        case LOG_ERROR: return "Error"; break;
-        case LOG_WARNING: return "Warning"; break;
-        case LOG_INFO: return "Info"; break;
-        case LOG_DEBUG: return "Debug"; break;
-        default: return ""; break;
-    }
-}
 
-
-void ast_log(char* buff, LOG_LEVEL level) {
-    //printf("_JIT_LOG_LEVEL: %d , logging @: %d\n", _JIT_LOG_LEVEL, level);
-    if (_JIT_LOG_LEVEL >= level) {
-        printf(buff);
-        //printf("\n");
-    }
-}
 
 cphvb_error array_to_exp(cphvb_array* array, ast* result) {     
     try 
@@ -101,7 +83,7 @@ cphvb_error operand_to_exp(cphvb_instruction *inst, cphvb_intp operand_no, ast* 
 ExprType ast_operand_count_to_tag(cphvb_intp operand_count) {
     switch(operand_count) {
         case 2: return un_op; break;
-        case 3: return bin_op; break;
+        case 3: return bin_op; break;        
     }
 }
 
@@ -122,15 +104,15 @@ int nametable_register(std::map<cphvb_array*,ast*>* nametable, cphvb_array* arra
 
 
 void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_array*,ast*>* nametable, cphvb_instruction* instr) {
-    ast_log(">ast_handle_instruction()",LOG_DEBUG);    
+    //ast_log(">ast_handle_instruction()",LOG_DEBUG);    
     cphvb_array* name_array = instr->operand[0];
     ast* expr = new ast();    
     expr->tag = ast_operand_count_to_tag(cphvb_operands(instr->opcode));
     expr->id = 10;
     expr->op.expression.opcode = instr->opcode;
     
-    ast* expr1; //= expr->op.expression.left;
-    ast* expr2; // = expr->op.expression.right;
+    ast* expr1 = NULL; //= expr->op.expression.left;
+    ast* expr2 = NULL; // = expr->op.expression.right;
     
         
     if (!cphvb_is_constant(instr->operand[1])) {
@@ -321,8 +303,8 @@ void print_nametable(std::map<cphvb_array*,ast*> nametable) {
     
     char* buff = new char[50];
     printf("øøøøøøøøøøøøøøøøøøøøøøøøøøøøøøø\n");
-    sprintf(buff,"print_nametable size() == %d\n",nametable.size());
-    ast_log(buff,LOG_DEBUG);
+    sprintf(buff,"print_nametable size() == %lu\n",nametable.size());
+    //ast_log(buff,LOG_DEBUG);
     
     //printf("print_nametable size() == %d\n",nametable.size());
     for ( it=nametable.begin(); it != nametable.end(); it++ ) {
@@ -373,7 +355,7 @@ cphvb_error print_ast_node(ast* node) {
     
     switch(node->tag) {
         case bin_op:                     
-            printf("B:  id:%d  op: %s\n", node->id, cphvb_opcode_text(node->op.expression.opcode) );            
+            printf("B:  id:%ld  op: %s\n", node->id, cphvb_opcode_text(node->op.expression.opcode) );            
             //std::cout << node->id << "\n";
             t = node->op.expression.left->tag;            
             if (t == bin_op || t == un_op)        
@@ -404,7 +386,7 @@ cphvb_error print_ast_node(ast* node) {
             
             break;
         case un_op:            
-            printf("U: id:%d op_ %s\n", node->id, cphvb_opcode_text(node->op.expression.opcode));            
+            printf("U: id:%ld op_ %s\n", node->id, cphvb_opcode_text(node->op.expression.opcode));            
             break;
         case const_val:         
             printf("Const: %s\n",constant_to_string(node->op.constant)); 
@@ -423,7 +405,7 @@ cphvb_error print_ast_node(ast* node) {
 
 
 
-char* opcode_symbol_text(cphvb_opcode opcode) {
+const char* opcode_symbol_text(cphvb_opcode opcode) {
     switch(opcode) {
         case CPHVB_ADD:
             return "+";
@@ -432,15 +414,16 @@ char* opcode_symbol_text(cphvb_opcode opcode) {
         case CPHVB_MULTIPLY:
             return "*";
         case CPHVB_DIVIDE:
-          return "/";
+          return "/";          
       }
+      return "";
 }
 
 //char* print_constant_value(cphvb_constant* constant) {    
 char* constant_value_text(cphvb_constant* constant) {    
-    cphvb_type type = constant->type;    
-    int n;
-    char buff [50];
+    cphvb_type type = constant->type;        
+    char buff[50];
+    
     // case the different cphvb_type's
     //printf("** %s : ", cphvb_type_text( type) );    
     
@@ -470,11 +453,11 @@ char* constant_value_text(cphvb_constant* constant) {
             break;      
                 
         case CPHVB_UINT32:        
-            n =sprintf(buff,"%d",constant->value.uint32);            
+            sprintf(buff,"%d",constant->value.uint32);            
             break;      
                 
         case CPHVB_UINT64:
-            n = sprintf(buff,"%u",constant->value.uint64);            
+            sprintf(buff,"%lu",constant->value.uint64);            
             break;
                     
         case CPHVB_FLOAT16:
