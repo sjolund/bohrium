@@ -1,4 +1,26 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,9 +39,27 @@ namespace NumCIL.Generic
         long Length { get; }
 
         /// <summary>
-        /// Gets the .Net representation of the data
+        /// Gets the data as a .Net Array
         /// </summary>
-        T[] Data { get; }
+        T[] AsArray();
+
+        /// <summary>
+        /// Ensures that data is allocated
+        /// </summary>
+        void Allocate();
+
+        /// <summary>
+        /// Returns a value indicating if the array is allocated
+        /// </summary>
+        bool IsAllocated { get; }
+
+        /// <summary>
+        /// Gets or sets the value at a specific index.
+        /// Depending on implementation, this may cause the array to be allocated.
+        /// </summary>
+        /// <param name="index">The index to get or set the value at</param>
+        /// <returns>The value at the given index</returns>
+        T this[long index] { get; set; }
 
         /// <summary>
         /// An extra component that can be used to tag data to the accessor
@@ -28,9 +68,26 @@ namespace NumCIL.Generic
     }
 
     /// <summary>
+    /// Interface to data that is not kept in managed memory
+    /// </summary>
+    /// <typeparam name="T">The type of data in the array</typeparam>
+    public interface IUnmanagedDataAccessor<T> : IDataAccessor<T>
+    {
+        /// <summary>
+        /// Gets a pointer to the data
+        /// </summary>
+        IntPtr Pointer { get; }
+
+        /// <summary>
+        /// Gets a value indicating if it is possible to return the data as a .Net array
+        /// </summary>
+        bool CanAllocateArray { get; }
+    }
+
+    /// <summary>
     /// Interface that adds a lazy registration function to a data accessor
     /// </summary>
-    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="T">The type of data in the array</typeparam>
     public interface ILazyAccessor<T> : IDataAccessor<T>
     {
         /// <summary>
@@ -39,6 +96,25 @@ namespace NumCIL.Generic
         /// <param name="operation">The operation performed</param>
         /// <param name="operands">The operands involved, operand 0 is the target</param>
         void AddOperation(IOp<T> operation, params NdArray<T>[] operands);
+
+		/// <summary>
+        /// Register a pending operation on the underlying array
+        /// </summary>
+        /// <param name="operation">The operation performed</param>
+        /// <param name="output">The output operand</param>
+        /// <param name="input">The input operand</param>
+        /// <typeparam name="Tb">The source data type</typeparam>
+        void AddConversionOperation<Tb>(IUnaryConvOp<Tb, T> operation, NdArray<T> output, NdArray<Tb> input);
+
+        /// <summary>
+        /// Register a pending operation on the underlying array
+        /// </summary>
+        /// <param name="operation">The operation performed</param>
+        /// <param name="output">The output operand</param>
+        /// <param name="in1">An input operand</param>
+        /// <param name="in2">An input operand</param>
+        /// <typeparam name="Tb">The source data type</typeparam>
+        void AddConversionOperation<Tb>(IBinaryConvOp<Tb, T> operation, NdArray<T> output, NdArray<Tb> in1, NdArray<Tb> in2);
 
         /// <summary>
         /// Gets a list of registered pending operations on the accessor
@@ -125,24 +201,45 @@ namespace NumCIL.Generic
         }
 
         /// <summary>
-        /// Accesses the actual data, accessing this property will allocate memory
+        /// Allocates data
         /// </summary>
-        public virtual T[] Data
+        public virtual void Allocate()
         {
-            get
-            {
-                if (m_data == null)
-                    m_data = new T[m_size];
-                return m_data;
-            }
+            if (m_data == null)
+                m_data = new T[m_size];
+        }
+
+        /// <summary>
+        /// Returns the value at a given index, this will allocated the array
+        /// </summary>
+        /// <param name="index">The index to get the value for</param>
+        /// <returns>The value at the given index</returns>
+        public virtual T this[long index]
+        {
+            get { Allocate(); return m_data[index]; }
+            set { Allocate(); m_data[index] = value; }
+        }
+
+        /// <summary>
+        /// Allocates data and returns the array
+        /// </summary>
+        /// <returns>The allocated data block</returns>
+        public virtual T[] AsArray()
+        {
+            Allocate();
+            return m_data;
         }
 
         /// <summary>
         /// Gets the size of the array
         /// </summary>
-        public long Length { get { return m_size; } }
-    }
+        public virtual long Length { get { return m_size; } }
 
+        /// <summary>
+        /// Gets a value indicating if the data is allocated
+        /// </summary>
+        public virtual bool IsAllocated { get { return m_data != null; } }
+    }
 
     /// <summary>
     /// Implementation of a lazy initialized array, will collect operations until data is accessed
@@ -153,23 +250,31 @@ namespace NumCIL.Generic
         /// <summary>
         /// Cache of the generic template method
         /// </summary>
-        protected static readonly System.Reflection.MethodInfo binaryBaseMethodType = typeof(UFunc).GetMethod("UFunc_Op_Inner_Binary_Flush", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        protected static readonly System.Reflection.MethodInfo binaryBaseMethodType = typeof(UFunc.FlushMethods).GetMethod("ApplyBinaryOp", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         /// <summary>
         /// Cache of the generic template method
         /// </summary>
-        protected static readonly System.Reflection.MethodInfo unaryBaseMethodType = typeof(UFunc).GetMethod("UFunc_Op_Inner_Unary_Flush", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        protected static readonly System.Reflection.MethodInfo unaryBaseMethodType = typeof(UFunc.FlushMethods).GetMethod("ApplyUnaryOp", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         /// <summary>
         /// Cache of the generic template method
         /// </summary>
-        protected static readonly System.Reflection.MethodInfo nullaryBaseMethodType = typeof(UFunc).GetMethod("UFunc_Op_Inner_Nullary_Flush", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        protected static readonly System.Reflection.MethodInfo nullaryBaseMethodType = typeof(UFunc.FlushMethods).GetMethod("ApplyNullaryOp", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         /// <summary>
         /// Cache of the generic template method
         /// </summary>
-        protected static readonly System.Reflection.MethodInfo reduceBaseMethodType = typeof(UFunc).GetMethod("UFunc_Reduce_Inner_Flush", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        protected static readonly System.Reflection.MethodInfo reduceBaseMethodType = typeof(UFunc.FlushMethods).GetMethod("Reduce", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         /// <summary>
         /// Cache of the generic template method
         /// </summary>
-        protected static readonly System.Reflection.MethodInfo matmulBaseMethodType = typeof(UFunc).GetMethod("UFunc_Matmul_Inner_Flush", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        protected static readonly System.Reflection.MethodInfo matmulBaseMethodType = typeof(UFunc.FlushMethods).GetMethod("Matmul", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+		/// <summary>
+		/// Cache of the generic template method
+		/// </summary>
+		protected static readonly System.Reflection.MethodInfo unaryConversionBaseMethodType = typeof(UFunc.FlushMethods).GetMethod("ApplyUnaryConvOp", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+        /// <summary>
+        /// Cache of the generic template method
+        /// </summary>
+        protected static readonly System.Reflection.MethodInfo binaryConversionBaseMethodType = typeof(UFunc.FlushMethods).GetMethod("ApplyBinaryConvOp", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
         /// <summary>
         /// Cache of instantiated template methods
         /// </summary>
@@ -202,19 +307,15 @@ namespace NumCIL.Generic
         public LazyAccessor(long size) : base(size) { }
 
         /// <summary>
-        /// Accesses the actual data, accessing this property will allocate memory,
+        /// Allocates that data, calling this method will allocate memory,
         /// and execute all pending operations
         /// </summary>
-        public override T[] Data
+        public override void Allocate()
         {
-            get
-            {
+            if (PendingOperations.Count != 0)
+                this.ExecutePendingOperations();
 
-                if (PendingOperations.Count != 0)
-                    this.ExecutePendingOperations();
-
-                return base.Data;
-            }
+            base.Allocate();
         }
 
         /// <summary>
@@ -228,14 +329,45 @@ namespace NumCIL.Generic
                 PendingOperations.Add(new PendingOperation<T>(operation, operands));
         }
 
+		/// <summary>
+        /// Register a pending conversion operation on the underlying array
+        /// </summary>
+        /// <param name="operation">The operation performed</param>
+        /// <param name="output">The output operand</param>
+        /// <param name="input">The input operand</param>
+        public virtual void AddConversionOperation<Ta>(IUnaryConvOp<Ta, T> operation, NdArray<T> output, NdArray<Ta> input)
+        {
+            lock (Lock)
+                PendingOperations.Add(new PendingUnaryConversionOperation<T, Ta>(operation, output, input));
+        }
+
+        /// <summary>
+        /// Register a pending conversion operation on the underlying array
+        /// </summary>
+        /// <param name="operation">The operation performed</param>
+        /// <param name="output">The output operand</param>
+        /// <param name="in1">An input operand</param>
+        /// <param name="in2">An input operand</param>
+        public virtual void AddConversionOperation<Ta>(IBinaryConvOp<Ta, T> operation, NdArray<T> output, NdArray<Ta> in1, NdArray<Ta> in2)
+        {
+            lock (Lock)
+                PendingOperations.Add(new PendingBinaryConversionOperation<T, Ta>(operation, output, in1, in2));
+        }
+
         /// <summary>
         /// Execute all operations that are pending to obtain the result array
         /// </summary>
         protected virtual void ExecutePendingOperations()
         {
-            var lst = UnrollWorkList(this);
-            ExecuteOperations(lst);
-            PendingOperations.Clear();
+            if (PendingOperations.Count > 0)
+            {
+                lock (Lock)
+                {
+                    var lst = UnrollWorkList(this);
+                    PendingOperations.Clear();
+                    ExecuteOperations(lst);
+                }
+            }
         }
 
         /// <summary>
@@ -265,9 +397,9 @@ namespace NumCIL.Generic
                 PendingOperation<T> cur = res[(int)i];
 
                 for (int j = 0; j < cur.Operands.Length; j++)
-                    if (cur.Operands[j].m_data is ILazyAccessor<T>)
+                    if (cur.Operands[j].DataAccessor is ILazyAccessor<T>)
                     {
-                        ILazyAccessor<T> lz = (ILazyAccessor<T>)cur.Operands[j].m_data;
+                        ILazyAccessor<T> lz = (ILazyAccessor<T>)cur.Operands[j].DataAccessor;
                         long cp;
                         long dest_cp = cur.OperandIndex[j] + (j == 0 ? -1 : 0);
 
@@ -321,9 +453,44 @@ namespace NumCIL.Generic
         /// <param name="work">The list of operations to perform</param>
         public virtual void ExecuteOperations(IEnumerable<PendingOperation<T>> work)
         {
+            DoExecute(work);
+        }
+
+        /// <summary>
+        /// Basic execution function, simply calls the UFunc*Flush functions with the pending operation
+        /// </summary>
+        /// <param name="work">The list of operations to perform</param>
+        public static void DoExecute(IEnumerable<PendingOperation<T>> work)
+        {
             foreach (var n in work)
             {
-                if (n.Operation is NumCIL.UFunc.LazyReduceOperation<T>)
+                if (n is IPendingBinaryConversionOp)
+                {
+                    Type inputType = n.GetType().GetGenericArguments()[1];
+
+                    System.Reflection.MethodInfo genericVersion;
+                    if (!specializedMethods.TryGetValue(n.Operation, out genericVersion))
+                    {
+                        genericVersion = binaryConversionBaseMethodType.MakeGenericMethod(inputType, typeof(T), n.Operation.GetType());
+                        specializedMethods[n.Operation] = genericVersion;
+                    }
+
+                    genericVersion.Invoke(null, new object[] { n.Operation, ((IPendingUnaryConversionOp)n).InputOperand, ((IPendingBinaryConversionOp)n).InputOperand, n.Operands[0] });
+                }
+                else if (n is IPendingUnaryConversionOp)
+                {
+                    Type inputType = n.GetType().GetGenericArguments()[1];
+
+                    System.Reflection.MethodInfo genericVersion;
+                    if (!specializedMethods.TryGetValue(n.Operation, out genericVersion))
+                    {
+                        genericVersion = unaryConversionBaseMethodType.MakeGenericMethod(inputType, typeof(T), n.Operation.GetType());
+                        specializedMethods[n.Operation] = genericVersion;
+                    }
+
+                    genericVersion.Invoke(null, new object[] { n.Operation, ((IPendingUnaryConversionOp)n).InputOperand, n.Operands[0] });
+                }
+                else if (n.Operation is NumCIL.UFunc.LazyReduceOperation<T>)
                 {
                     NumCIL.UFunc.LazyReduceOperation<T> lzop = (NumCIL.UFunc.LazyReduceOperation<T>)n.Operation;
 
@@ -335,7 +502,7 @@ namespace NumCIL.Generic
                     }
 
                     genericVersion.Invoke(null, new object[] { lzop.Operation, lzop.Axis, n.Operands[1], n.Operands[0] });
-                    
+
                 }
                 else if (n.Operation is NumCIL.UFunc.LazyMatmulOperation<T>)
                 {
@@ -451,9 +618,9 @@ namespace NumCIL.Generic
             foreach (var x in operands)
             {
                 oprs[i] = x;
-                if (x.m_data is ILazyAccessor<T>)
+                if (x.DataAccessor is ILazyAccessor<T>)
                 {
-                    ILazyAccessor<T> lz = (ILazyAccessor<T>)x.m_data;
+                    ILazyAccessor<T> lz = (ILazyAccessor<T>)x.DataAccessor;
                     indx[i] = (lz.PendingOperations.Count + lz.PendignOperationOffset) + (i == 0 ? 1 : 0);
                 }
                 else
@@ -466,6 +633,124 @@ namespace NumCIL.Generic
         }
     }
 
+	/// <summary>
+	/// Marker interface for quick recognition of conversion operations
+	/// </summary>
+	public interface IPendingUnaryConversionOp 
+	{
+        /// <summary>
+        /// Gets the untyped input operand
+        /// </summary>
+		object InputOperand { get; }
+	}
+
+    /// <summary>
+    /// Marker interface for quick recognition of conversion operations
+    /// </summary>
+    public interface IPendingBinaryConversionOp
+    {
+        /// <summary>
+        /// Gets the untyped input operand
+        /// </summary>
+        object InputOperand { get; }
+    }
+
+	/// <summary>
+	/// Representation of a pending unary conversion operation.
+	/// </summary>
+	public class PendingUnaryConversionOperation<Ta, Tb> : PendingOperation<Ta>, IPendingUnaryConversionOp
+	{
+		/// <summary>
+		/// The first input operand.
+		/// </summary>
+		public readonly NdArray<Tb> InputOperand;
+
+		/// <summary>
+		/// The size of pending operations after the execution.
+		/// </summary>
+		public readonly long InputOperandIndex;
+
+        /// <summary>
+        /// Constructs a new pending unary operation
+        /// </summary>
+        /// <param name="operation">The operation to perform</param>
+        /// <param name="output">The output operand</param>
+        /// <param name="input">The input operand</param>
+        public PendingUnaryConversionOperation(IOp<Ta> operation, NdArray<Ta> output, NdArray<Tb> input)
+            : base(operation, output)
+        {
+            InputOperand = input;
+            if (input.DataAccessor is ILazyAccessor<Tb>)
+            {
+                ILazyAccessor<Tb> lz = (ILazyAccessor<Tb>)input.DataAccessor;
+                InputOperandIndex = (lz.PendingOperations.Count + lz.PendignOperationOffset);
+            }
+            else
+                InputOperandIndex = 0;
+        }
+
+
+		#region IPendingUnaryConversionOp implementation
+		/// <summary>
+		/// Gets the input operand as an untyped object.
+		/// </summary>
+		object IPendingUnaryConversionOp.InputOperand
+		{
+			get
+			{
+				return InputOperand;
+			}
+		}
+		#endregion
+
+	}
+
+    /// <summary>
+	/// Representation of a pending binary conversion operation.
+	/// </summary>
+    public class PendingBinaryConversionOperation<Ta, Tb> : PendingUnaryConversionOperation<Ta, Tb>, IPendingBinaryConversionOp
+    {
+        /// <summary>
+        /// The first input operand.
+        /// </summary>
+        public readonly NdArray<Tb> InputOperandRhs;
+
+        /// <summary>
+        /// The size of pending operations after the execution.
+        /// </summary>
+        public readonly long InputOperandIndexRhs;
+
+        /// <summary>
+        /// Constructs a new pending binary operation
+        /// </summary>
+        /// <param name="operation">The operation to perform</param>
+        /// <param name="output">The output operand</param>
+        /// <param name="in1">An input operand</param>
+        /// <param name="in2">An input operand</param>
+        public PendingBinaryConversionOperation(IOp<Ta> operation, NdArray<Ta> output, NdArray<Tb> in1, NdArray<Tb> in2)
+            :base(operation, output, in1)
+        {
+            InputOperandRhs = in2;
+            if (in2.DataAccessor is ILazyAccessor<Tb>)
+            {
+                ILazyAccessor<Tb> lz = (ILazyAccessor<Tb>)in2.DataAccessor;
+                InputOperandIndexRhs = (lz.PendingOperations.Count + lz.PendignOperationOffset);
+            }
+            else
+                InputOperandIndexRhs = 0;
+        }
+
+        #region IPendingBinaryConversionOp implementation
+        /// <summary>
+        /// Gets the input operand as an untyped object.
+        /// </summary>
+        object IPendingBinaryConversionOp.InputOperand
+        {
+            get { return this.InputOperandRhs; }
+        }
+        #endregion
+    }
+
     /// <summary>
     /// Default factory for creating data accessors
     /// </summary>
@@ -473,17 +758,33 @@ namespace NumCIL.Generic
     public class DefaultAccessorFactory<T> : IAccessorFactory<T>
     {
         /// <summary>
+        /// The size of the elements generated by this factory
+        /// </summary>
+        protected static readonly long NATIVE_ELEMENT_SIZE = System.Runtime.InteropServices.Marshal.SizeOf(typeof(T));
+
+        /// <summary>
         /// Creates a new data accessor for an array of the given size
         /// </summary>
         /// <param name="size">The size of the array to create an accessor for</param>
         /// <returns>A new accessor</returns>
-        public IDataAccessor<T> Create(long size) { return new DefaultAccessor<T>(size); }
+        public IDataAccessor<T> Create(long size) 
+        { 
+            IDataAccessor<T> result = null;
+
+            if (UnsafeAPI.IsUnsafeSupported && !UnsafeAPI.DisableUnsafeAPI && !UnsafeAPI.DisableUnsafeArrays && (size * NATIVE_ELEMENT_SIZE) >= UnsafeAPI.UnsafeArraysLargerThan)
+                result = UnsafeAPI.CreateAccessor<T>(size);
+
+            return result ?? new DefaultAccessor<T>(size); 
+        }
         /// <summary>
         /// Creates a new data accessor for an allocated array
         /// </summary>
         /// <param name="data">The array to create an accessor for</param>
         /// <returns>A new accessor</returns>
-        public IDataAccessor<T> Create(T[] data) { return new DefaultAccessor<T>(data); }
+        public IDataAccessor<T> Create(T[] data) 
+        {
+            return new DefaultAccessor<T>(data); 
+        }
     }
 
     /// <summary>

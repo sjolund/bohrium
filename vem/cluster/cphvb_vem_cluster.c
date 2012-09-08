@@ -1,21 +1,22 @@
 /*
- * Copyright 2011 Simon A. F. Lund <safl@safl.dk>
- *
- * This file is part of cphVB.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <cphvb.h>
 #include <math.h>
 #include <assert.h>
@@ -109,7 +110,6 @@ cphvb_error cphvb_vem_cluster_execute(cphvb_intp instruction_count,
                 //The owner is downsteam so send the sync down
                 //and take ownership
                 inst->operand[0] = base;
-                arrayManager->changeOwnerPending(base,CPHVB_SELF);
             }
             break;
         }
@@ -167,19 +167,17 @@ cphvb_error cphvb_vem_cluster_shutdown(void)
 
 /* Registre a new user-defined function.
  *
- * @lib Name of the shared library e.g. libmyfunc.so
- *      When NULL the default library is used.
  * @fun Name of the function e.g. myfunc
  * @id Identifier for the new function. The bridge should set the
  *     initial value to Zero. (in/out-put)
  * @return Error codes (CPHVB_SUCCESS)
  */
-cphvb_error cphvb_vem_cluster_reg_func(char *lib, char *fun, cphvb_intp *id)
+cphvb_error cphvb_vem_cluster_reg_func(char *fun, cphvb_intp *id)
 {
     if(*id == 0)//Only if parent didn't set the ID.
         *id = ++userfunc_count;
 
-    return vem_reg_func(lib, fun, id);
+    return vem_reg_func(fun, id);
 }
 
 

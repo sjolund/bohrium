@@ -1,21 +1,22 @@
 /*
- * Copyright 2012 Troels Blum <troels@blum.dk>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <cassert>
 #include <stdexcept>
@@ -43,8 +44,7 @@ cphvb_error cphvb_random(cphvb_userfunc *arg, void* ve_arg)
     {
         userFunctionRandom = new UserFunctionRandom(userFuncArg->resourceManager);
     }
-    userFunctionRandom->fill(userFuncArg);
-    return CPHVB_SUCCESS;
+    return userFunctionRandom->fill(userFuncArg);
 }
 
 #define TPB 128
@@ -86,13 +86,13 @@ void CL_CALLBACK UserFunctionRandom::hostDataDelete(cl_event ev, cl_int eventSta
     delete [](cl_uint4*)data;
 }
 
-void UserFunctionRandom::fill(UserFuncArg* userFuncArg)
+cphvb_error UserFunctionRandom::fill(UserFuncArg* userFuncArg)
 {
     assert (userFuncArg->resourceManager == resourceManager);
     BaseArray* ba = static_cast<BaseArray*>(userFuncArg->operands[0]);
     KernelMap::iterator kit = kernelMap.find(ba->type());
     if (kit == kernelMap.end())
-        throw std::runtime_error("Data type not supported for random number generation.");
+        return CPHVB_TYPE_NOT_SUPPORTED;
     Scalar size(ba->size());    
     Kernel::Parameters parameters;
     parameters.push_back(std::make_pair(ba, true));
@@ -102,4 +102,5 @@ void UserFunctionRandom::fill(UserFuncArg* userFuncArg)
     std::vector<size_t> localShape(1,TPB);
     std::vector<size_t> globalShape(1,BPG*TPB);
     kit->second.call(parameters, globalShape, localShape);
+    return CPHVB_SUCCESS;
 }

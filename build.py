@@ -1,21 +1,24 @@
 #!/usr/bin/python
 """
- * Copyright 2011 Mads R. B. Kristensen <madsbk@gmail.com>
- *
- * This file is part of CphVB <https://github.com/cphvb>.
- *
- * DistNumPy is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * DistNumPy is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with DistNumPy. If not, see <http://www.gnu.org/licenses/>.
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 """
 
 import sys
@@ -28,68 +31,76 @@ import subprocess
 makecommand = "make"
 makefilename = "Makefile"
 
-def build(name, dir, fatal=False):
-    print "***Building %s***"%name
-    try:
-        p = subprocess.Popen([makecommand, "-f", makefilename], cwd=join(install_dir, dir))
-        err = p.wait()
-    except KeyboardInterrupt:
-        p.terminate()
+def build(components,interpreter):
+    for (name, dir, fatal) in components:
+        print "***Building %s***"%name
+        try:
+            p = subprocess.Popen([makecommand, "-f", makefilename,"CPHVB_PYTHON=%s"%interpreter], cwd=join(install_dir, dir))
+            err = p.wait()
+        except KeyboardInterrupt:
+            p.terminate()
 
-    if fatal:
-        if err != 0:
-            print "A build error in %s is fatal. Exiting."%name
-            sys.exit(-1)
-    else:
-        if err != 0:
-            print "A build error in %s is not fatal. Continuing."%name
+        if fatal:
+            if err != 0:
+                print "A build error in %s is fatal. Exiting."%name
+                sys.exit(-1)
+        else:
+            if err != 0:
+                print "A build error in %s is not fatal. Continuing."%name
 
-def clean(name, dir):
-    print "***Cleaning %s***"%name
-    try:
-        p = subprocess.Popen([makecommand, "-f", makefilename, "clean"], cwd=join(install_dir, dir))
-        err = p.wait()
-    except KeyboardInterrupt:
-        p.terminate()
+def clean(components):
+    for (name, dir, fatal) in components:
+        print "***Cleaning %s***"%name
+        try:
+            p = subprocess.Popen([makecommand, "-f", makefilename, "clean"], cwd=join(install_dir, dir))
+            err = p.wait()
+        except KeyboardInterrupt:
+            p.terminate()
 
-def install(name, dir, fatal=False):
-    print "***Installing %s***"%name
-    try:
-        p = subprocess.Popen([makecommand, "-f", makefilename, "install"], cwd=join(install_dir, dir))
-        err = p.wait()
-    except KeyboardInterrupt:
-        p.terminate()
+def install(components,prefix,interpreter):
+    for (name, dir, fatal) in components:
+        print "***Installing %s***"%name
+        try:
+            p = subprocess.Popen([makecommand, "-f", makefilename,"install","CPHVB_PYTHON=%s"%interpreter,"INSTALLDIR=%s"%prefix], cwd=join(install_dir, dir))
+            err = p.wait()
+        except KeyboardInterrupt:
+            p.terminate()
 
-    if fatal:
-        if err != 0:
-            print "A build error in %s is fatal. Exiting."%name
-            sys.exit(-1)
-    else:
-        if err != 0:
-            print "A build error in %s is not fatal. Continuing."%name
+        if fatal:
+            if err != 0:
+                print "A build error in %s is fatal. Exiting."%name
+                sys.exit(-1)
+        else:
+            if err != 0:
+                print "A build error in %s is not fatal. Continuing."%name
 
-def ldconfig():
-    print "***Configure ldconfig***"
-    print "sudo ldconfig"
-    try:
-        p = subprocess.Popen(["sudo", "ldconfig"], cwd=join(install_dir))
-        err = p.wait()
-    except KeyboardInterrupt:
-        p.terminate()
-
-def install_config():
-    HOME_CONFIG = join(join(expanduser("~"),".cphvb"))
+def install_config(prefix):
+    if os.geteuid() == 0:#Root user
+        HOME_CONFIG = "/etc/cphvb"
+    else: 
+        HOME_CONFIG = join(join(expanduser("~"),".cphvb"))
     if not exists(HOME_CONFIG):
         os.mkdir(HOME_CONFIG)
-        dst = join(HOME_CONFIG, "config.ini")
-        src = join(install_dir,"config.ini.example")
-        shutil.copy(src,dst)
-        print "cp %s %s"%(src,dst)
+    dst = join(HOME_CONFIG, "config.ini")
+    src = join(install_dir,"config.ini.example")
+    if not exists(dst):
+        src_file = open(src, "r")
+        src_str = src_file.read()
+        src_file.close()
+        dst_str = src_str.replace("/opt/cphvb",prefix)
+        if sys.platform.startswith('darwin'):
+            dst_str = dst_str.replace(".so",".dylib")
+        dst_file = open(dst,"w")
+        dst_file.write(dst_str)
+        dst_file.close()
+        print "Write default config file to %s"%(dst)
 
 
 if __name__ == "__main__":
     debug = False
+    interactive = False
     prefix = "/opt/cphvb"
+    interpreter = sys.executable
     try:
         install_dir = os.path.abspath(os.path.dirname(__file__))
     except NameError:
@@ -97,13 +108,19 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"d",["debug"])
+        opts, args = getopt.gnu_getopt(sys.argv[1:],"d",["debug","prefix=","interactive","interpreter="])
     except getopt.GetoptError, err:
         print str(err)
         sys.exit(2)
     for o, a in opts:
-        if o in ("-d", "--debug"):
+        if o in ("-d","--debug"):
             debug = True
+        elif o in ("--prefix"):
+            prefix = a
+        elif o in ("--interactive"):
+            interactive = True
+        elif o in ("--interpreter"):
+            interpreter = a
         else:
             assert False, "unhandled option"
 
@@ -112,7 +129,19 @@ if __name__ == "__main__":
         makefilename="Makefile.win"
     elif sys.platform.startswith('darwin'):
         makefilename="Makefile.osx"
+    
+    if interactive:
+        import readline, glob
+        def complete(text, state):#For autocomplete 
+            return (glob.glob(text+'*')+[None])[state]
+        readline.set_completer_delims(' \t\n;')
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer(complete)
 
+        print "Please specify the installation directory:"
+        answer = raw_input("[%s] "%prefix)
+        if answer != "":
+            prefix = expanduser(answer)
     try:
         cmd = args[0]
     except IndexError:
@@ -121,60 +150,37 @@ if __name__ == "__main__":
         print "Known commands: build, clean, install, rebuild"
         sys.exit(-1)
 
-    if cmd == "rebuild":
-        clean("INIPARSER", "iniparser")
-        clean("CORE-BUNDLER", "core/bundler")
-        clean("CORE-COMPUTE", "core/compute")
-        clean("CORE", "core")
-        clean("VE-GPU", "ve/gpu")
-        clean("VE-SIMPLE", "ve/simple")
-        clean("VE-SCORE", "ve/score")
-        clean("VE-MCORE", "ve/mcore")
-        clean("VEM-NODE", "vem/node")
-        #clean("VEM-CLUSTER", "vem/cluster")
-        clean("BRIDGE-NUMPY", "bridge/numpy")
+    components = [\
+                  ("OPCODES","core/codegen",True),\
+                  ("INIPARSER","iniparser",True),\
+                  ("CORE-BUNDLER", "core/bundler", True),\
+                  ("CORE-COMPUTE", "core/compute", True),\
+                  ("CORE", "core", True),\
+                  ("VE-GPU", "ve/gpu", False),\
+                  ("VE-SIMPLE", "ve/simple", True),\
+                  ("VE-SCORE", "ve/score", False),\
+                  ("VE-MCORE", "ve/mcore", False),\
+                  ("VEM-NODE", "vem/node", True),\
+                  ("NumCIL", "bridge/NumCIL", False),\
+                  ("BRIDGE-NUMPY", "bridge/numpy", True),\
+                  ("USERFUNCS-ATLAS", "userfuncs/ATLAS", False),\
+                  ("CPHVBNUMPY", "cphvbnumpy", True)
+                 ]
 
+    if cmd == "rebuild":
+        clean(components)        
     if cmd == "build" or cmd == "rebuild":
-        build("INIPARSER", "iniparser", True)
-        build("CORE-BUNDLER", "core/bundler", True)
-        build("CORE-COMPUTE", "core/compute", True)
-        build("CORE", "core", True)
-        build("VE-GPU", "ve/gpu", False)
-        build("VE-SIMPLE", "ve/simple", False)
-        build("VE-SCORE", "ve/score", True)
-        build("VE-MCORE", "ve/mcore", True)
-        build("VEM-NODE", "vem/node", True)
-        #build("VEM-CLUSTER", "vem/cluster", False)
-        build("BRIDGE-NUMPY", "bridge/numpy", True)
+        build(components,interpreter)        
     elif cmd == "clean":
-        clean("INIPARSER", "iniparser")
-        clean("CORE-BUNDLER", "core/bundler")
-        clean("CORE-COMPUTE", "core/compute")
-        clean("CORE", "core")
-        clean("VE-GPU", "ve/gpu")
-        clean("VE-SIMPLE", "ve/simple")
-        clean("VE-SCORE", "ve/score")
-        clean("VE-MCORE", "ve/mcore")
-        clean("VEM-NODE", "vem/node")
-        #clean("VEM-CLUSTER", "vem/cluster")
-        clean("BRIDGE-NUMPY", "bridge/numpy")
+        clean(components)        
     elif cmd == "install":
-        if not exists("/opt/cphvb"):
-            os.mkdir("/opt/cphvb")
-        install("INIPARSER", "iniparser", True)
-        install("CORE-BUNDLER", "core/bundler", True)
-        install("CORE-COMPUTE", "core/compute", True)
-        install("CORE", "core", True)
-        install("VE-GPU", "ve/gpu", False)
-        install("VE-SIMPLE", "ve/simple", True)
-        install("VE-SCORE", "ve/score",True)
-        install("VE-MCORE", "ve/mcore",True)
-        install("VEM-NODE", "vem/node", True)
-        #install("VEM-CLUSTER", "vem/cluster", False)
-        install("BRIDGE-NUMPY", "bridge/numpy",True)
-        install("USERFUNCS-ATLAS", "userfuncs/ATLAS")
-        install_config();
-        #ldconfig()
+        prefix = os.path.abspath(prefix)
+        if exists(prefix):
+            assert os.path.isdir(prefix),"The prefix points to an existing file"
+        else:            
+            os.makedirs(prefix)
+        install(components,prefix,interpreter)        
+        install_config(prefix);
     else:
         print "Unknown command: '%s'."%cmd
         print ""

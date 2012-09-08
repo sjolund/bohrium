@@ -1,27 +1,29 @@
 /*
- * Copyright 2011 Troels Blum <troels@blum.dk>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef __RESOURCEMANAGER_HPP
 #define __RESOURCEMANAGER_HPP
 
 #include <CL/cl.hpp>
 #include <vector>
+#include <map>
 #include <cphvb.h>
 #ifdef STATS
 #include "timing.h"
@@ -40,14 +42,19 @@ private:
     std::vector<size_t> localShape1D;
     std::vector<size_t> localShape2D;
     std::vector<size_t> localShape3D;
+    bool float64;
+    bool float16;
+    void calcLocalShape();
+    void registerExtensions(std::vector<std::string> extensions);
 public:
 #ifdef STATS
+    struct cl_stat {cl_ulong queued; cl_ulong submit; cl_ulong start; cl_ulong end;}; 
     double batchBuild;
     double batchSource;
     double resourceCreateKernel;
-    double resourceBufferWrite;
-    double resourceBufferRead;
-    double resourceKernelExecute;
+    std::vector<cl_stat> resourceBufferWrite;
+    std::vector<cl_stat> resourceBufferRead;
+    std::vector<cl_stat> resourceKernelExecute;
     ~ResourceManager();
     static void CL_CALLBACK eventProfiler(cl_event event, cl_int eventStatus, void* total);
 #endif
@@ -79,6 +86,8 @@ public:
                                    unsigned int device);
     std::vector<size_t> localShape(const std::vector<size_t>& globalShape);
     std::string getKernelPath();
+    bool float16support();
+    bool float64support();
 };
 
 #endif

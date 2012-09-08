@@ -1,4 +1,26 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -108,10 +130,10 @@ namespace NumCIL
                     throw new Exception("The output array for matrix multiplication is not correctly shaped");
             }
 
-            if (@out.m_data is ILazyAccessor<T>)
-                ((ILazyAccessor<T>)@out.m_data).AddOperation(new LazyMatmulOperation<T>(addop, mulop), @out, in1, in2);
+            if (@out.DataAccessor is ILazyAccessor<T>)
+                ((ILazyAccessor<T>)@out.DataAccessor).AddOperation(new LazyMatmulOperation<T>(addop, mulop), @out, in1, in2);
             else
-                UFunc_Matmul_Inner_Flush<T, CADD, CMUL>(addop, mulop, in1, in2, @out);
+                FlushMethods.Matmul<T, CADD, CMUL>(addop, mulop, in1, in2, @out);
 
             return @out;
         }
@@ -145,9 +167,9 @@ namespace NumCIL
             long opsInner = @out.Shape.Dimensions[1].Length;
             long opsInnerInner = in1.Shape.Dimensions[1].Length;
 
-            T[] d1 = in1.Data;
-            T[] d2 = in2.Data;
-            T[] d3 = @out.Data;
+            T[] d1 = in1.AsArray();
+            T[] d2 = in2.AsArray();
+            T[] d3 = @out.AsArray();
 
             long ix1Base = in1.Shape.Offset;
             long outerStride1 = in1.Shape.Dimensions[0].Stride;
@@ -212,8 +234,8 @@ namespace NumCIL
             where CCOMBINE : struct, IBinaryOp<T>
         {
             T result;
-            T[] d1 = in1.Data;
-            T[] d2 = in2.Data;
+            T[] d1 = in1.AsArray();
+            T[] d2 = in2.AsArray();
 
             if (in1.Shape.Dimensions.Length == 1)
             {

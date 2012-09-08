@@ -1,21 +1,22 @@
 /*
- * Copyright 2011 Troels Blum <troels@blum.dk>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <iostream>
 #include <cassert>
@@ -30,30 +31,7 @@ InstructionScheduler::InstructionScheduler(ResourceManager* resourceManager_)
     , batch(0)
 {}
 
-inline void InstructionScheduler::schedule(cphvb_instruction* inst)
-{
-#ifdef DEBUG
-    cphvb_pprint_instr(inst);
-#endif
-    switch (inst->opcode)
-    {
-    case CPHVB_NONE:
-        break;
-    case CPHVB_SYNC:
-        sync(inst->operand[0]);
-        break;
-    case CPHVB_DISCARD:
-        discard(inst->operand[0]);
-        break;
-    case CPHVB_USERFUNC:
-        userdeffunc(inst->userfunc);
-        break;
-    default:
-        ufunc(inst);
-    }
-}
-
-void InstructionScheduler::schedule(cphvb_intp instructionCount,
+cphvb_error InstructionScheduler::schedule(cphvb_intp instructionCount,
                                     cphvb_instruction* instructionList)
 {
 #ifdef DEBUG
@@ -62,12 +40,45 @@ void InstructionScheduler::schedule(cphvb_intp instructionCount,
 #endif
     for (cphvb_intp i = 0; i < instructionCount; ++i)
     {
-        //TODO check instructionList->status
-        schedule(instructionList++);
+        cphvb_instruction* inst = instructionList++;
+        if (inst->opcode != CPHVB_NONE && inst->status != CPHVB_SUCCESS)
+        {
+#ifdef DEBUG
+            cphvb_pprint_instr(inst);
+#endif
+            switch (inst->opcode)
+            {
+            case CPHVB_SYNC:
+                sync(inst->operand[0]);
+                inst->status = CPHVB_SUCCESS;
+                break;
+            case CPHVB_DISCARD:
+                if (inst->operand[0]->base == NULL)
+                    discard(inst->operand[0]);
+                inst->status = CPHVB_SUCCESS;
+                break;
+            case CPHVB_FREE:
+                cphvb_data_free(inst->operand[0]);
+                inst->status = CPHVB_SUCCESS;
+                break;                
+            case CPHVB_USERFUNC:
+                inst->status = userdeffunc(inst->userfunc);
+                break;
+            default:
+                inst->status = ufunc(inst);
+                break;
+            }
+            if (inst->status != CPHVB_SUCCESS)
+            {
+                executeBatch();
+                return CPHVB_PARTIAL_SUCCESS;
+            }
+        }
     }
     
     /* End of batch cleanup */
     executeBatch();
+    return CPHVB_SUCCESS;
 }
 
 void InstructionScheduler::executeBatch()
@@ -122,12 +133,12 @@ void InstructionScheduler::discard(cphvb_array* base)
     arrayMap.erase(it);
 }
 
-void InstructionScheduler::userdeffunc(cphvb_userfunc* userfunc)
+cphvb_error InstructionScheduler::userdeffunc(cphvb_userfunc* userfunc)
 {
     FunctionMap::iterator fit = functionMap.find(userfunc->id);
     if (fit == functionMap.end())
     {
-        throw std::runtime_error("User defined functiones not supported.");
+        return CPHVB_USERFUNC_NOT_SUPPORTED;
     }
     cphvb_intp nops = userfunc->nout + userfunc->nin;
     UserFuncArg userFuncArg;
@@ -135,6 +146,11 @@ void InstructionScheduler::userdeffunc(cphvb_userfunc* userfunc)
     for (int i = 0; i < nops; ++i)
     {
         cphvb_array* operand = userfunc->operand[i];
+        if ((!resourceManager->float64support() && operand->type == CPHVB_FLOAT64)
+            || (!resourceManager->float16support() && operand->type == CPHVB_FLOAT16))
+        {
+            return CPHVB_TYPE_NOT_SUPPORTED;
+        }
         cphvb_array* base = cphvb_base_array(operand);
         // Is it a new base array we haven't heard of before?
         ArrayMap::iterator it = arrayMap.find(base);
@@ -169,10 +185,10 @@ void InstructionScheduler::userdeffunc(cphvb_userfunc* userfunc)
     }
 
     // Execute the userdefined function
-    fit->second(userfunc, &userFuncArg);
+    return fit->second(userfunc, &userFuncArg);
 }
 
-void InstructionScheduler::ufunc(cphvb_instruction* inst)
+cphvb_error InstructionScheduler::ufunc(cphvb_instruction* inst)
 {
     //TODO Find out if we support the operation before copying data to device
 
@@ -186,6 +202,11 @@ void InstructionScheduler::ufunc(cphvb_instruction* inst)
         {
             operands[i] = new Scalar(inst->constant);
             continue;
+        }
+        if ((!resourceManager->float64support() && operand->type == CPHVB_FLOAT64)
+            || (!resourceManager->float16support() && operand->type == CPHVB_FLOAT16))
+        {
+            return CPHVB_TYPE_NOT_SUPPORTED;
         }
         cphvb_array* base = cphvb_base_array(operand);
         // Is it a new base array we haven't heard of before?
@@ -218,6 +239,7 @@ void InstructionScheduler::ufunc(cphvb_instruction* inst)
     {
         batch = new InstructionBatch(inst, operands);
     }
+    return CPHVB_SUCCESS;
 }
 
 void InstructionScheduler::registerFunction(cphvb_intp id, cphvb_userfunc_impl userfunc)

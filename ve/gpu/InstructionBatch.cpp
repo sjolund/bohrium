@@ -1,22 +1,22 @@
 /*
- * Copyright 2011 Troels Blum <troels@blum.dk>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
 
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <iostream>
 #include <functional>
 #include <algorithm>
@@ -33,6 +33,8 @@ InstructionBatch::InstructionBatch(cphvb_instruction* inst, const std::vector<Ke
     : arraynum(0)
     , scalarnum(0)
     , variablenum(0)
+    , float16(false)
+    , float64(false)
 {
 #ifdef STATS
     gettimeofday(&createTime,NULL);
@@ -158,6 +160,15 @@ void InstructionBatch::add(cphvb_instruction* inst, const std::vector<KernelPara
     // OK so we can accept the instruction
     instructions.push_back(inst);
     // Register unknow parameters
+    //catch when same input is used twice
+    if (operands.size() == 3 && cphvb_base_array(inst->operand[1]) == cphvb_base_array(inst->operand[2]))
+    {
+        if(sameView(inst->operand[1], inst->operand[2]))
+        {
+            inst->operand[2] = inst->operand[1];
+            known[2] = true;
+        }
+    }
     for (size_t op = 0; op < operands.size(); ++op)
     {
         if (!known[op])
@@ -182,6 +193,14 @@ void InstructionBatch::add(cphvb_instruction* inst, const std::vector<KernelPara
                     ss << "a" << arraynum++;
                     parameters[kp] = ss.str();
                     parameterList.push_back(kp);
+                }
+                if (ba->type() == OCL_FLOAT64)
+                {
+                    float64 = true;
+                } 
+                else if (ba->type() == OCL_FLOAT16)
+                {
+                    float16 = true;
                 }
             }
             else //scalar
@@ -213,6 +232,14 @@ Kernel InstructionBatch::generateKernel(ResourceManager* resourceManager)
     {
         std::stringstream source, kname;
         kname << "kernel" << std::hex << codeHash;
+        if (float16)
+        {
+            source << "#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n";
+        }
+        if (float64)
+        {
+            source << "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n";
+        }
         source << "__kernel void " << kname.str() << code;
         Kernel kernel(resourceManager, shape.size(), source.str(), kname.str());
         kernelMap.insert(std::make_pair(codeHash, kernel));

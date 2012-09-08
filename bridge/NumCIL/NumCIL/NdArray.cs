@@ -1,4 +1,26 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,11 +44,6 @@ namespace NumCIL.Generic
         public class ValueAccessor : IEnumerable<T>
         {
             /// <summary>
-            /// The reference to the data
-            /// </summary>
-            private T[] m_data = null;
-
-            /// <summary>
             /// The NdArray that owns this instance
             /// </summary>
             private readonly NdArray<T> m_parent;
@@ -49,16 +66,17 @@ namespace NumCIL.Generic
             {
                 get 
                 {
-                    if (m_data == null)
-                        m_data = m_parent.Data;
-
-                    return m_data[m_parent.Shape[index]]; 
+                    if (index.LongLength == 1 && index[0] == 0)
+                        return m_parent.DataAccessor[m_parent.Shape.Offset];
+                    else
+                        return m_parent.DataAccessor[m_parent.Shape[index]]; 
                 }
                 set 
                 {
-                    if (m_data == null)
-                        m_data = m_parent.Data;
-                    m_data[m_parent.Shape[index]] = value; 
+                    if (index.LongLength == 1 && index[0] == 0)
+                        m_parent.DataAccessor[m_parent.Shape.Offset] = value;
+                    else
+                        m_parent.DataAccessor[m_parent.Shape[index]] = value; 
                 }
             }
 
@@ -96,19 +114,17 @@ namespace NumCIL.Generic
         /// <summary>
         /// A reference to the underlying data storage, should not be accessed directly, may not be completely updated
         /// </summary>
-        public readonly IDataAccessor<T> m_data;
+        protected readonly IDataAccessor<T> m_data;
 
         /// <summary>
-        /// Gets the real underlying data, accessing this property may flush pending executions
+        /// Gets a reference to the underlying data accessor
         /// </summary>
-        public T[] Data
-        {
-            get 
-            {
-                return m_data.Data;
-            }
-        }
+        public IDataAccessor<T> DataAccessor { get { return m_data; } }
 
+        /// <summary>
+        /// Gets the real underlying data as a managed array, accessing this property may flush pending executions
+        /// </summary>
+        public T[] AsArray() { return m_data.AsArray(); }
 
         /// <summary>
         /// A reference to the shape instance that describes this view
@@ -183,7 +199,10 @@ namespace NumCIL.Generic
         /// <returns>The reshaped array</returns>
         public NdArray<T> Reshape(Shape newshape)
         {
-            return new NdArray<T>(this, newshape);
+            if (newshape == null || newshape.Equals(this.Shape))
+                return this;
+            else
+                return new NdArray<T>(this, newshape);
         }
 
         /// <summary>
@@ -203,7 +222,7 @@ namespace NumCIL.Generic
             if (this.Shape.Dimensions.LongLength == 1)
             {
                 long pos = this.Shape[element];
-                return new NdArray<T>(this, new Shape(
+                return Reshape(new Shape(
                     new long[] { 1 }, //Single element
                     pos, //Offset to position
                     new long[] { this.Shape.Length - pos } //Skip the rest
@@ -215,7 +234,7 @@ namespace NumCIL.Generic
 
             //We need to modify the top dimension to skip the elements we wish to hide
             long newoffset = this.Shape[element];
-            return new NdArray<T>(this, new Shape(dims, newoffset));
+            return this.Reshape(new Shape(dims, newoffset));
         }
 
         /// <summary>
@@ -242,7 +261,7 @@ namespace NumCIL.Generic
                     Array.Copy(this.Shape.Dimensions, dim, n, dim + 1, n.LongLength - (dim + 1));
                     n[dim] = new NumCIL.Shape.ShapeDimension(1, 0);
 
-                    return new NdArray<T>(this, new Shape(n, this.Shape.Offset));
+                    return this.Reshape(new Shape(n, this.Shape.Offset));
                 }
                 else if (range.SingleElement)
                     last = first;
@@ -282,7 +301,7 @@ namespace NumCIL.Generic
             }
             
 
-            return new NdArray<T>(this, new Shape(dimensions, offset));
+            return this.Reshape(new Shape(dimensions, offset));
         }
 
         /// <summary>
@@ -316,7 +335,7 @@ namespace NumCIL.Generic
                     if (lv.Shape.Dimensions[i].Length != value.Shape.Dimensions[i].Length)
                         throw new Exception("Cannot assign incompatible arrays");
 
-                UFunc.UFunc_Op_Inner_Unary<T, NumCIL.CopyOp<T>>(new NumCIL.CopyOp<T>(), value, ref lv);
+                UFunc.Apply<T, NumCIL.CopyOp<T>>(value, lv);
             }
         }
 
@@ -384,7 +403,7 @@ namespace NumCIL.Generic
         public NdArray<T> Flatten()
         {
             NdArray<T> cp = this.Clone();
-            return new NdArray<T>(cp, new long[] { cp.Shape.Length });
+            return cp.Reshape(new long[] { cp.Shape.Length });
         }
 
         /// <summary>
@@ -402,7 +421,9 @@ namespace NumCIL.Generic
         /// <param name="value">The value to set the elements to</param>
         public void Set(T value)
         {
-            UFunc.Apply<T, GenerateOp<T>>(new GenerateOp<T>(value), this);
+            var tmp = new NdArray<T>(value);
+            tmp = tmp.Reshape(Shape.ToBroadcastShapes(tmp.Shape, this.Shape).Item1);
+            UFunc.Apply<T, CopyOp<T>>(tmp, this);
         }
 
         #region IEnumerable<NdArray<T>> Members
@@ -490,9 +511,9 @@ namespace NumCIL.Generic
             
             //Optimal case, just reshape the array
             if (@out == null)
-                return new NdArray<T>(this, new Shape(this.Shape.Dimensions.Reverse().ToArray()));
+                return this.Reshape(new Shape(this.Shape.Dimensions.Reverse().ToArray()));
 
-            var lv = new NdArray<T>(this, new Shape(this.Shape.Dimensions.Select(x => x.Length).Reverse().ToArray()));
+            var lv = this.Reshape(new Shape(this.Shape.Dimensions.Select(x => x.Length).Reverse().ToArray()));
             UFunc.Apply<T, CopyOp<T>>(lv, @out);
             return @out;
         }
@@ -725,6 +746,18 @@ namespace NumCIL.Generic
         /// Flag for debugging purposes
         /// </summary>
         public string Name;
+
+        /// <summary>
+        /// Destructor, disposes the tag if any
+        /// </summary>
+        ~NdArray()
+        {
+            if (Tag is IDisposable)
+            {
+                ((IDisposable)Tag).Dispose();
+                Tag = null;
+            }
+        }
     }
 }
 

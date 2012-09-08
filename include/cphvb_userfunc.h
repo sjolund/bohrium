@@ -1,21 +1,22 @@
 /*
- * Copyright 2011 Troels Blum <troels@blum.dk>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef __CPHVB_USERFUNC_H
 #define __CPHVB_USERFUNC_H
@@ -77,8 +78,24 @@ typedef struct
 
 DLLEXPORT cphvb_error cphvb_jacstenc(cphvb_userfunc* arg, void* ve_arg);
 
+//The type of the user-defined lu factorization function.
+typedef struct
+{
+    //User-defined function header with two operands.
+    CPHVB_USER_FUNC_HEADER(2)
+} cphvb_lu_type;
 
+DLLEXPORT cphvb_error cphvb_lu(cphvb_userfunc* arg, void* ve_arg);
 
+//The type of the user-defined fft function.
+typedef struct
+{
+    //User-defined function header with two operands.
+    CPHVB_USER_FUNC_HEADER(2)
+} cphvb_fft_type;
+
+DLLEXPORT cphvb_error cphvb_fft(cphvb_userfunc* arg, void* ve_arg);
+DLLEXPORT cphvb_error cphvb_fft2(cphvb_userfunc* arg, void* ve_arg);
 
 
 #ifdef __cplusplus

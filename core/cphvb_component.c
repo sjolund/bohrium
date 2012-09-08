@@ -1,21 +1,22 @@
 /*
- * Copyright 2011 Mads R. B. Kristensen <madsbk@gmail.com>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <cphvb.h>
 #include <iniparser.h>
@@ -44,7 +45,7 @@ char _expand_buffer2[MAX_PATH];
 #include <limits.h>
 
 #define HOME_INI_PATH "~/.cphvb/config.ini"
-#define SYSTEM_INI_PATH "/opt/cphvb/config.ini"
+#define SYSTEM_INI_PATH "/etc/cphvb/config.ini"
 
 //We need a buffer for path expansion
 char _expand_buffer[PATH_MAX];
@@ -121,7 +122,7 @@ cphvb_component *cphvb_component_setup(void)
     if(com == NULL)
     {
         fprintf(stderr, "cphvb_component_setup(): out of memory.\n");
-        exit(CPHVB_OUT_OF_MEMORY);
+        return NULL;
     }
 
     //Clear memory so we do not have any random pointers
@@ -198,17 +199,22 @@ cphvb_component *cphvb_component_setup(void)
 
     if(env == NULL)
     {
-        fprintf(stderr, "Error: cphVB could not find the config file."
+        fprintf(stderr, "Error: cphVB could not find the config file.\n"
             " The search is:\n"
             "\t* The environment variable CPHVB_CONFIG.\n"
             "\t* The home directory \"%s\".\n"
             "\t* And system-wide \"%s\".\n", homepath, syspath);
-        exit(-1);
+        free(com);
+        return NULL;
     }
 
     com->config = iniparser_load(env);
     if(com->config == NULL)
-        exit(-1);
+    {
+        fprintf(stderr, "Error: cphVB could not read the config file.\n");
+        free(com);
+        return NULL;
+    }
 
     com->type = get_type(com->config, com->name);
 
@@ -216,7 +222,8 @@ cphvb_component *cphvb_component_setup(void)
     {
         fprintf(stderr, "Error in the configuration: the root "
                         "component must be of type bridge.\n");
-        exit(-1);
+        free(com);
+        return NULL;
     }
     return com;
 }
@@ -232,20 +239,30 @@ cphvb_error cphvb_component_children(cphvb_component *parent, cphvb_intp *count,
                                      cphvb_component **children[])
 {
     char tmp[CPHVB_COMPONENT_NAME_SIZE];
+    cphvb_error result;
     char *child;
+    size_t c;
     *count = 0;
     snprintf(tmp, CPHVB_COMPONENT_NAME_SIZE, "%s:children",parent->name);
     char *tchildren = iniparser_getstring(parent->config, tmp, NULL);
     if(tchildren == NULL)
-        exit(CPHVB_ERROR);
+    {
+        fprintf(stderr, "cphvb_component_setup(): children missing from config.\n");
+		return CPHVB_ERROR;
+	}
 
     *children = (cphvb_component**)malloc(CPHVB_COMPONENT_MAX_CHILDS * sizeof(cphvb_component *));
     if(*children == NULL)
     {
         fprintf(stderr, "cphvb_component_setup(): out of memory.\n");
-        exit(CPHVB_OUT_OF_MEMORY);
+        return CPHVB_OUT_OF_MEMORY;
     }
+    //Since we do not use all the data here, it is good for debugging if the rest is null pointers
+    memset(*children, 0, CPHVB_COMPONENT_MAX_CHILDS * sizeof(cphvb_component *));
 
+	//Assume all goes well
+	result = CPHVB_SUCCESS;
+	
     //Handle one child at a time.
     child = strtok(tchildren,",");
     while(child != NULL && *count < CPHVB_COMPONENT_MAX_CHILDS)
@@ -261,13 +278,16 @@ cphvb_error cphvb_component_children(cphvb_component *parent, cphvb_intp *count,
         com->type = get_type(parent->config,child);
         if(com->type == CPHVB_COMPONENT_ERROR)
         {
-            exit(CPHVB_ERROR);
+	        fprintf(stderr, "cphvb_component_setup(): invalid component type: %s.\n", child);
+	        result = CPHVB_ERROR;
+	        break;
         }
 
         if(!iniparser_find_entry(com->config,child))
         {
             fprintf(stderr,"Reference \"%s\" is not declared.\n",child);
-            exit(CPHVB_ERROR);
+	        result = CPHVB_ERROR;
+	        break;
         }
 
         snprintf(tmp, CPHVB_COMPONENT_NAME_SIZE, "%s:impl", child);
@@ -275,75 +295,88 @@ cphvb_error cphvb_component_children(cphvb_component *parent, cphvb_intp *count,
         if(impl == NULL)
         {
             fprintf(stderr,"In section \"%s\" impl is not set.\n",child);
-            exit(CPHVB_ERROR);
+	        result = CPHVB_ERROR;
+	        break;
         }
 
         com->lib_handle = dlopen(impl, RTLD_NOW);
         if(com->lib_handle == NULL)
         {
             fprintf(stderr, "Error in [%s:impl]: %s\n", child, dlerror());
-            exit(CPHVB_ERROR);
+	        result = CPHVB_ERROR;
+	        break;
         }
 
         com->init = (cphvb_init)get_dlsym(com->lib_handle, child, com->type, "init");
         if(com->init == NULL)
-            exit(CPHVB_ERROR);
+        {
+			fprintf(stderr, "Failed to load init function from child %s\n", child);        
+	        result = CPHVB_ERROR;
+	        break;
+        }
 
         com->shutdown = (cphvb_shutdown)get_dlsym(com->lib_handle, child, com->type,
                                   "shutdown");
         if(com->shutdown == NULL)
-            exit(CPHVB_ERROR);
+        {
+			fprintf(stderr, "Failed to load shutdown function from child %s\n", child);        
+	        result = CPHVB_ERROR;
+	        break;
+        }
 
         com->execute = (cphvb_execute)get_dlsym(com->lib_handle, child, com->type,
                                  "execute");
         if(com->execute == NULL)
-            exit(CPHVB_ERROR);
+        {
+			fprintf(stderr, "Failed to load execute function from child %s\n", child);        
+	        result = CPHVB_ERROR;
+	        break;
+        }
 
         com->reg_func = (cphvb_reg_func)get_dlsym(com->lib_handle, child, com->type,
                                   "reg_func");
         if(com->reg_func == NULL)
-            exit(CPHVB_ERROR);
-
-        if(com->type == CPHVB_VEM)//VEM functions only.
         {
-            com->create_array = (cphvb_create_array)get_dlsym(com->lib_handle, child,
-                                          com->type, "create_array");
-            if(com->create_array == NULL)
-                exit(CPHVB_ERROR);
+			fprintf(stderr, "Failed to load reg_func function from child %s\n", child);        
+	        result = CPHVB_ERROR;
+	        break;
         }
+
         child = strtok(NULL,",");
         ++(*count);
     }
 
-    if(*count == 0)//No children.
+	if (result != CPHVB_SUCCESS)
+	{
+		for(c = 0; c < CPHVB_COMPONENT_MAX_CHILDS; c++)
+			if ((*children)[c] != NULL)
+			{
+				free((*children)[c]);
+				(*children)[c] = NULL;
+			}
+		free(*children);
+		*children = NULL;
+	}
+	else if(*count == 0)//No children.
     {
         free(*children);
         *children = NULL;
     }
     
-    return CPHVB_SUCCESS;
+    return result;
 }
 
 /* Retrieves an user-defined function.
  *
  * @self     The component.
- * @lib      Name of the shared library e.g. libmyfunc.so
- *           When NULL the default library is used.
  * @fun      Name of the function e.g. myfunc
  * @ret_func Pointer to the function (output)
  *           Is NULL if the function doesn't exist
  * @return Error codes (CPHVB_SUCCESS)
  */
-cphvb_error cphvb_component_get_func(cphvb_component *self, char *lib, char *func,
+cphvb_error cphvb_component_get_func(cphvb_component *self, char *func,
                                      cphvb_userfunc_impl *ret_func)
 {
-    if(lib != NULL)
-    {
-        fprintf(stderr, "cphvb_component_get_func() does'nt support the "
-                        "specification of library name. At the moment "
-                        "we only support the default library.\n");
-        exit(-1);
-    }
     //First we search the libs in the config file to find the user-defined function.
     //Secondly we search the component's library. 
     char *lib_paths = cphvb_component_config_lookup(self,"libs");
@@ -409,16 +442,23 @@ cphvb_error cphvb_component_free_ptr(void* data)
 cphvb_error cphvb_component_trace_array(cphvb_component *self, cphvb_array *ary)
 {
     int i;
+#ifndef WIN32
     FILE *f = fopen("/tmp/cphvb_trace.ary", "a");
-    fprintf(f,"array: %p;\t ndim: %ld;\t shape:", ary, ary->ndim);
+#else
+	FILE *f = stderr;
+#endif
+
+    fprintf(f,"array: %p;\t ndim: %ld;\t shape:", ary, (long)ary->ndim);
     for(i=0; i<ary->ndim; ++i)
-        fprintf(f," %ld", ary->shape[i]);
+        fprintf(f," %ld", (long)ary->shape[i]);
     fprintf(f,";\t stride:");
     for(i=0; i<ary->ndim; ++i)
-        fprintf(f," %ld", ary->stride[i]);
-    fprintf(f,";\t start: %ld;\t base: %p;\n",ary->start, ary->base);
+        fprintf(f," %ld", (long)ary->stride[i]);
+    fprintf(f,";\t start: %ld;\t base: %p;\n",(long)ary->start,ary->base);
 
+#ifndef WIN32
     fclose(f);
+#endif
     return CPHVB_SUCCESS;
 }
 
@@ -434,7 +474,11 @@ cphvb_error cphvb_component_trace_inst(cphvb_component *self, cphvb_instruction 
     cphvb_intp nop;
     cphvb_array *ops[CPHVB_MAX_NO_OPERANDS];
 
+#ifndef WIN32
     FILE *f = fopen("/tmp/cphvb_trace.inst", "a");
+#else
+    FILE *f = stderr;
+#endif
 
     fprintf(f,"%s\t", cphvb_opcode_text(inst->opcode));
 
@@ -451,11 +495,22 @@ cphvb_error cphvb_component_trace_inst(cphvb_component *self, cphvb_instruction 
             ops[i] = inst->operand[i];
     }
     for(i=0; i<nop; ++i)
+    {
+#ifndef WIN32
         fprintf(f," \t%p", ops[i]);
+#else
+        fprintf(f," %lld", (cphvb_int64)ops[i]);
+        if (ops[i] != NULL && ops[i]->base != NULL)
+	        fprintf(f," -> %lld", (cphvb_int64)ops[i]->base);
+        fprintf(f,"\t");
+#endif
+    }
 
     fprintf(f,"\n");
 
+#ifndef WIN32
     fclose(f);
+#endif
     return CPHVB_SUCCESS;
 }
 

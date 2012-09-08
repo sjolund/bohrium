@@ -1,4 +1,26 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,10 +35,20 @@ namespace NumCIL.cphVB
     /// <typeparam name="T">The type of data kept in the underlying array</typeparam>
     public class cphVBAccessorFactory<T> : NumCIL.Generic.IAccessorFactory<T>
     {
+        /// <summary>
+        /// Creates a new accessor for a data chunk of the given size
+        /// </summary>
+        /// <param name="size">The size of the array</param>
+        /// <returns>An accessor</returns>
         public IDataAccessor<T> Create(long size) { return new cphVBAccessor<T>(size); }
+        /// <summary>
+        /// Creates a new accessor for a preallocated array
+        /// </summary>
+        /// <param name="data">The data to wrap</param>
+        /// <returns>An accessor</returns>
         public IDataAccessor<T> Create(T[] data) { return new cphVBAccessor<T>(data); }
     }
-
+    
     /// <summary>
     /// Code to map from NumCIL operations to cphVB operations
     /// </summary>
@@ -25,7 +57,7 @@ namespace NumCIL.cphVB
         /// <summary>
         /// Lookup table with mapping from NumCIL operation name to cphVB opcode
         /// </summary>
-        private static Dictionary<PInvoke.cphvb_opcode, string> _opcode_func_name;
+        private static Dictionary<cphvb_opcode, string> _opcode_func_name;
 
         /// <summary>
         /// Static initializer, builds mapping table between the cphVB opcodes.
@@ -33,30 +65,42 @@ namespace NumCIL.cphVB
         /// </summary>
         static OpCodeMapper()
         {
-            _opcode_func_name = new Dictionary<PInvoke.cphvb_opcode, string>();
+            _opcode_func_name = new Dictionary<cphvb_opcode, string>();
 
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_ADD, "Add");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_SUBTRACT, "Sub");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_MULTIPLY, "Mul");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_DIVIDE, "Div");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_MOD, "Mod");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_MAXIMUM, "Max");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_MINIMUM, "Min");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_ADD, "Add");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_SUBTRACT, "Sub");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_MULTIPLY, "Mul");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_DIVIDE, "Div");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_MOD, "Mod");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_MAXIMUM, "Max");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_MINIMUM, "Min");
 
             //These two are not found in cphVB, but are emulated with ADD and SUB
-            //_opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_INCREMENT, "Inc");
-            //_opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_DECREMENT, "Dec");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_FLOOR, "Floor");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_CEIL, "Ceiling");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_RINT, "Round");
+            //_opcode_func_name.Add(cphvb_opcode.CPHVB_INCREMENT, "Inc");
+            //_opcode_func_name.Add(cphvb_opcode.CPHVB_DECREMENT, "Dec");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_FLOOR, "Floor");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_CEIL, "Ceiling");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_RINT, "Round");
 
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_ABSOLUTE, "Abs");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_SQRT, "Sqrt");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_EXP, "Exp");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_NEGATIVE, "Negate");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_LOG, "Log");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_LOG10, "Log10");
-            _opcode_func_name.Add(PInvoke.cphvb_opcode.CPHVB_POWER, "Pow");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_ABSOLUTE, "Abs");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_SQRT, "Sqrt");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_EXP, "Exp");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_LOG, "Log");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_LOG10, "Log10");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_POWER, "Pow");
+
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_COS, "Cos");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_SIN, "Sin");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_TAN, "Tan");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_ARCCOS, "Acos");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_ARCSIN, "Asin");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_ARCTAN, "Atan");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_COSH, "Cosh");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_SINH, "Sinh");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_TANH, "Tanh");
+
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_LOGICAL_NOT, "Not");
+            _opcode_func_name.Add(cphvb_opcode.CPHVB_INVERT, "Invert");
         }
 
         /// <summary>
@@ -71,6 +115,11 @@ namespace NumCIL.cphVB
             catch { return null; }
         }
 
+        /// <summary>
+        /// Returns the specialized NdArray class given the input element type
+        /// </summary>
+        /// <typeparam name="T">The input element type</typeparam>
+        /// <returns>The type of the specialized NdArray</returns>
         protected static Type GetBasicClass<T>()
         {
             if (typeof(T) == typeof(sbyte))
@@ -93,6 +142,14 @@ namespace NumCIL.cphVB
                 return typeof(NumCIL.Float.NdArray);
             else if (typeof(T) == typeof(double))
                 return typeof(NumCIL.Double.NdArray);
+            else if (typeof(T) == typeof(double))
+                return typeof(NumCIL.Double.NdArray);
+            else if (typeof(T) == typeof(bool))
+                return typeof(NumCIL.Boolean.NdArray);
+            else if (typeof(T) == typeof(NumCIL.Complex64.DataType))
+                return typeof(NumCIL.Complex64.NdArray);
+            else if (typeof(T) == typeof(System.Numerics.Complex))
+                return typeof(NumCIL.Complex128.NdArray);
             else
                 throw new Exception("Unexpected type: " + (typeof(T)).FullName);            
         }
@@ -101,62 +158,112 @@ namespace NumCIL.cphVB
         /// Helper function to get the opcode mapping table for the current type
         /// </summary>
         /// <returns>A mapping between the type used for this executor and the cphVB opcodes</returns>
-        public static Dictionary<Type, PInvoke.cphvb_opcode> CreateOpCodeMap<T>()
+        public static Dictionary<Type, cphvb_opcode> CreateOpCodeMap<T>()
         {
-            Dictionary<Type, PInvoke.cphvb_opcode> res = new Dictionary<Type, PInvoke.cphvb_opcode>();
+            Dictionary<Type, cphvb_opcode> res = new Dictionary<Type, cphvb_opcode>();
 
             Type basic = GetBasicClass<T>();
+            Dictionary<cphvb_opcode, string> opcodenames = new Dictionary<cphvb_opcode, string>(_opcode_func_name);
 
-            foreach (var e in _opcode_func_name)
+            if (typeof(T) == typeof(bool))
             {
-                try { res[basic.Assembly.GetType(basic.Namespace + "." + e.Value)] = e.Key; }
+                opcodenames.Add(cphvb_opcode.CPHVB_LOGICAL_AND, "And");
+                opcodenames.Add(cphvb_opcode.CPHVB_LOGICAL_OR, "Or");
+                opcodenames.Add(cphvb_opcode.CPHVB_LOGICAL_XOR, "Xor");
+            }
+            else
+            {
+                opcodenames.Add(cphvb_opcode.CPHVB_BITWISE_AND, "And");
+                opcodenames.Add(cphvb_opcode.CPHVB_BITWISE_OR, "Or");
+                opcodenames.Add(cphvb_opcode.CPHVB_BITWISE_XOR, "Xor");
+            }
+
+            foreach (var e in opcodenames)
+            {
+                try 
+                {
+                    Type t = basic.Assembly.GetType(basic.Namespace + "." + e.Value);
+                    if (t != null)
+                        res[t] = e.Key; 
+                }
                 catch { }
             }
 
-            res[typeof(NumCIL.CopyOp<T>)] = PInvoke.cphvb_opcode.CPHVB_IDENTITY;
-            res[typeof(NumCIL.GenerateOp<T>)] = PInvoke.cphvb_opcode.CPHVB_IDENTITY;
+            res[typeof(NumCIL.CopyOp<T>)] = cphvb_opcode.CPHVB_IDENTITY;
+            res[typeof(NumCIL.GenerateOp<T>)] = cphvb_opcode.CPHVB_IDENTITY;
             if (VEM.Instance.SupportsRandom)
-                res[typeof(NumCIL.Generic.RandomGeneratorOp<T>)] = PInvoke.cphvb_opcode.CPHVB_USERFUNC;
+			{
+                res[typeof(NumCIL.Generic.IRandomGeneratorOp<T>)] = cphvb_opcode.CPHVB_USERFUNC;
+				try { res[basic.Assembly.GetType("NumCIL.Generic.RandomGeneratorOp" + typeof(T).Name)] = cphvb_opcode.CPHVB_USERFUNC; }
+				catch {}
+			}
             if (VEM.Instance.SupportsReduce)
-                res[typeof(NumCIL.UFunc.LazyReduceOperation<T>)] = PInvoke.cphvb_opcode.CPHVB_USERFUNC;
+                res[typeof(NumCIL.UFunc.LazyReduceOperation<T>)] = cphvb_opcode.CPHVB_USERFUNC;
             if (VEM.Instance.SupportsMatmul)
-                res[typeof(NumCIL.UFunc.LazyMatmulOperation<T>)] = PInvoke.cphvb_opcode.CPHVB_USERFUNC;
-            return res;
-        }
-    }
+                res[typeof(NumCIL.UFunc.LazyMatmulOperation<T>)] = cphvb_opcode.CPHVB_USERFUNC;
 
-    public class PendingOpCounter<T> : PendingOperation<T>, IDisposable
-    {
-        private static long _pendingOpCount = 0;
-        public static long PendingOpCount { get { return _pendingOpCount; } }
-        private bool m_isDisposed = false;
 
-        public PendingOpCounter(IOp<T> operation, params NdArray<T>[] operands)
-            : base(operation, operands)
-        {
-            System.Threading.Interlocked.Increment(ref _pendingOpCount);
-        }
-
-        protected void Dispose(bool disposing)
-        {
-            if (!m_isDisposed)
+            if (typeof(T) == typeof(NumCIL.Complex64.DataType))
             {
-                System.Threading.Interlocked.Decrement(ref _pendingOpCount);
-                m_isDisposed = true;
-
-                if (disposing)
-                    GC.SuppressFinalize(this);
+                res[typeof(NumCIL.Complex64.ToComplex)] = cphvb_opcode.CPHVB_IDENTITY;
             }
-        }
+            else if (typeof(T) == typeof(System.Numerics.Complex))
+            {
+                res[typeof(NumCIL.Complex128.ToComplex)] = cphvb_opcode.CPHVB_IDENTITY;
+            }
+            else
+            {
+                foreach (var e in new string[] {"Int8", "UInt8", "Int16", "UInt16", "Int32", "UInt32", "Int64", "UInt64", "Float", "Double"})
+                {
+                    try 
+                    {
+                        Type t = basic.Assembly.GetType(basic.Namespace + ".To" + e);
+                        if (t != null)
+                            res[t] = cphvb_opcode.CPHVB_IDENTITY; 
+                    }
+                    catch { }
+                }
+            }
 
-        public void Dispose()
-        {
-            Dispose(true);
-        }
+            if (typeof(T) == typeof(bool))
+            {
+                Dictionary<cphvb_opcode, string> logicalnames = new Dictionary<cphvb_opcode, string>();
+                logicalnames.Add(cphvb_opcode.CPHVB_EQUAL, "Equal");
+                logicalnames.Add(cphvb_opcode.CPHVB_NOT_EQUAL, "NotEqual");
+                logicalnames.Add(cphvb_opcode.CPHVB_GREATER, "GreaterThan");
+                logicalnames.Add(cphvb_opcode.CPHVB_LESS, "LessThan");
+                logicalnames.Add(cphvb_opcode.CPHVB_GREATER_EQUAL, "GreaterThanOrEqual");
+                logicalnames.Add(cphvb_opcode.CPHVB_LESS_EQUAL, "LessThanOrEqual");
 
-        ~PendingOpCounter()
-        {
-            Dispose(false);
+                foreach (var type in new Type[] { typeof(NumCIL.Int8.NdArray), typeof(NumCIL.UInt8.NdArray), typeof(NumCIL.Int16.NdArray), typeof(NumCIL.UInt16.NdArray), typeof(NumCIL.Int32.NdArray), typeof(NumCIL.UInt32.NdArray), typeof(NumCIL.Int64.NdArray), typeof(NumCIL.UInt64.NdArray), typeof(NumCIL.Float.NdArray), typeof(NumCIL.Double.NdArray), typeof(NumCIL.Complex64.NdArray), typeof(NumCIL.Complex128.NdArray) })
+                {
+                    foreach (var e in logicalnames)
+                    {
+                        Type t = basic.Assembly.GetType(type.Namespace + "." + e.Value);
+                        if (t != null)
+                            res[t] = e.Key;
+
+                    }
+                }
+            }
+            else
+            {
+
+                try
+                {
+                    Type basicBool = GetBasicClass<bool>();
+                    string boolConvOpName = basicBool.Namespace + ".To" + basic.Namespace.Substring("NumCIL.".Length);
+                    Type t = basicBool.Assembly.GetType(boolConvOpName);
+                    if (t != null)
+                        res[t] = cphvb_opcode.CPHVB_IDENTITY;
+                }
+                catch
+                {
+                }
+            }
+
+
+            return res;
         }
     }
 
@@ -164,8 +271,13 @@ namespace NumCIL.cphVB
     /// Basic accessor for a cphVB array
     /// </summary>
     /// <typeparam name="T">The type of data kept in the underlying array</typeparam>
-    public class cphVBAccessor<T> : NumCIL.Generic.LazyAccessor<T>, IDisposable
+    public class cphVBAccessor<T> : NumCIL.Generic.LazyAccessor<T>, IDisposable, IUnmanagedDataAccessor<T>
     {
+        /// <summary>
+        /// Lock that prevents multithreaded access to the cphVB data
+        /// </summary>
+        private readonly object m_lock = new object();
+
         /// <summary>
         /// Instance of the VEM that is used
         /// </summary>
@@ -182,19 +294,14 @@ namespace NumCIL.cphVB
         protected static readonly PInvoke.cphvb_type CPHVB_TYPE = VEM.MapType(typeof(T));
 
         /// <summary>
+        /// The size of the data element in native code
+        /// </summary>
+        protected static readonly int NATIVE_ELEMENT_SIZE = Marshal.SizeOf(typeof(T));
+
+        /// <summary>
         /// A lookup table that maps NumCIL operation types to cphVB opcodes
         /// </summary>
-        protected static Dictionary<Type, PInvoke.cphvb_opcode> OpcodeMap = OpCodeMapper.CreateOpCodeMap<T>();
-
-        /// <summary>
-        /// Gets the type for the Increment operation
-        /// </summary>
-        protected static readonly Type IncrementOp = OpCodeMapper.GetOp<T>("Inc");
-
-        /// <summary>
-        /// Gets the type for the Decrement operation
-        /// </summary>
-        protected static readonly Type DecrementOp = OpCodeMapper.GetOp<T>("Dec");
+        protected static Dictionary<Type, cphvb_opcode> OpcodeMap = OpCodeMapper.CreateOpCodeMap<T>();
 
         /// <summary>
         /// Gets the type for the Add operation
@@ -206,10 +313,10 @@ namespace NumCIL.cphVB
         /// </summary>
         protected static readonly Type SubOp = OpCodeMapper.GetOp<T>("Sub");
 
-        /// <summary>
-        /// The constant 1
-        /// </summary>
-        protected static readonly T ONE = (T)Convert.ChangeType(1, typeof(T)); 
+		/// <summary>
+		/// Gets the the generic template used to create conversion instructions
+		/// </summary>
+		protected static readonly System.Reflection.MethodInfo VEMConversionMethod = typeof(VEM).GetMethod("CreateConversionInstruction");
 
         /// <summary>
         /// Constructs a new data accessor for the given size
@@ -221,245 +328,359 @@ namespace NumCIL.cphVB
         /// Constructs a new data accessor for a pre-allocated block of storage
         /// </summary>
         /// <param name="data"></param>
-        public cphVBAccessor(T[] data) : base(data) { m_ownsData = true; }
+        public cphVBAccessor(T[] data) : base(data) { }
 
         /// <summary>
         /// A pointer to the base-array view structure
         /// </summary>
-        protected PInvoke.cphvb_array_ptr m_externalData = PInvoke.cphvb_array_ptr.Null;
+        protected ViewPtrKeeper m_externalData = null;
 
         /// <summary>
-        /// A value indicating if NumCIL owns the data, false means that cphVB owns the data
+        /// Ensures that local data is synced
         /// </summary>
-        protected bool m_ownsData = false;
+        private void EnsureSynced()
+        {
+            this.Flush();
+            if (m_data == null && m_externalData == null)
+                base.Allocate();
+
+            if (m_externalData != null)
+                VEM.Execute(new PInvoke.cphvb_instruction(cphvb_opcode.CPHVB_SYNC, m_externalData.Pointer));
+        }
 
         /// <summary>
-        /// A pointer to internally allocated data which is pinned
+        /// Flushes all pending instructions, allocates data region and returns the contents as an array
         /// </summary>
-        protected GCHandle m_handle;
+        /// <returns></returns>
+        public override T[] AsArray()
+        {
+            MakeDataManaged();
+            return m_data;
+        }
 
         /// <summary>
-        /// Returns the data block, flushed and updated
+        /// Accesses an element, this method ensures that all pending instructions are flushed
         /// </summary>
-        public override T[] Data
+        /// <param name="index">The element to accesss</param>
+        /// <returns>The element at the specified address</returns>
+        public override T this[long index]
         {
             get
             {
-                MakeDataManaged();
-                return base.Data;
-            }
-        }
+                if (index < 0 || index >= m_size)
+                    throw new ArgumentOutOfRangeException("index");
 
-        /// <summary>
-        /// Register a pending operation on the underlying array
-        /// </summary>
-        /// <param name="operation">The operation performed</param>
-        /// <param name="operands">The operands involved, operand 0 is the target</param>
-        public override void AddOperation(IOp<T> operation, params NdArray<T>[] operands)
-        {
-            lock (Lock)
-                PendingOperations.Add(new PendingOpCounter<T>(operation, operands));
-
-            if (PendingOpCounter<T>.PendingOpCount > HIGH_WATER_MARK)
-            {
-                this.Flush();
-            }
-        }
-
-        /// <summary>
-        /// Pins the allocated data and returns the pinned pointer
-        /// </summary>
-        /// <returns>A pinned pointer</returns>
-        internal virtual PInvoke.cphvb_array_ptr Pin()
-        {
-            if (m_data == null && m_externalData == PInvoke.cphvb_array_ptr.Null)
-            {
-                //Data is not yet allocated, convert to external storage
-                m_externalData = VEM.CreateArray(CPHVB_TYPE, m_size);
-                m_ownsData = false;
-            }
-            else if (m_externalData == PInvoke.cphvb_array_ptr.Null)
-            {
-                //Internally allocated data, we need to pin it
-                if (!m_handle.IsAllocated)
-                    m_handle = GCHandle.Alloc(m_data, GCHandleType.Pinned);
-
-                m_externalData = VEM.CreateArray(CPHVB_TYPE, m_size);
-                m_externalData.Data = m_handle.AddrOfPinnedObject();
-                m_ownsData = true;
-            }
-            else if (m_ownsData && m_externalData.Data == IntPtr.Zero)
-            {
-                //Internally allocated data, we need to pin it
-                if (!m_handle.IsAllocated)
-                    m_handle = GCHandle.Alloc(m_data, GCHandleType.Pinned);
-                m_externalData.Data = m_handle.AddrOfPinnedObject();
-            }
-
-            return m_externalData;
-        }
-
-        /// <summary>
-        /// Unpins allocated data
-        /// </summary>
-        protected void Unpin()
-        {
-            if (m_externalData != PInvoke.cphvb_array_ptr.Null)
-                VEM.Execute(new PInvoke.cphvb_instruction(PInvoke.cphvb_opcode.CPHVB_SYNC, m_externalData));
-
-            if (m_handle.IsAllocated)
-            {
-                m_handle.Free();
-
-                m_externalData.Data = IntPtr.Zero;
-            }
-        }
-
-        /// <summary>
-        /// Makes the data managed
-        /// </summary>
-        protected void MakeDataManaged()
-        {
-            if (m_size < 0)
-                throw new ObjectDisposedException(this.GetType().FullName);
-
-            if (m_ownsData && m_externalData != PInvoke.cphvb_array_ptr.Null)
-            {
-                this.Unpin();
-                m_externalData.Data = IntPtr.Zero;
-                return;
-            }
-
-            //Allocate data internally, and flush instructions as required
-            T[] data = base.Data;
-
-            //If data is allocated in cphVB, we need to flush it and de-allocate it
-            if (m_externalData != PInvoke.cphvb_array_ptr.Null && !m_ownsData)
-            {
-                this.Unpin();
-
-                //TODO: Figure out if we can avoid the copy by having a pinvoke method that returns a float[]
-
-                IntPtr actualData = m_externalData.Data;
-                if (actualData == IntPtr.Zero)
-                {
-                    //The array is "empty" which will be zeroes in NumCIL
-                }
+                this.EnsureSynced();
+                if (m_data != null)
+                    return m_data[index];
                 else
                 {
-                    //TODO: It is possible that Marshal.Copy() is actually faster
-
-                    //Then copy the data into the local buffer
-                    if (!NumCIL.UnsafeAPI.CopyFromIntPtr<T>(actualData, data))
+                    if (m_externalData.Pointer.Data == IntPtr.Zero)
                     {
-                        if (m_size > int.MaxValue)
-                            throw new OverflowException();
+                        throw new Exception("Data not yet allocated?");
+                    }
 
-                        if (typeof(T) == typeof(float))
-                            Marshal.Copy(actualData, (float[])(object)data, 0, (int)m_size);
-                        else if (typeof(T) == typeof(double))
-                            Marshal.Copy(actualData, (double[])(object)data, 0, (int)m_size);
-                        else if (typeof(T) == typeof(sbyte))
+                    IntPtr ptr = new IntPtr(m_externalData.Pointer.Data.ToInt64() + (index * NATIVE_ELEMENT_SIZE));
+                    if (typeof(T) == typeof(float))
+                    {
+                        T[] tmp = new T[1];
+                        if (!NumCIL.UnsafeAPI.CopyFromIntPtr(ptr, tmp, 1))
+                            Marshal.Copy(ptr, (float[])(object)tmp, 0, 1);
+                        return tmp[0];
+                    }
+                    else if (typeof(T) == typeof(double))
+                    {
+                        T[] tmp = new T[1];
+                        if (!NumCIL.UnsafeAPI.CopyFromIntPtr(ptr, tmp, 1))
+                            Marshal.Copy(ptr, (double[])(object)tmp, 0, 1);
+                        return tmp[0];
+                    }
+                    else if (typeof(T) == typeof(sbyte))
+                        return (T)(object)(sbyte)Marshal.ReadByte(ptr);
+                    else if (typeof(T) == typeof(short))
+                        return (T)(object)(short)Marshal.ReadInt16(ptr);
+                    else if (typeof(T) == typeof(int))
+                        return (T)(object)(int)Marshal.ReadInt32(ptr);
+                    else if (typeof(T) == typeof(long))
+                        return (T)(object)(long)Marshal.ReadInt64(ptr);
+                    else if (typeof(T) == typeof(byte))
+                        return (T)(object)(byte)Marshal.ReadByte(ptr);
+                    else if (typeof(T) == typeof(ushort))
+                        return (T)(object)(ushort)Marshal.ReadInt16(ptr);
+                    else if (typeof(T) == typeof(uint))
+                        return (T)(object)(sbyte)Marshal.ReadInt32(ptr);
+                    else if (typeof(T) == typeof(ulong))
+                        return (T)(object)(sbyte)Marshal.ReadInt64(ptr);
+                    else if (typeof(T) == typeof(NumCIL.Complex64.DataType))
+                    {
+                        float[] tmp = new float[2];
+                        if (!NumCIL.UnsafeAPI.CopyFromIntPtr(ptr, tmp, 2))
+                            Marshal.Copy(ptr, tmp, 0, 2);
+                        return (T)(object)new NumCIL.Complex64.DataType(tmp[0], tmp[1]);
+                    }
+                    else if (typeof(T) == typeof(System.Numerics.Complex))
+                    {
+                        double[] tmp = new double[2];
+                        if (!NumCIL.UnsafeAPI.CopyFromIntPtr(ptr, tmp, 2))
+                            Marshal.Copy(ptr, tmp, 0, 2);
+                        return (T)(object)new System.Numerics.Complex(tmp[0], tmp[1]);
+                    }
+                    else
+                        throw new cphVBException(string.Format("Unexpected data type: {0}", typeof(T).FullName));
+                }
+            }
+            set
+            {
+                MakeDataManaged();
+                m_data[index] = value;
+            }
+        }
+
+        /// <summary>
+        /// Ensures that data is managed
+        /// </summary>
+        private void MakeDataManaged()
+        {
+            //TODO: Reconsider if this should be handled in another way than with a lock here
+            lock (m_lock)
+            {
+                EnsureSynced();
+                if (m_data != null && m_externalData == null)
+                    return;
+
+                if (m_data == null)
+                {
+                    base.Allocate();
+
+                    IntPtr actualData = m_externalData.Pointer.Data;
+                    if (actualData == IntPtr.Zero)
+                    {
+                        //The array is "empty" which will be zeroes in NumCIL
+                    }
+                    else
+                    {
+                        //Then copy the data into the local buffer
+                        if (!NumCIL.UnsafeAPI.CopyFromIntPtr<T>(actualData, m_data))
                         {
-                            sbyte[] xref = (sbyte[])(object)data;
-                            int sbytesize = Marshal.SizeOf(typeof(sbyte));
-
                             if (m_size > int.MaxValue)
+                                throw new OverflowException();
+
+                            if (typeof(T) == typeof(float))
+                                Marshal.Copy(actualData, (float[])(object)m_data, 0, (int)m_size);
+                            else if (typeof(T) == typeof(double))
+                                Marshal.Copy(actualData, (double[])(object)m_data, 0, (int)m_size);
+                            else if (typeof(T) == typeof(sbyte))
                             {
+                                sbyte[] xref = (sbyte[])(object)m_data;
+                                if (m_size > int.MaxValue)
+                                {
+                                    IntPtr xptr = actualData;
+                                    for (long i = 0; i < m_size; i++)
+                                    {
+                                        xref[i] = (sbyte)Marshal.ReadByte(xptr);
+                                        xptr = IntPtr.Add(xptr, NATIVE_ELEMENT_SIZE);
+                                    }
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < m_size; i++)
+                                        xref[i] = (sbyte)Marshal.ReadByte(actualData);
+                                }
+                            }
+                            else if (typeof(T) == typeof(short))
+                                Marshal.Copy(actualData, (short[])(object)m_data, 0, (int)m_size);
+                            else if (typeof(T) == typeof(int))
+                                Marshal.Copy(actualData, (int[])(object)m_data, 0, (int)m_size);
+                            else if (typeof(T) == typeof(long))
+                                Marshal.Copy(actualData, (long[])(object)m_data, 0, (int)m_size);
+                            else if (typeof(T) == typeof(byte))
+                                Marshal.Copy(actualData, (byte[])(object)m_data, 0, (int)m_size);
+                            else if (typeof(T) == typeof(ushort))
+                            {
+                                ushort[] xref = (ushort[])(object)m_data;
+                                if (m_size > int.MaxValue)
+                                {
+                                    IntPtr xptr = actualData;
+                                    for (long i = 0; i < m_size; i++)
+                                    {
+                                        xref[i] = (ushort)Marshal.ReadInt16(xptr);
+                                        xptr = IntPtr.Add(xptr, NATIVE_ELEMENT_SIZE);
+                                    }
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < m_size; i++)
+                                        xref[i] = (ushort)Marshal.ReadInt16(actualData);
+                                }
+                            }
+                            else if (typeof(T) == typeof(uint))
+                            {
+                                uint[] xref = (uint[])(object)m_data;
+                                if (m_size > int.MaxValue)
+                                {
+                                    IntPtr xptr = actualData;
+                                    for (long i = 0; i < m_size; i++)
+                                    {
+                                        xref[i] = (uint)Marshal.ReadInt32(xptr);
+                                        xptr = IntPtr.Add(xptr, NATIVE_ELEMENT_SIZE);
+                                    }
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < m_size; i++)
+                                        xref[i] = (uint)Marshal.ReadInt32(actualData);
+                                }
+                            }
+                            else if (typeof(T) == typeof(ulong))
+                            {
+                                ulong[] xref = (ulong[])(object)m_data;
+                                if (m_size > int.MaxValue)
+                                {
+                                    IntPtr xptr = actualData;
+                                    for (long i = 0; i < m_size; i++)
+                                    {
+                                        xref[i] = (ulong)Marshal.ReadInt64(xptr);
+                                        xptr = IntPtr.Add(xptr, NATIVE_ELEMENT_SIZE);
+                                    }
+                                }
+                                else
+                                {
+                                    for (int i = 0; i < m_size; i++)
+                                        xref[i] = (ulong)Marshal.ReadInt64(actualData);
+                                }
+                            }
+                            else if (typeof(T) == typeof(NumCIL.Complex64.DataType))
+                            {
+                                NumCIL.Complex64.DataType[] xref = (NumCIL.Complex64.DataType[])(object)m_data;
+                                float[] tmp = new float[2];
                                 IntPtr xptr = actualData;
                                 for (long i = 0; i < m_size; i++)
                                 {
-                                    xref[i] = (sbyte)Marshal.ReadByte(xptr);
-                                    xptr = IntPtr.Add(xptr, sbytesize);
+                                    Marshal.Copy(xptr, tmp, 0, (int)2);
+                                    xref[i] = new NumCIL.Complex64.DataType(tmp[0], tmp[1]);
+                                    xptr = IntPtr.Add(xptr, NATIVE_ELEMENT_SIZE);
                                 }
                             }
-                            else
+                            else if (typeof(T) == typeof(System.Numerics.Complex))
                             {
-                                for (int i = 0; i < m_size; i++)
-                                    xref[i] = (sbyte)Marshal.ReadByte(actualData);
-                            }
-                        }
-                        else if (typeof(T) == typeof(short))
-                            Marshal.Copy(actualData, (short[])(object)data, 0, (int)m_size);
-                        else if (typeof(T) == typeof(int))
-                            Marshal.Copy(actualData, (int[])(object)data, 0, (int)m_size);
-                        else if (typeof(T) == typeof(long))
-                            Marshal.Copy(actualData, (long[])(object)data, 0, (int)m_size);
-                        else if (typeof(T) == typeof(byte))
-                            Marshal.Copy(actualData, (byte[])(object)data, 0, (int)m_size);
-                        else if (typeof(T) == typeof(ushort))
-                        {
-                            ushort[] xref = (ushort[])(object)data;
-                            int ushortsize = Marshal.SizeOf(typeof(ushort));
-
-                            if (m_size > int.MaxValue)
-                            {
+                                System.Numerics.Complex[] xref = (System.Numerics.Complex[])(object)m_data;
+                                double[] tmp = new double[2];
                                 IntPtr xptr = actualData;
                                 for (long i = 0; i < m_size; i++)
                                 {
-                                    xref[i] = (ushort)Marshal.ReadInt16(xptr);
-                                    xptr = IntPtr.Add(xptr, ushortsize);
+                                    Marshal.Copy(xptr, tmp, 0, (int)2);
+                                    xref[i] = new System.Numerics.Complex(tmp[0], tmp[1]);
+                                    xptr = IntPtr.Add(xptr, NATIVE_ELEMENT_SIZE);
                                 }
                             }
                             else
-                            {
-                                for (int i = 0; i < m_size; i++)
-                                    xref[i] = (ushort)Marshal.ReadInt16(actualData);
-                            }
+                                throw new cphVBException(string.Format("Unexpected data type: {0}", typeof(T).FullName));
                         }
-                        else if (typeof(T) == typeof(uint))
-                        {
-                            uint[] xref = (uint[])(object)data;
-                            int uintsize = Marshal.SizeOf(typeof(uint));
 
-                            if (m_size > int.MaxValue)
-                            {
-                                IntPtr xptr = actualData;
-                                for (long i = 0; i < m_size; i++)
-                                {
-                                    xref[i] = (uint)Marshal.ReadInt32(xptr);
-                                    xptr = IntPtr.Add(xptr, uintsize);
-                                }
-                            }
-                            else
-                            {
-                                for (int i = 0; i < m_size; i++)
-                                    xref[i] = (uint)Marshal.ReadInt32(actualData);
-                            }
-                        }
-                        else if (typeof(T) == typeof(ulong))
-                        {
-                            ulong[] xref = (ulong[])(object)data;
-                            int ulongsize = Marshal.SizeOf(typeof(ulong));
-
-                            if (m_size > int.MaxValue)
-                            {
-                                IntPtr xptr = actualData;
-                                for (long i = 0; i < m_size; i++)
-                                {
-                                    xref[i] = (ulong)Marshal.ReadInt64(xptr);
-                                    xptr = IntPtr.Add(xptr, ulongsize);
-                                }
-                            }
-                            else
-                            {
-                                for (int i = 0; i < m_size; i++)
-                                    xref[i] = (ulong)Marshal.ReadInt64(actualData);
-                            }
-                        }
-                        else
-                            throw new cphVBException(string.Format("Unexpected data type: {0}", typeof(T).FullName));
+                        VEM.Execute(new PInvoke.cphvb_instruction(cphvb_opcode.CPHVB_FREE, m_externalData.Pointer));
                     }
                 }
 
-
-                //Release the unmanaged copy
-                VEM.Execute(new PInvoke.cphvb_instruction(PInvoke.cphvb_opcode.CPHVB_DESTROY, m_externalData));
-                m_externalData = PInvoke.cphvb_array_ptr.Null;
-                m_ownsData = true;
+                m_externalData.Dispose();
+                m_externalData = null;
             }
         }
 
+        /// <summary>
+        /// Allocates the data either in cphvb or in managed memory
+        /// </summary>
+        public override void Allocate()
+        {
+            this.EnsureSynced();
+        }
+
+        /// <summary>
+        /// Gets a pointer to data
+        /// </summary>
+        public IntPtr Pointer
+        {
+            get 
+            {
+                EnsureSynced();
+
+                System.Diagnostics.Debug.Assert(m_data != null || m_externalData != null);
+
+                if (m_data != null)
+                {
+                    if (m_externalData != null && !m_externalData.HasHandle)
+                    {
+                        m_externalData.Dispose();
+                        m_externalData = null;
+                    }
+
+                    if (m_externalData == null || !m_externalData.HasHandle)
+                    {
+                        GCHandle h = GCHandle.Alloc(m_data, GCHandleType.Pinned);
+                        PInvoke.cphvb_array_ptr p = VEM.CreateBaseArray(m_data);
+                        p.Data = h.AddrOfPinnedObject();
+                        m_externalData = new ViewPtrKeeper(p, h);
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.Assert(m_externalData != null && m_externalData.Pointer.Data != IntPtr.Zero);
+                }
+
+                return m_externalData.Pointer.Data;
+            }
+        }
+
+        /// <summary>
+        /// Gets a pointer to the base array
+        /// </summary>
+        public PInvoke.cphvb_array_ptr BaseArrayPtr
+        {
+            get
+            {
+                if (m_data == null && m_externalData == null)
+                {
+                    m_externalData = new ViewPtrKeeper(VEM.CreateBaseArray(CPHVB_TYPE, m_size));
+                    return m_externalData.Pointer;
+                }
+
+                if (m_externalData != null)
+                    return m_externalData.Pointer;
+
+                if (m_data != null)
+                {
+                    GCHandle h = GCHandle.Alloc(m_data, GCHandleType.Pinned);
+                    PInvoke.cphvb_array_ptr p = VEM.CreateBaseArray(m_data);
+                    p.Data = h.AddrOfPinnedObject();
+                    m_externalData = new ViewPtrKeeper(p, h);
+
+                    return m_externalData.Pointer;
+                }
+
+                throw new Exception("An assumption failed");
+            }
+        }
+
+        /// <summary>
+        /// Returns a value indicating if the data can be allocated as a managed array
+        /// </summary>
+        public bool CanAllocateArray
+        {
+            get { return m_size < int.MaxValue; }
+        }
+
+        /// <summary>
+        /// Continues exectuion started on another type
+        /// </summary>
+        /// <param name="i">The execution so far was started on</param>
+        internal void ContinueExecution(List<IInstruction> i)
+        {
+            lock (Lock)
+            {
+                var lst = UnrollWorkList(this);
+                PendingOperations.Clear();
+                ExecuteOperations(lst, i);
+            }
+        }
 
         /// <summary>
         /// Executes all pending operations in the list
@@ -467,50 +688,29 @@ namespace NumCIL.cphVB
         /// <param name="work">The list of operations to execute</param>
         public override void ExecuteOperations(IEnumerable<PendingOperation<T>> work)
         {
-            List<PendingOperation<T>> unsupported = new List<PendingOperation<T>>();
-            List<IInstruction> supported = new List<IInstruction>();
-            //This list keeps all scalars so the GC does not collect them
-            // before the instructions are executed, remove list once
-            // constants are supported in score/mcore
+            ExecuteOperations(work, null);
+        }
 
-            List<NdArray<T>> scalars = new List<NdArray<T>>();
-            long i = 0;
+        /// <summary>
+        /// Executes all pending operations in the list
+        /// </summary>
+        /// <param name="work">The list of operations to execute</param>
+        /// <param name="supported">A list of supported instructions that is produced from another context</param>
+        private void ExecuteOperations(IEnumerable<PendingOperation<T>> work, List<IInstruction> supported)
+        {
+            List<PendingOperation<T>> unsupported = new List<PendingOperation<T>>();
+            bool isContinuation = supported != null;
+
+            if (supported == null)
+                supported = new List<IInstruction>();
 
             foreach (var op in work)
             {
-                Type t;
-                bool isScalar;
                 IOp<T> ops = op.Operation;
                 NdArray<T>[] operands = op.Operands;
-                i++;
-
-                if (ops is IScalarAccess<T>)
-                {
-                    t = ((IScalarAccess<T>)ops).Operation.GetType();
-                    isScalar = true;
-                }
-                else
-                {
-                    t = ops.GetType();
-                    //We mimic the Increment and Decrement with Add(1) and Add(-1) respectively
-                    if (t == IncrementOp)
-                    {
-                        ops = new NumCIL.ScalarOp<T, IBinaryOp<T>>(ONE, (IBinaryOp<T>)Activator.CreateInstance(AddOp));
-                        t = AddOp;
-                        isScalar = true;
-                    }
-                    else if (t == DecrementOp)
-                    {
-                        ops = new NumCIL.ScalarOp<T, IBinaryOp<T>>(ONE, (IBinaryOp<T>)Activator.CreateInstance(SubOp));
-                        t = SubOp;
-                        isScalar = true;
-                    }
-                    else
-                        isScalar = false;
-                }
-
-                PInvoke.cphvb_opcode opcode;
-                if (OpcodeMap.TryGetValue(t, out opcode))
+                
+                cphvb_opcode opcode;
+                if (OpcodeMap.TryGetValue(ops.GetType(), out opcode))
                 {
                     if (unsupported.Count > 0)
                     {
@@ -518,81 +718,66 @@ namespace NumCIL.cphVB
                         unsupported.Clear();
                     }
 
-                    if (isScalar)
+                    bool isSupported = true;
+
+                    if (opcode == cphvb_opcode.CPHVB_USERFUNC)
                     {
-                        IScalarAccess<T> sa = (IScalarAccess<T>)ops;
-
-                        //Change to true once score supports constants
-                        if (false)
+                        if (VEM.SupportsRandom && ops is NumCIL.Generic.IRandomGeneratorOp<T>)
                         {
-                            if (sa.Operation is IBinaryOp<T>)
-                                supported.Add(VEM.CreateInstruction<T>(CPHVB_TYPE, opcode, operands[0], operands[1], new PInvoke.cphvb_constant(CPHVB_TYPE, sa.Value)));
-                            else
-                                supported.Add(VEM.CreateInstruction<T>(CPHVB_TYPE, opcode, operands[0], new PInvoke.cphvb_constant(CPHVB_TYPE, sa.Value)));
+                            //cphVB only supports random for plain arrays
+                            if (operands[0].Shape.IsPlain && operands[0].Shape.Offset == 0 && operands[0].Shape.Elements == operands[0].DataAccessor.Length)
+                            {
+                                supported.Add(VEM.CreateRandomInstruction<T>(CPHVB_TYPE, operands[0]));
+                                isSupported = true;
+                            }
                         }
-                        else
+                        else if (VEM.SupportsReduce && ops is NumCIL.UFunc.LazyReduceOperation<T>)
                         {
-                            //Since we have no constant support, we mimic the constant with a 1D array
-                            var scalarAcc = new cphVBAccessor<T>(1);
-                            scalarAcc.Data[0] = sa.Value;
-                            NdArray<T> scalarOp;
-
-                            if (sa.Operation is IBinaryOp<T>)
+                            NumCIL.UFunc.LazyReduceOperation<T> lzop = (NumCIL.UFunc.LazyReduceOperation<T>)op.Operation;
+                            cphvb_opcode rop;
+                            if (OpcodeMap.TryGetValue(lzop.Operation.GetType(), out rop))
                             {
-                                Shape bShape = Shape.ToBroadcastShapes(operands[1].Shape, new Shape(1)).Item2;
-                                scalarOp = new NdArray<T>(scalarAcc, bShape);
-
-                                supported.Add(VEM.CreateInstruction<T>(CPHVB_TYPE, opcode, operands[0], operands[1], scalarOp));
+                                supported.Add(VEM.CreateReduceInstruction<T>(CPHVB_TYPE, rop, lzop.Axis, operands[0], operands[1]));
+                                isSupported = true;
                             }
-                            else
-                            {
-                                Shape bShape = Shape.ToBroadcastShapes(operands[0].Shape, new Shape(1)).Item2;
-                                scalarOp = new NdArray<T>(scalarAcc, bShape);
-                                supported.Add(VEM.CreateInstruction<T>(CPHVB_TYPE, opcode, operands[0], scalarOp));
-                            }
+                        }
+                        else if (VEM.SupportsMatmul && ops is NumCIL.UFunc.LazyMatmulOperation<T>)
+                        {
+                            supported.Add(VEM.CreateMatmulInstruction<T>(CPHVB_TYPE, operands[0], operands[1], operands[2]));
 
-                            scalars.Add(scalarOp);
+                        }
+
+                        if (!isSupported)
+                        {
+                            if (supported.Count > 0)
+                                ExecuteWithFailureDetection(supported);
+
+                            unsupported.Add(op);
                         }
                     }
                     else
                     {
-                        bool isSupported = true;
-
-                        if (opcode == PInvoke.cphvb_opcode.CPHVB_USERFUNC)
+                        if (op is IPendingUnaryConversionOp && opcode == cphvb_opcode.CPHVB_IDENTITY)
                         {
-                            if (VEM.SupportsRandom && ops is NumCIL.Generic.RandomGeneratorOp<T>)
-                            {
-                                //cphVB only supports random for plain arrays
-                                if (operands[0].Shape.IsPlain && operands[0].Shape.Offset == 0 && operands[0].Shape.Elements == operands[0].m_data.Length)
-                                {
-                                    supported.Add(VEM.CreateRandomInstruction<T>(CPHVB_TYPE, operands[0]));
-                                    isSupported = true;
-                                }
-                            }
-                            else if (VEM.SupportsReduce && ops is NumCIL.UFunc.LazyReduceOperation<T>)
-                            {
-                                NumCIL.UFunc.LazyReduceOperation<T> lzop = (NumCIL.UFunc.LazyReduceOperation<T>)op.Operation;
-                                PInvoke.cphvb_opcode rop;
-                                if (OpcodeMap.TryGetValue(lzop.Operation.GetType(), out rop))
-                                {
-                                    supported.Add(VEM.CreateReduceInstruction<T>(CPHVB_TYPE, rop, lzop.Axis, operands[0], operands[1]));
-                                    isSupported = true;
-                                }
-                            }
-                            else if (VEM.SupportsMatmul && ops is NumCIL.UFunc.LazyMatmulOperation<T>)
-                            {
-                                supported.Add(VEM.CreateMatmulInstruction<T>(CPHVB_TYPE, operands[0], operands[1], operands[2]));
+                            //As we cross execution spaces, we need to ensure that the input operand has no pending instructions
+                            object unop = ((IPendingUnaryConversionOp)op).InputOperand;
 
-                            }
+                            Type inputType = unop.GetType().GetGenericArguments()[0];
+                            IInstruction inst = (IInstruction)VEMConversionMethod.MakeGenericMethod(typeof(T), inputType).Invoke(VEM, new object[] { supported, opcode,  CPHVB_TYPE, operands[0], ((IPendingUnaryConversionOp)op).InputOperand, null });
 
-                            if (!isSupported)
-                            {
-                                if (supported.Count > 0)
-                                    ExecuteWithFailureDetection(supported, work, i - supported.Count - 1);
-
-                                unsupported.Add(op);
-                            }
+                            supported.Add(inst);
                         }
+                        else if (op is IPendingBinaryConversionOp)
+                        {
+                            //As we cross execution spaces, we need to ensure that the input operands has no pending instructions
+                            object lhsop = ((IPendingUnaryConversionOp)op).InputOperand;
+                            object rhsop = ((IPendingBinaryConversionOp)op).InputOperand;
+
+                            Type inputType = lhsop.GetType().GetGenericArguments()[0];
+                            IInstruction inst = (IInstruction)VEMConversionMethod.MakeGenericMethod(typeof(T), inputType).Invoke(VEM, new object[] { supported, opcode, CPHVB_TYPE, operands[0], lhsop, rhsop });
+
+                            supported.Add(inst);
+                        } 
                         else
                         {
                             if (operands.Length == 1)
@@ -609,7 +794,7 @@ namespace NumCIL.cphVB
                 else
                 {
                     if (supported.Count > 0)
-                        ExecuteWithFailureDetection(supported, work, i - supported.Count - 1);
+                        ExecuteWithFailureDetection(supported);
 
                     unsupported.Add(op);
                 }
@@ -621,143 +806,28 @@ namespace NumCIL.cphVB
             if (unsupported.Count > 0)
                 base.ExecuteOperations(unsupported);
 
-            if (supported.Count > 0)
-                ExecuteWithFailureDetection(supported, work, i - supported.Count);
-
-            //TODO: Do we want to do it now, or just let the GC figure it out?
-            foreach (var op in work)
-                if (op is IDisposable)
-                    ((IDisposable)op).Dispose();
-
-            //Touch the data to prevent the scalars from being GC'ed
-            //Remove once constants are supported
-            foreach (var op in scalars)
-                op.Name = null;
-        }
-
-        protected void ExecuteWithFailureDetection(List<IInstruction> instructions, IEnumerable<PendingOperation<T>> work, long instructionIndex)
-        {
-            List<PendingOperation<T>> worklist = null;
-            while (instructions.Count > 0)
+            if (supported.Count > 0 && !isContinuation)
             {
-                try
-                {
-                    VEM.Execute(instructions);
-                    instructions.Clear();
-                    return;
-                }
-                catch (cphVBNotSupportedInstruction cex)
-                {
-                    //If we get here, some arrays may be deallocated by the GC, 
-                    // we need to postpone the cleanups until all instructions in the current list are completed
-                    VEM.PreventCleanup = true;
-                    //Remove any instructions that are reported as not being supported
-                    foreach (var n in (from x in OpcodeMap where x.Value == cex.OpCode select x.Key).ToArray())
-                        if (OpcodeMap.Remove(n))
-                            Console.WriteLine(string.Format("Instruction was not supported by the VE: {0} -> {1}", n.FullName, cex.OpCode));
-
-                    //We need to work on this more than once, so we convert it to a list right away
-                    if (worklist == null)
-                        worklist = work.Skip((int)(instructionIndex)).ToList();
-
-                    //Extract the target instruction for inspection
-                    PendingOperation<T> pt = worklist[(int)cex.InstructionNo];
-
-                    //TODO: If the operation in question is found multiple times, 
-                    // we could avoid the costly exception for each invocation
-
-                    //Remove executed operations from each operand to prevent double flushing
-                    foreach (var op in pt.Operands)
-                    {
-                        if (op.m_data is LazyAccessor<T>)
-                        {
-                            ILazyAccessor<T> lzt = (ILazyAccessor<T>)op.m_data;
-                            if (lzt.PendingOperations.Count > 0)
-                            {
-                                if (lzt.PendingOperations[lzt.PendingOperations.Count - 1].Clock < pt.Clock)
-                                {
-                                    lzt.PendignOperationOffset += lzt.PendingOperations.Count;
-                                    lzt.PendingOperations.Clear();
-
-                                }
-                                else
-                                {
-                                    while (lzt.PendingOperations.Count > 0 && lzt.PendingOperations[0].Clock < pt.Clock)
-                                    {
-                                        lzt.PendignOperationOffset++;
-                                        lzt.PendingOperations.RemoveAt(0);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    //The unsupported instruction is now executed by the CIL
-                    base.ExecuteOperations(new PendingOperation<T>[] { pt });
-
-                    //Then remove all the instructions that have been executed
-                    instructions.RemoveRange(0, (int)cex.InstructionNo + 1);
-                    worklist.RemoveRange(0, (int)cex.InstructionNo + 1);
-                    instructionIndex += cex.InstructionNo + 1;
-
-                    //Make sure we manually set the data pointer to all operands that refer to the
-                    // NdArray that was the target of the instruction that was excuted locally
-                    NdArray<T> target = pt.Operands[0];
-                    if (instructions.Count > 0)
-                    {
-                        int i = 0;
-                        foreach (PendingOperation<T> pop in worklist)
-                        {
-                            if (pop.Operands.Any(x => x.m_data == target.m_data))
-                            {
-                                instructions[i] = VEM.ReCreateInstruction<T>(CPHVB_TYPE, instructions[i], pop.Operands);
-                                
-                            }
-
-                            i++;
-                        }
-                    }
-                }
+                ExecuteWithFailureDetection(supported);
             }
-
-            //If we have blocked cleanups, it is now safe to flush them
-            if (VEM.PreventCleanup)
-                VEM.PreventCleanup = false;
         }
 
         /// <summary>
-        /// Releases all held resources
+        /// Performs GC-gen0 collection and then executes the instrucions in the list
         /// </summary>
-        /// <param name="disposing">True if called from the Dispose method, false if invoked from the finalizer</param>
-        protected virtual void Dispose(bool disposing)
+        /// <param name="instructions">The list of instructions to execute</param>
+        protected void ExecuteWithFailureDetection(List<IInstruction> instructions)
         {
-            if (m_size > 0)
-            {
-                if (m_handle.IsAllocated)
-                {
-                    m_handle.Free();
+            //Reclaim everything in gen 0
+            GC.Collect(0);
 
-                    if (m_externalData != PInvoke.cphvb_array_ptr.Null)
-                        PInvoke.cphvb_data_set(m_externalData, IntPtr.Zero);
-                }
-
-                if (m_externalData != PInvoke.cphvb_array_ptr.Null)
-                {
-                    VEM.ExecuteRelease(new PInvoke.cphvb_instruction(PInvoke.cphvb_opcode.CPHVB_DESTROY, m_externalData));
-                    m_externalData = PInvoke.cphvb_array_ptr.Null;
-                }
-
-                m_data = null;
-                m_size = -1;
-
-                if (disposing)
-                    GC.SuppressFinalize(this);
-            }
-
+            VEM.Execute(instructions);
+            instructions.Clear();
+            return;
         }
 
         /// <summary>
-        /// Releases all held resources
+        /// Disposes all resources held by this instance
         /// </summary>
         public void Dispose()
         {
@@ -765,7 +835,22 @@ namespace NumCIL.cphVB
         }
 
         /// <summary>
-        /// Destructor for non-disposed elements
+        /// Disposes all resources held by this instance
+        /// </summary>
+        /// <param name="disposing">True if called from the </param>
+        protected void Dispose(bool disposing)
+        {
+            if (m_externalData != null)
+                m_externalData.Dispose();
+            m_externalData = null;
+            m_data = null;
+
+            if (disposing)
+                GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Finializes this object
         /// </summary>
         ~cphVBAccessor()
         {

@@ -1,23 +1,25 @@
 /*
- * Copyright 2011 Simon A. F. Lund <safl@safl.dk>
- *
- * This file is part of cphVB.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <cphvb.h>
 #include "cphvb_ve_simple.h"
+#include <cphvb_mcache.h>
 
 static cphvb_component *myself = NULL;
 static cphvb_userfunc_impl reduce_impl = NULL;
@@ -30,76 +32,68 @@ static cphvb_intp matmul_impl_id = 0;
 cphvb_error cphvb_ve_simple_init(cphvb_component *self)
 {
     myself = self;
+    cphvb_mcache_init( 10 );
     return CPHVB_SUCCESS;
 }
 
 cphvb_error cphvb_ve_simple_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list )
 {
-    cphvb_intp count, nops, i;
+    cphvb_intp count;
     cphvb_instruction* inst;
-    cphvb_error ret;
+    cphvb_error res;
 
-    for(count=0; count < instruction_count; count++)
-    {
+    for (count=0; count < instruction_count; count++) {
+
         inst = &instruction_list[count];
-
-        if(inst->status == CPHVB_INST_DONE)     // SKIP instruction
-        {
+        if (inst->status == CPHVB_SUCCESS) {        // SKIP instruction
             continue;
         }
 
-        nops = cphvb_operands(inst->opcode);    // Allocate memory for operands
-        for(i=0; i<nops; i++)
-        {
-            if (!cphvb_is_constant(inst->operand[i]))
-            {
-                if (cphvb_data_malloc(inst->operand[i]) != CPHVB_SUCCESS)
-                {
-                    return CPHVB_OUT_OF_MEMORY; // EXIT
-                }
-            }
-
+        res = cphvb_mcache_malloc( inst );          // Allocate memory for operands
+        if ( res != CPHVB_SUCCESS ) {
+            printf("Unhandled error returned by cphvb_mcache_malloc() called from cphvb_ve_simple_execute()\n");
+            return res;
         }
+                                                    
+        switch (inst->opcode) {                     // Dispatch instruction
 
-        switch(inst->opcode)                    // Dispatch instruction
-        {
-            case CPHVB_NONE:                    // NOOP.
+            case CPHVB_NONE:                        // NOOP.
             case CPHVB_DISCARD:
             case CPHVB_SYNC:
-                inst->status = CPHVB_INST_DONE;
+                inst->status = CPHVB_SUCCESS;
+                break;
+            case CPHVB_FREE:                        // Store data-pointer in malloc-cache
+                inst->status = cphvb_mcache_free( inst );
                 break;
 
-            case CPHVB_USERFUNC:                // External libraries
+            case CPHVB_USERFUNC:                    // External libraries
 
-                if(inst->userfunc->id == reduce_impl_id)
-                {
-                    ret = reduce_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
-                }
-                else if(inst->userfunc->id == random_impl_id)
-                {
-                    ret = random_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
-                }
-                else if(inst->userfunc->id == matmul_impl_id)
-                {
-                    ret = matmul_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
-                }
-                else                            // Unsupported userfunc
-                {
+                if (inst->userfunc->id == reduce_impl_id) {
+
+                    inst->status = reduce_impl(inst->userfunc, NULL);
+
+                } else if(inst->userfunc->id == random_impl_id) {
+
+                    inst->status = random_impl(inst->userfunc, NULL);
+
+                } else if(inst->userfunc->id == matmul_impl_id) {
+
+                    inst->status = matmul_impl(inst->userfunc, NULL);
+
+                } else {                            // Unsupported userfunc
+                
                     inst->status = CPHVB_USERFUNC_NOT_SUPPORTED;
+
                 }
 
                 break;
 
             default:                            // Built-in operations
-                ret = cphvb_compute_apply( inst );
-                inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                inst->status = cphvb_compute_apply( inst );
+
         }
 
-        if (inst->status != CPHVB_INST_DONE)    // Instruction failed
-        {
+        if (inst->status != CPHVB_SUCCESS) {    // Instruction failed
             break;
         }
 
@@ -115,16 +109,20 @@ cphvb_error cphvb_ve_simple_execute( cphvb_intp instruction_count, cphvb_instruc
 
 cphvb_error cphvb_ve_simple_shutdown( void )
 {
+    // De-allocate the malloc-cache
+    cphvb_mcache_clear();
+    cphvb_mcache_delete();
+
     return CPHVB_SUCCESS;
 }
 
-cphvb_error cphvb_ve_simple_reg_func(char *lib, char *fun, cphvb_intp *id) 
+cphvb_error cphvb_ve_simple_reg_func(char *fun, cphvb_intp *id) 
 {
     if(strcmp("cphvb_reduce", fun) == 0)
     {
     	if (reduce_impl == NULL)
     	{
-			cphvb_component_get_func(myself, lib, fun, &reduce_impl);
+			cphvb_component_get_func(myself, fun, &reduce_impl);
 			if (reduce_impl == NULL)
 				return CPHVB_USERFUNC_NOT_SUPPORTED;
 
@@ -141,7 +139,7 @@ cphvb_error cphvb_ve_simple_reg_func(char *lib, char *fun, cphvb_intp *id)
     {
     	if (random_impl == NULL)
     	{
-			cphvb_component_get_func(myself, lib, fun, &random_impl);
+			cphvb_component_get_func(myself, fun, &random_impl);
 			if (random_impl == NULL)
 				return CPHVB_USERFUNC_NOT_SUPPORTED;
 
@@ -158,7 +156,7 @@ cphvb_error cphvb_ve_simple_reg_func(char *lib, char *fun, cphvb_intp *id)
     {
     	if (matmul_impl == NULL)
     	{
-            cphvb_component_get_func(myself, lib, fun, &matmul_impl);
+            cphvb_component_get_func(myself, fun, &matmul_impl);
             if (matmul_impl == NULL)
                 return CPHVB_USERFUNC_NOT_SUPPORTED;
             
@@ -167,7 +165,7 @@ cphvb_error cphvb_ve_simple_reg_func(char *lib, char *fun, cphvb_intp *id)
         }
         else
         {
-        	*id = random_impl_id;
+        	*id = matmul_impl_id;
         	return CPHVB_SUCCESS;
         }
     }

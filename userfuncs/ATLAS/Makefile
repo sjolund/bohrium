@@ -1,9 +1,10 @@
 ROOT=../..
-LIB=libatlas_gemm.so
+LIB=libcphvb_atlas.so
 CXX?=g++
 WARNOPTS=-Wall
-LCFLAGS= $(WARNOPTS) -g -O2 -fPIC -I$(ROOT)/include 
-LDFLAGS=-L$(ATLASDIR)/lib -lcblas -latlas -lm -L$(ROOT)/core -lcphvb -lrt -shared -Wl,-soname
+ATLASDIR?=/usr/local/atlas
+LCFLAGS= $(WARNOPTS) -g -O2 -fPIC -I$(ROOT)/include -I$(ATLASDIR)/include
+LDFLAGS= -L$(ATLASDIR)/lib -ltatlas -fopenmp -L$(ROOT)/core -lcphvb -lrt -shared -Wl,-soname
 HEADER=$(ROOT)/include/*  
 SRC= $(shell find -iname '*.cpp') $(shell find -iname '*.c')
 OBJTMP=$(SRC:.c=.o)
@@ -25,5 +26,5 @@ clean:
 		rm -rf *.o *~ *.so
 
 install: all
-		sudo cp $(LIB) $(INSTALLDIR)
+		cp $(LIB) $(INSTALLDIR)
 

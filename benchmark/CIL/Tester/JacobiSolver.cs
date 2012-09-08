@@ -1,23 +1,49 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using NumCIL.Float;
+using NumCIL.Double;
 using NumCIL;
 
 namespace Tester
 {
-    using T = System.Single;
+    using T = System.Double;
     using R = NumCIL.Range;
 
     public static class JacobiSolver
     {
-        public static long Solve(long width, long height, long? fixedIterations = null)
+        public static T Solve(long width, long height, bool calculateDelta, long? fixedIterations = null)
         {
+            if (fixedIterations == null)
+                calculateDelta = true;
+
             var full = Generate.Zeroes(height + 2, width + 2);
             var work = Generate.Zeroes(height, width);
             var diff = Generate.Zeroes(height, width);
-            var tmpdelta = Generate.Zeroes(height);
+            var tmpdelta = Generate.Zeroes(width);
+            var deltares = Generate.Empty(1);
 
             full.Name = "full";
             work.Name = "work";
@@ -30,6 +56,12 @@ namespace Tester
             var right = full[R.Slice(2,  0),  R.Slice(1, -1) ];
             var down =  full[R.Slice(1, -1),  R.Slice(2,  0) ];
 
+            cells.Name = "cells";
+            up.Name = "up";
+            left.Name = "left";
+            right.Name = "right";
+            down.Name = "down";
+
             full[R.All, R.El(0)] += -273.5f;
             full[R.All, R.El(-1)] += -273.5f;
             full[0] += 40f;
@@ -37,13 +69,14 @@ namespace Tester
 
             T epsilon = width * height * 0.002f;
             T delta = epsilon + 1;
-            
+
             int i = 0;
+
+            work[R.All] = cells;
 
             while (fixedIterations.HasValue ? (i < fixedIterations.Value) : epsilon < delta)
             {
                 i++;
-                work[R.All] = cells;
                 Add.Apply(work, up, work);
                 Add.Apply(work, left, work);
                 Add.Apply(work, right, work);
@@ -51,29 +84,30 @@ namespace Tester
                 Mul.Apply(work, 0.2f, work);
                 
                 //This will do the same but not in-place
+                // We need to recompile the kernels to 
+                // support this
+
                 /*work += up;
                 work += left;
                 work += right;
                 work += down;
                 work *= 0.2f;*/
 
-                if (!fixedIterations.HasValue)
+                if (calculateDelta)
                 {
                     Sub.Apply(cells, work, diff);
                     Abs.Apply(diff, diff);
                     Add.Reduce(diff, 0, tmpdelta);
-                    delta = Add.Reduce(tmpdelta).Value[0];
+                    delta = Add.Reduce(tmpdelta, 0, deltares).Value[0];
                 }
                 cells[R.All] = work;
             }
 
-            if (fixedIterations.HasValue)
-            {
+            if (calculateDelta)
+                return delta;
+            else
                 //Access the data to ensure it is flushed
-                var token = full.Data[0];
-            }
-
-            return i;
+                return full.Value[0];
         }
     }
 }

@@ -1,21 +1,22 @@
 /*
- * Copyright 2011 Troels Blum <troels@blum.dk>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <assert.h>
 #include <stdlib.h>
@@ -55,11 +56,10 @@ OCLtype oclType(cphvb_type vbtype)
         return OCL_FLOAT32;
     case CPHVB_FLOAT64:
         return OCL_FLOAT64;
-    case CPHVB_INDEX:
-        if (sizeof(cphvb_index) == 4)
-            return OCL_INT32;
-        if (sizeof(cphvb_index) == 8)
-            return OCL_INT64;
+    case CPHVB_COMPLEX64:
+        return OCL_COMPLEX64;
+    case CPHVB_COMPLEX128:
+        return OCL_COMPLEX128;
     default:
         assert(false);
     }
@@ -81,6 +81,8 @@ const char* oclTypeStr(OCLtype type)
     case OCL_FLOAT16: return "half";
     case OCL_FLOAT32: return "float";
     case OCL_FLOAT64: return "double";
+    case OCL_COMPLEX64: return "float2";
+    case OCL_COMPLEX128: return "double2";
     case OCL_UNKNOWN: return "void";
     default: assert(false);
         
@@ -102,6 +104,8 @@ const char* oclAPItypeStr(OCLtype type)
     case OCL_FLOAT16: return "cl_half";
     case OCL_FLOAT32: return "cl_float";
     case OCL_FLOAT64: return "cl_double";
+    case OCL_COMPLEX64: return "cl_float2";
+    case OCL_COMPLEX128: return "cl_double2";
     default: assert(false);
         
     }
@@ -133,6 +137,10 @@ size_t oclSizeOf(OCLtype type)
         return sizeof(cl_float);
     case OCL_FLOAT64:
         return sizeof(cl_double);
+    case OCL_COMPLEX64:
+        return sizeof(cl_float2);
+    case OCL_COMPLEX128:
+        return sizeof(cl_double2);
     default:
         assert(false);
     }
@@ -145,6 +153,18 @@ bool isFloat(OCLtype type)
     case OCL_FLOAT16:
     case OCL_FLOAT32:
     case OCL_FLOAT64:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool isComplex(OCLtype type)
+{
+    switch (type)
+    {
+    case OCL_COMPLEX64:
+    case OCL_COMPLEX128:
         return true;
     default:
         return false;

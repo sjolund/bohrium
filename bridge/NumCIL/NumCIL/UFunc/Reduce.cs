@@ -1,4 +1,26 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -57,7 +79,7 @@ namespace NumCIL
         /// <param name="axis">The axis to reduce</param>
         /// <param name="out">The output array</param>
         /// <returns>A correctly shaped output array or throws an exception</returns>
-        public static NdArray<T> SetupReduceHelper<T>(NdArray<T> in1, long axis, NdArray<T> @out)
+        private static NdArray<T> SetupReduceHelper<T>(NdArray<T> in1, long axis, NdArray<T> @out)
         {
             long j = 0;
             long[] dims = in1.Shape.Dimensions.Where(x => j++ != axis).Select(x => x.Length).ToArray();
@@ -115,10 +137,10 @@ namespace NumCIL
         {
             NdArray<T> v = SetupReduceHelper<T>(in1, axis, @out);
 
-            if (v.m_data is ILazyAccessor<T>)
-                ((ILazyAccessor<T>)v.m_data).AddOperation(new LazyReduceOperation<T>(new C(), axis), v, in1);
+            if (v.DataAccessor is ILazyAccessor<T>)
+                ((ILazyAccessor<T>)v.DataAccessor).AddOperation(new LazyReduceOperation<T>(new C(), axis), v, in1);
             else
-                return UFunc_Reduce_Inner_Flush<T, C>(op, axis, in1, v);
+                FlushMethods.Reduce<T, C>(op, axis, in1, v);
 
             return v;
         }
@@ -166,12 +188,12 @@ namespace NumCIL
                 //TODO: If both in and out use the same array, just return a reshaped in
                 long j = 0;
                 var sizes = in1.Shape.Dimensions.Where(x => j++ != axis).ToArray();
-                UFunc_Op_Inner_Unary_Flush<T, CopyOp<T>>(new CopyOp<T>(), new NdArray<T>(in1, new Shape(sizes, in1.Shape.Offset)), ref @out);
+                UFunc_Op_Inner_Unary_Flush<T, CopyOp<T>>(new CopyOp<T>(), in1.Reshape(new Shape(sizes, in1.Shape.Offset)), @out);
             }
             else
             {
-                T[] d = in1.Data;
-                T[] vd = @out.Data;
+                T[] d = in1.AsArray();
+                T[] vd = @out.AsArray();
 
                 //Simple case, reduce 1D array to scalar value
                 if (axis == 0 && in1.Shape.Dimensions.LongLength == 1)
@@ -182,7 +204,7 @@ namespace NumCIL
 
                     T value = d[ix];
 
-                    for (long i = ix + stride; i < ix + limit; i += stride)
+                    for (long i = ix + stride; i < limit; i += stride)
                         value = op.Op(value, d[i]);
 
                     vd[@out.Shape.Offset] = value;
@@ -194,8 +216,6 @@ namespace NumCIL
                     long strideOuter = in1.Shape.Dimensions[0].Stride;
 
                     long ix = in1.Shape.Offset;
-                    long limitInner = strideInner * in1.Shape.Dimensions[1].Length;
-
                     long ox = @out.Shape.Offset;
                     long strideRes = @out.Shape.Dimensions[0].Stride;
 
@@ -250,14 +270,14 @@ namespace NumCIL
                     NdArray<T> vl = @out.Subview(Range.NewAxis, axis);
 
                     //Initially we just copy the value
-                    UFunc_Op_Inner_Unary_Flush<T, CopyOp<T>>(new CopyOp<T>(), in1.Subview(Range.El(0), axis), ref vl);
+                    UFunc_Op_Inner_Unary_Flush<T, CopyOp<T>>(new CopyOp<T>(), in1.Subview(Range.El(0), axis), vl);
                     
                     //If there is more than one element in the dimension to reduce, apply the operation accumulatively
                     for (long j = 1; j < size; j++)
                     {
                         //Select the new dimension
                         //Apply the operation
-                        UFunc_Op_Inner_Binary_Flush<T, C>(op, vl, in1.Subview(Range.El(j), axis), ref vl);
+                        UFunc_Op_Inner_Binary_Flush<T, C>(op, vl, in1.Subview(Range.El(j), axis), vl);
                     }
                 }
             }

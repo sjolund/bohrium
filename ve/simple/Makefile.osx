@@ -22,8 +22,8 @@ $(LIB): $(OBJ)
 		$(CXX) $(OBJ) -o $@ $(LDFLAGS) $(CFLAGS)
 
 clean:
-		rm -rf *.o *~ *.so
+		rm -rf *.o *~ *.so *.dylib
 
 install: all
-		sudo cp $(LIB) $(INSTALLDIR)
+		cp $(LIB) $(INSTALLDIR)
 

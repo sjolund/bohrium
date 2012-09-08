@@ -1,21 +1,22 @@
 /*
- * Copyright 2011 Troels Blum <troels@blum.dk>
- *
- * This file is part of cphVB <http://code.google.com/p/cphvb/>.
- *
- * cphVB is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * cphVB is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with cphVB. If not, see <http://www.gnu.org/licenses/>.
- */
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include "ResourceManager.hpp"
 #include <cassert>
@@ -53,6 +54,7 @@ ResourceManager::ResourceManager(cphvb_component* _component)
             foundPlatform = false;
         }
     }
+    std::vector<std::string> extensions;
     if (foundPlatform)
     {
         devices = context.getInfo<CL_CONTEXT_DEVICES>();
@@ -79,11 +81,76 @@ ResourceManager::ResourceManager(cphvb_component* _component)
                 for (cl_uint d = 0; d < maxWorkItemDims; ++d)
                     maxWorkItemSizes[d] = STD_MIN(maxWorkItemSizes[d],mwis[d]);
             }
+            extensions.push_back(dit->getInfo<CL_DEVICE_EXTENSIONS>());
         }
     } else {
         throw std::runtime_error("Could not find valid OpenCL platform.");
     }
     
+    calcLocalShape();
+    registerExtensions(extensions);
+
+#ifdef STATS
+    batchBuild = 0.0;
+    batchSource = 0.0;
+    resourceCreateKernel = 0.0;
+#endif
+}
+
+#ifdef STATS
+ResourceManager::~ResourceManager()
+{
+    std::cout << std::fixed;
+    std::cout << "------------------ STATS ------------------------" << std::endl;
+    std::cout << "Batch building:           " << batchBuild / 1000000.0 << std::endl;
+    std::cout << "Source generation:        " << batchSource / 1000000.0 << std::endl;
+    std::cout << "OpenCL kernel generation: " << resourceCreateKernel / 1000000.0 << std::endl;
+
+    double writeBuffers = 0.0;
+    std::ofstream writeFile;
+    writeFile.open("write.txt");
+    for (std::vector<cl_stat>::iterator it = resourceBufferWrite.begin(); 
+         it != resourceBufferWrite.end(); ++it)
+    {
+        writeFile << it->queued << " " << it->submit << " " <<
+            it->start << " " << it->end << std::endl;
+        writeBuffers += it->end - it->start;
+    } 
+    writeFile.close();
+    std::cout << "Writing buffers:          " << writeBuffers / 1000000000.0  << std::endl;
+
+    double readBuffers = 0.0;
+    std::ofstream readFile;
+    readFile.open("read.txt");
+    for (std::vector<cl_stat>::iterator it = resourceBufferRead.begin(); 
+         it != resourceBufferRead.end(); ++it)
+    {
+        readFile << it->queued << " " << it->submit << " " <<
+            it->start << " " << it->end << std::endl;
+        readBuffers += it->end - it->start;
+    } 
+    readFile.close();
+    std::cout << "Reading buffers:          " << readBuffers / 1000000000.0  << std::endl;
+
+    double executeKernels = 0.0;
+    std::ofstream executeFile;
+    executeFile.open("execute.txt");
+    for (std::vector<cl_stat>::iterator it = resourceKernelExecute.begin(); 
+         it != resourceKernelExecute.end(); ++it)
+    {
+        executeFile << it->queued << " " << it->submit << " " <<
+            it->start << " " << it->end << std::endl;
+        executeKernels += it->end - it->start;
+    } 
+    executeFile.close();
+    std::cout << "Executing kernels:        " << executeKernels / 1000000000.0  << std::endl;
+
+}
+#endif
+
+
+void ResourceManager::calcLocalShape()
+{
     // Calculate "sane" localShapes
     size_t lsx = STD_MIN(256UL,maxWorkItemSizes[0]);
 #ifdef DEBUG
@@ -109,31 +176,17 @@ ResourceManager::ResourceManager(cphvb_component* _component)
     localShape3D.push_back(lsx);
     localShape3D.push_back(lsy);
     localShape3D.push_back(lsz);
-
-
-#ifdef STATS
-    batchBuild = 0.0;
-    batchSource = 0.0;
-    resourceCreateKernel = 0.0;
-    resourceBufferWrite = 0.0;
-    resourceBufferRead = 0.0;
-    resourceKernelExecute = 0.0;
-#endif
 }
 
-#ifdef STATS
-ResourceManager::~ResourceManager()
+void ResourceManager::registerExtensions(std::vector<std::string> extensions)
 {
-    std::cout << std::fixed;
-    std::cout << "------------------ STATS ------------------------" << std::endl;
-    std::cout << "Batch building:           " << batchBuild / 1000000.0 << std::endl;
-    std::cout << "Source generation:        " << batchSource / 1000000.0 << std::endl;
-    std::cout << "OpenCL kernel generation: " << resourceCreateKernel / 1000000.0 << std::endl;
-    std::cout << "Writing buffers:          " << resourceBufferWrite / 1000000.0 << std::endl;
-    std::cout << "Reading buffers:          " << resourceBufferRead / 1000000.0 << std::endl;
-    std::cout << "Executing kernels:        " << resourceKernelExecute / 1000000.0 << std::endl;
-}
+    float16 = extensions[0].find("cl_khr_fp16");
+    float64 = extensions[0].find("cl_khr_fp64");
+#ifdef DEBUG
+    std::cout << "ResourceManager.float16 = " << float16 << std::endl;
+    std::cout << "ResourceManager.float64 = " << float64 << std::endl;
 #endif
+}
 
 cl::Buffer ResourceManager::createBuffer(size_t size)
 {
@@ -294,15 +347,27 @@ std::vector<size_t> ResourceManager::localShape(const std::vector<size_t>& globa
     }
 }
 
+bool ResourceManager::float16support()
+{
+    return float16;
+}
+
+bool ResourceManager::float64support()
+{
+    return float64;
+}
+
 #ifdef STATS
-void CL_CALLBACK ResourceManager::eventProfiler(cl_event ev, cl_int eventStatus, void* total)
+void CL_CALLBACK ResourceManager::eventProfiler(cl_event ev, cl_int eventStatus, void* statVector)
 {
     assert(eventStatus == CL_COMPLETE);
     cl::Event event(ev);
-    cl_ulong start, end;
-    start = event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
-    end =  event.getProfilingInfo<CL_PROFILING_COMMAND_END>();
-    *(double*)total += (double)(end - start) / 1000.0;
+    cl_stat stat;
+    stat.queued = event.getProfilingInfo<CL_PROFILING_COMMAND_QUEUED>();
+    stat.submit = event.getProfilingInfo<CL_PROFILING_COMMAND_SUBMIT>();
+    stat.start = event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
+    stat.end =  event.getProfilingInfo<CL_PROFILING_COMMAND_END>();
+    ((std::vector<cl_stat>*)statVector)->push_back(stat);
 }
 #endif
 

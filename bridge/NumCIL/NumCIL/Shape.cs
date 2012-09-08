@@ -1,4 +1,26 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -329,6 +351,17 @@ namespace NumCIL
         public Shape Plain
         {
             get { return new Shape(this.Dimensions.Select(x => x.Length).ToArray()); }
+        }
+
+        /// <summary>
+        /// Returns the shape as a human readable string
+        /// </summary>
+        /// <returns>The shape setup as a string</returns>
+        public override string ToString()
+        {
+            return string.Format("Size: {0} = Offset+Elements: {1} + {2}, Dimensions: [{3}]", this.Length, this.Offset, this.Elements,
+                string.Join(", ", this.Dimensions.Select(x => string.Format("{{{0} * {1} = {2}}}", x.Length, x.Stride, x.Length * x.Stride)))
+                );
         }
     }
 }

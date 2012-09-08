@@ -1,4 +1,26 @@
-﻿using System;
+﻿#region Copyright
+/*
+This file is part of cphVB and copyright (c) 2012 the cphVB team:
+http://cphvb.bitbucket.org
+
+cphVB is free software: you can redistribute it and/or modify
+it under the terms of the GNU Lesser General Public License as 
+published by the Free Software Foundation, either version 3 
+of the License, or (at your option) any later version.
+
+cphVB is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the 
+GNU Lesser General Public License along with cphVB. 
+
+If not, see <http://www.gnu.org/licenses/>.
+*/
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +31,7 @@ namespace NumCIL
     /// An operation that outputs the same value for each input
     /// </summary>
     /// <typeparam name="T">The type of data to produce</typeparam>
-    public struct GenerateOp<T> : INullaryOp<T>, IScalarAccess<T>
+    public struct GenerateOp<T> : INullaryOp<T>, NumCIL.Generic.Operators.ICopyOperation
     {
         /// <summary>
         /// The value all elements are assigned
@@ -25,29 +47,13 @@ namespace NumCIL
         /// </summary>
         /// <returns>The result value to assign</returns>
         public T Op() { return Value; }
-
-        /// <summary>
-        /// Returns the operation performed
-        /// </summary>
-        IOp<T> IScalarAccess<T>.Operation
-        {
-            get { return new CopyOp<T>(); }
-        }
-
-        /// <summary>
-        /// Returns the value to set
-        /// </summary>
-        T IScalarAccess<T>.Value
-        {
-            get { return Value; }
-        }
     }
 
     /// <summary>
     /// An operation that copies data from one element to another, aka the identity operation
     /// </summary>
     /// <typeparam name="T">The type of data to operate on</typeparam>
-    public struct CopyOp<T> : IUnaryOp<T>
+    public struct CopyOp<T> : IUnaryOp<T>, NumCIL.Generic.Operators.ICopyOperation
     {
         /// <summary>
         /// Returns the input value
@@ -150,49 +156,5 @@ namespace NumCIL
         /// <param name="op">The lambda function</param>
         /// <returns>A UnaryConvLambdaOp that wraps the function</returns>
         public static implicit operator UnaryConvLambdaOp<Ta, Tb>(Func<Ta, Tb> op) { return new UnaryConvLambdaOp<Ta, Tb>(op); }
-    }
-
-    /// <summary>
-    /// A scalar operation, that is a single binary operation with a scalar value embedded
-    /// </summary>
-    /// <typeparam name="T">The type of data to operate on</typeparam>
-    /// <typeparam name="C">The operation type</typeparam>
-    public struct ScalarOp<T, C> : IUnaryOp<T>, IScalarAccess<T> where C : IBinaryOp<T>
-    {
-        /// <summary>
-        /// The operation
-        /// </summary>
-        private C m_op;
-        /// <summary>
-        /// The scalar value
-        /// </summary>
-        private T m_value;
-
-        /// <summary>
-        /// Constructs a new scalar operation
-        /// </summary>
-        /// <param name="value">The scalar value</param>
-        /// <param name="op">The binary operation</param>
-        public ScalarOp(T value, C op)
-        {
-            m_value = value;
-            m_op = op;
-        }
-
-        /// <summary>
-        /// Executes the binary operation with the scalar value and the input
-        /// </summary>
-        /// <param name="value">The input value</param>
-        /// <returns>The results of applying the operation to the scalar value and the input</returns>
-        public T Op(T value) { return m_op.Op(value, m_value); }
-
-        /// <summary>
-        /// Hidden implementation of the ScalarAccess interface
-        /// </summary>
-        IOp<T> IScalarAccess<T>.Operation { get { return m_op; } }
-        /// <summary>
-        /// Hidden implementation of the ScalarAccess interface
-        /// </summary>
-        T IScalarAccess<T>.Value { get { return m_value; } }
     }
 }
