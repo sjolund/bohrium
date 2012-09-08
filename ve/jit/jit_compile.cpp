@@ -62,6 +62,7 @@ cphvb_intp compile_tcc(string comput_func_text, jit_comp_kernel* kernel) {
     /* get entry symbol */
     kernel->memaddr = &mem; 
     kernel->function = (computefunc) tcc_get_symbol(s, "compute_func");
+            
     kernel->key = 31108;
     
     if (!kernel->function) {        

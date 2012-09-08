@@ -14,7 +14,9 @@
 #include <stdarg.h>
 //#include <utility>
 
-char* constant_value_text(cphvb_constant* constant);
+void constant_value_text(cphvb_constant* constant, char buff[]);
+
+
 void print_nametable(std::map<cphvb_array*,ast*> nametable);
 void print_ast_recursive(int step, ast* node);
 const char* opcode_symbol_text(cphvb_opcode opcode);
@@ -84,7 +86,9 @@ ExprType ast_operand_count_to_tag(cphvb_intp operand_count) {
     switch(operand_count) {
         case 2: return un_op; break;
         case 3: return bin_op; break;        
+        default: return no_type; break;
     }
+    
 }
 
 ast* nametable_lookup(std::map<cphvb_array*,ast*>* nametable,cphvb_array* array_key ) {
@@ -285,18 +289,12 @@ bool at_add(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array, ast* a
 
 
 
-
-
-// Printing and debugging functions
-// =================================
-
-
-
-char* constant_to_string(cphvb_constant* constant) {
-    char buff [50];
-    std::cout<< sprintf(buff,"Const: (%s) %s \n",cphvb_type_text(constant->type),  constant_value_text(constant)) << "\n";
-    return buff;
+void constant_to_string(cphvb_constant* constant, char buff[]) {    
+    constant_value_text(constant,buff);
+    std::cout << sprintf(buff,"Const: (%s) %s \n",cphvb_type_text(constant->type), buff ) << "\n";    
 }
+
+
 
 void print_nametable(std::map<cphvb_array*,ast*> nametable) {    
     std::map<cphvb_array*,ast*>::iterator it;
@@ -352,7 +350,7 @@ cphvb_error print_ast_node(ast* node) {
     if (node == NULL) {
         return CPHVB_ERROR;
     }
-    
+    char buff[50];
     switch(node->tag) {
         case bin_op:                     
             printf("B:  id:%ld  op: %s\n", node->id, cphvb_opcode_text(node->op.expression.opcode) );            
@@ -363,7 +361,8 @@ cphvb_error print_ast_node(ast* node) {
                 printf("1] Exp \n");
             } else {
                 if (t == const_val) {                    
-                    printf("1] %s",constant_to_string(node->op.expression.left->op.constant));
+                    constant_to_string(node->op.expression.left->op.constant, buff);
+                    printf("1] %s",buff);
                     //printf("1] Const: (%s) %s \n",cphvb_type_text(node->op.binary.left->op.constant->type),  constant_value_text(node->op.binary.left->op.constant));
                 } else {
                     printf("1] Array \n");
@@ -375,7 +374,8 @@ cphvb_error print_ast_node(ast* node) {
                 printf("2] Exp \n");
             } else {
                 if (t == const_val) {
-                    printf("2] %s",constant_to_string(node->op.expression.left->op.constant));
+                    constant_to_string(node->op.expression.left->op.constant,buff);
+                    printf("2] %s",buff);
                     //printf("2] Const: (%s) %f \n",cphvb_type_text(node->op.binary.right->op.constant->type),constant_value_text(node->op.binary.right->op.constant));
                 } else {
                     printf("2] Array \n");
@@ -388,8 +388,9 @@ cphvb_error print_ast_node(ast* node) {
         case un_op:            
             printf("U: id:%ld op_ %s\n", node->id, cphvb_opcode_text(node->op.expression.opcode));            
             break;
-        case const_val:         
-            printf("Const: %s\n",constant_to_string(node->op.constant)); 
+        case const_val:                
+            constant_to_string(node->op.constant,buff);
+            printf("Const: %s\n", buff); 
             break;
         case array_val:             
             printf("Array: %p\n",node->op.array); 
@@ -419,13 +420,12 @@ const char* opcode_symbol_text(cphvb_opcode opcode) {
       return "";
 }
 
-//char* print_constant_value(cphvb_constant* constant) {    
-char* constant_value_text(cphvb_constant* constant) {    
+
+void constant_value_text(cphvb_constant* constant, char buff[]) {    
     cphvb_type type = constant->type;        
-    char buff[50];
-    
+        
     // case the different cphvb_type's
-    //printf("** %s : ", cphvb_type_text( type) );    
+    //printf("** %s : ", cphvb_type_text( type) );
     
     switch (type) {
         case CPHVB_INT8:
@@ -473,74 +473,72 @@ char* constant_value_text(cphvb_constant* constant) {
             break;
     }
         
-    return buff;
+    return ;
     //std::cout << constant->value.int8;
     //printf(out,constant->value);
 }
 
 
 void test_constant_to_string(void) {    
+    char buff[50];
     std::cout << "testing ConstantToString:\n";    
     cphvb_constant* con = new cphvb_constant;    
         
     con->value.int8 = 51;
     con->type = CPHVB_INT8;
-    char* str = constant_value_text(  con  );    
-    std::cout << str << "\n";    
+    constant_value_text( con, buff );    
+    std::cout << buff << "\n";    
 
     con->value.int16 = 52;    
     con->type = CPHVB_INT16;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n";        
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n";  
     
     con->value.int32 = 53;    
     con->type = CPHVB_INT32;        
-    str = constant_value_text(  con  );
-    printf(str,"");
-    std::cout << str << "\n";
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
     
     con->value.int64 = 54;    
     con->type = CPHVB_INT64;        
-    str = constant_value_text(  con  );
-    std::cout << str << "\n";
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
     
     con->value.uint8 = 55;    
     con->type = CPHVB_UINT8;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n";
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
     
     con->value.int16 = 56;    
     con->type = CPHVB_UINT16;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n";
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
     
     con->value.uint32 = 57;    
     con->type = CPHVB_UINT32;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n";
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
     
     con->value.uint64 = 58;    
     con->type = CPHVB_UINT64;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n";    
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
         
     con->value.float16 = 59.1;    
     con->type = CPHVB_FLOAT16;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n"; 
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
     
     con->value.float32 = 60.2;    
     con->type = CPHVB_FLOAT32;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n"; 
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
         
     con->value.float64 = 61.3;    
     con->type = CPHVB_FLOAT64;        
-    str = constant_value_text(  con  );    
-    std::cout << str << "\n"; 
+    constant_value_text(  con, buff );    
+    std::cout << buff << "\n"; 
 }
-
-
 
 
 

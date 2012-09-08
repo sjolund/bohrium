@@ -15,8 +15,8 @@ def test_pattern_001(H,W):
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)   
     
-    work = A + B    
-    return work
+    work = A + B   
+    t = A
     
     
 def test_pattern_002(H,W):    

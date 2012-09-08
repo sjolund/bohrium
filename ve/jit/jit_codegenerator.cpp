@@ -309,13 +309,16 @@ string compute_func_text(string computation) {
 }
 
 void compute_func_test(cphvb_array* oa, cphvb_array** as, cphvb_constant** cs, cphvb_index off_oa, cphvb_index* offs) {
+    
+    *(off_oa+(cphvb_float32*) oa->data) = (*(offs[0]+((cphvb_float32*) as[0]->data)) + *(offs[1]+((cphvb_float32*) as[1]->data)));
+    
     //stringstream ss;
     //jitcg_print_cphvb_array(oa,0,&ss);
     //jitcg_print_cphvb_array(as[0],0,&ss);
     //*(off_oa+(cphvb_float32*) oa->data) = (*(offs[0]+((cphvb_float32*) as[0]->data)) + *(offs[1]+((cphvb_float32*) as[1]->data)));
     //*(off_oa+(cphvb_float32*) oa->data) = (*(offs[0]+((cphvb_float32*) as[0]->data)) + *(offs[0]+((cphvb_float32*) as[0]->data)));
     
-    *(off_oa+(cphvb_float32*) oa->data) = (*(offs[0]+((cphvb_float32*) as[0]->data)) + *(offs[1]+((cphvb_float32*) as[1]->data)));
+    
     //jitcg_print_cphvb_array(as[1],0,&ss);
     
     //printf("%p %s\n",as[0],ss.str().c_str());

@@ -9,7 +9,7 @@
 #include <map>
 #include <list>
 
-typedef enum  { bin_op = 0, un_op = 1, const_val = 2, array_val = 3} ExprType;
+typedef enum  {no_type = -1, bin_op = 0, un_op = 1, const_val = 2, array_val = 3} ExprType;
 
 //typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4} _LOG_LEVEL;
 
@@ -56,6 +56,7 @@ ast* at_lookup(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array);
 char* constant_value_text(cphvb_constant* constant);
 
 void test_constant_to_string(void);
+
 void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_array*,ast*>* nametable, cphvb_instruction* instr);
 ExprType ast_operand_count_to_tag(cphvb_intp operand_count) ;
 

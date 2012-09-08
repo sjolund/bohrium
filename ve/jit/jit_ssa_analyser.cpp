@@ -41,7 +41,7 @@ ast* ssa_lookup(map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array, cphvb_int
         return NULL;
     }
     
-    if((int)version > vt->table->size()) {
+    if(version > (cphvb_intp)vt->table->size()) {
         return NULL;
     }
     
@@ -67,7 +67,7 @@ bool ssa_add(map<cphvb_array*,ssavt*>* ssalist,cphvb_array* array, ast* expr) {
     // lookup the out_base
     cphvb_intp version = ssa_lookup_array_version(ssalist, array);
     
-    if (_JIT_LOG_LEVEL >= 3) printf("version available = %d\n",version);
+    if (_JIT_LOG_LEVEL >= 3) printf("version available = %ld\n",version);
     if (version == -1) {
         // no versions table for the array*. create one.        
         vt = new ssavt;        
@@ -82,7 +82,7 @@ bool ssa_add(map<cphvb_array*,ssavt*>* ssalist,cphvb_array* array, ast* expr) {
     
     if (_JIT_LOG_LEVEL >= 3) printf("table pointer: %p\n",vt);
     vt->version++;
-    if (_JIT_LOG_LEVEL >= 3) printf("version incremented to: %d\n",vt->version);
+    if (_JIT_LOG_LEVEL >= 3) printf("version incremented to: %ld\n",vt->version);
     
     vt->table->push_back(expr); 
     if (_JIT_LOG_LEVEL >= 3) printf("expr added\n");   
@@ -96,7 +96,7 @@ bool ssa_add_base(map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array, ast* ex
     // lookup the out_base
     cphvb_intp version = ssa_lookup_array_version(ssalist, array);
     
-    if (_JIT_LOG_LEVEL >= 3) printf("version available = %d\n",version);
+    if (_JIT_LOG_LEVEL >= 3) printf("version available = %ld\n",version);
     if (version == -1) {
         // no versions table for the array*. create one.        
         vt = new ssavt;        
@@ -112,7 +112,7 @@ bool ssa_add_base(map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array, ast* ex
     
     if (_JIT_LOG_LEVEL >= 3) printf("table pointer: %p\n",vt);
     vt->version++;
-    if (_JIT_LOG_LEVEL >= 3) printf("version incremented to: %d\n",vt->version);
+    if (_JIT_LOG_LEVEL >= 3) printf("version incremented to: %ld\n",vt->version);
     
     vt->table->push_back(expr); 
     if (_JIT_LOG_LEVEL >= 3) printf("expr added\n");   
@@ -136,7 +136,7 @@ bool ssa_add_base(map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array, ast* ex
 void print_ssa_nametable(std::map<cphvb_array*,ssavt*> nametable) {
     
     std::map<cphvb_array*,ssavt*>::iterator it;
-    printf("print_nametable size() == %d\n",nametable.size());
+    printf("print_nametable size() == %ld\n",nametable.size());
     for ( it=nametable.begin(); it != nametable.end(); it++ ) {
         
         cphvb_array* key = it->first;
@@ -190,8 +190,8 @@ void ast_handle_instruction_ssa_ua(ssa_used_at_t ssauaTable, std::list<ast*>* ex
         
         expr->id = 10;
         
-        ast* expr1; // = expr->op.expression.left;
-        ast* expr2; // = expr->op.expression.right;
+        ast* expr1 = NULL; // = expr->op.expression.left;
+        ast* expr2 = NULL; // = expr->op.expression.right;
         
         if (!cphvb_is_constant(instr->operand[1])) {
             expr1 = ssa_lookup_latest(nametable,instr->operand[1]);
@@ -292,8 +292,8 @@ void ast_handle_instruction_ssa(std::list<ast*>* expression_list,std::map<cphvb_
         
         expr->id = 10;
         
-        ast* expr1; // = expr->op.expression.left;
-        ast* expr2; // = expr->op.expression.right;
+        ast* expr1 = NULL; // = expr->op.expression.left;
+        ast* expr2 = NULL; // = expr->op.expression.right;
         
         if (!cphvb_is_constant(instr->operand[1])) {
             expr1 = ssa_lookup_latest(nametable,instr->operand[1]);
@@ -380,11 +380,11 @@ void ast_handle_instruction_ssa(std::list<ast*>* expression_list,std::map<cphvb_
 }
 
 void print_ssavt(ssavt* version_table) {    
-    printf("SSAVT :: Current Version %d\n",version_table->version);
+    printf("SSAVT :: Current Version %ld\n",version_table->version);
     
     if (version_table->version != -1) {        
         std::vector<ast*>* versions = version_table->table;
-        for(int i=0; i < versions->size(); i++) {
+        for(int i=0; i < (int)versions->size(); i++) {
             printf("%d :: %p\n",i,versions->at(i));                    
         } 
     } else {

@@ -421,7 +421,7 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     cphvb_pprint_instr_list(instruction_list,instruction_count,"");
     printf("-------------------------------------\n\n");    
     
-    
+    return 
     if (do_test) {
         printf("DOING TEST!!! \n");
         std::list<ast*>* expression_list = new std::list<ast*>();    
@@ -536,6 +536,9 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     //~ std::vector<cphvb_intp>*    used_at;
     
     
+        //jita_run_tests();
+    
+    //testing_stuff();
     
                   
     for(count=0; count < instruction_count; count++)
@@ -547,13 +550,6 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
             break;
         }
     }
-    
-    
-    
-    //jita_run_tests();
-    
-    //testing_stuff();
-    
     
     if (count == instruction_count) {
         return CPHVB_SUCCESS;

@@ -19,8 +19,6 @@ struct jit_comp_kernel{
 };
 
 
-
-
 typedef enum COMPILE_METHOD {
     TCC = 1
 } jit_compile_method;
