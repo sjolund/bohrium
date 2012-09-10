@@ -27,11 +27,13 @@ import sys, os
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.pngmath',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'numpydoc',
     'breathe'
 ]
 
@@ -94,6 +96,7 @@ pygments_style = 'sphinx'
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
 
+autosummary_generate = True
 
 # -- Options for HTML output ---------------------------------------------------
 
@@ -266,7 +269,9 @@ epub_copyright  = u'2012, eScience Group @ NBI'
 #epub_tocdup = True
 
 # -- Options for Breathe -----------------------------
-breathe_projects        = {"cphVB": "/home/safl/Desktop/cphvb/doc/doxygen/xml/index.xml"}
+breathe_projects        = {
+    "cphVB": "doxygen/xml"
+}
 breathe_default_project = "cphVB"
 breathe_domain_by_extension = {
     "h" : "c",

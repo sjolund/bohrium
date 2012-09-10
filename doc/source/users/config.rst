@@ -38,3 +38,27 @@ The default configuration file looks like this::
     impl = /opt/cphvb/libcphvb_ve_gpu.so
     type = ve
     ocldir = /opt/cphvb/lib/ocl_source
+
+
+The configuration file consists of a number of components marked with square brackets. For example ``[bridge]``, ``[node]`` and ``[simple]`` are all components available for the runtime system. 
+
+Each component has a number of attributes that defines the component:
+
+  ``type = {bridge|vem|ve}`` is the type of the component.
+
+  ``impl = {file path}`` is the path to the shared library that implement the component. Note that the bridge does not have an implementation path.
+
+  ``children = {component}`` specifies the child component. A runtime setup always consists of three components: a bridge, a vem and a ve. The child of the bridge is a vem and the child of the vem is a ve.
+
+Additionally, a component may have attributes that are specific for the component. For example the ``ocldir`` attributes is only relevant for the gpu component. 
+
+Environment Variables
+---------------------
+
+The various engines can be manipulated by environment variables::
+
+  CPHVB_VE_SCORE_BLOCKSIZE - Adjusts size of cache-tiling.
+  CPHVB_VE_MCORE_BLOCKSIZE - Adjusts size of work-splits and cache-tiling.
+  CPHVB_VE_MCORE_NTHREADS - Adjusts the number of threads used.
+
+Experiment with values to obtain optimimal results.

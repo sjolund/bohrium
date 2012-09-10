@@ -28,3 +28,4 @@ clean:
 install: all
 		cp $(LIB) $(INSTALLDIR)
 
+

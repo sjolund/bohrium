@@ -7,9 +7,14 @@ You need to install all packages required to build NumPy::
   
   sudo apt-get build-dep python-numpy  
 
+And some additional packages::
+
+  sudo apt-get install g++ python-dev mpi-default-dev python-pip python-cheetah python-sphinx doxygen
+  sudo pip install breathe numpydoc
+
 Download and extract the source code::
   
-  wget http://cphvb.org/cphvb-v0.1.tgz
+  wget https://bitbucket.org/cphvb/cphvb/downloads/cphvb-v0.1.tgz
   tar -xzf cphvb-v0.1.tgz
 
 Build and install::
@@ -20,6 +25,8 @@ Build and install::
 
 .. note:: The installation will prompt you for the installation path. 
           The default path is ``/opt/cphvb`` which requires root permissions. Hence, if you do not have root access use a installation path to inside your home directory.
+
+.. note:: To compile to a custom Python (with valgrind debug support for example), set the make variable, CPHVB_PYTHON, naming the binary of your custom compiled Python.
 
 Finally, you need to set the ``PYTHONPATH`` and the ``LD_LIBRARY_PATH`` environment variables.
 The ``PYTHONPATH`` should include the path to the newly installed cphVB Python module. This will also make sure that Python uses the NumPy module included in cphVB::
@@ -57,16 +64,36 @@ And you should see a result similar to this::
     ************************ Finish ************************
 
 
-OpenCL
-~~~~~~
+OpenCL / GPU Engine
+~~~~~~~~~~~~~~~~~~~
 
-In order to support the OpenCL backend you might just need this::
+The GPU vector engine requires OpenCL compatible hardware as well as functioning drivers.
+Configuring your GPU with you operating system is out of scope of this documentation.
+
+Assuming that your GPU-hardware is functioning correctly you need to install an OpenCL SDK and some additional packages.
+
+**Packages**::
 
   sudo apt-get install -y rpm alien libnuma1
+
+**SDK for OpenCL**
+
+Go to http://software.intel.com/en-us/articles/vcsource-tools-opencl-sdk/ and download *Intel SDK for OpenCL 2012 -- Linux*.
+
+The download-button is in the upper right corner next to select-box with the text *Select version...*.
+
+The download area is hard to spot, so take a look at the red arrow on the picture below:
+
+.. image:: opencl_download.png
+   :scale: 50 %
+   :alt: Download location.
+
+Once downloaded, install the SDK with the following commands::
+
   tar zxf intel_sdk_for_ocl_applications_2012_x64.tgz
-  sudo apt-get install -y rpm alien libnuma1
   fakeroot alien --to-deb intel_ocl_sdk_2012_x64.rpm
   sudo dpkg -i intel-ocl-sdk_2.0-31361_amd64.deb
   sudo ln -s /usr/lib64/libOpenCL.so /usr/lib/libOpenCL.so
   sudo ldconfig
 
+You should now have everything you need to utilize the GPU engine.

@@ -41,27 +41,27 @@ namespace Tester
             Console.WriteLine("Tester UnsafeAPI is {0}", !NumCIL.UnsafeAPI.DisableUnsafeAPI && NumCIL.UnsafeAPI.IsUnsafeSupported ? "ENABLED" : "DISABLED");
             Console.WriteLine("Tester Unsafe arrays is {0}", !NumCIL.UnsafeAPI.DisableUnsafeAPI && NumCIL.UnsafeAPI.IsUnsafeSupported && !NumCIL.UnsafeAPI.DisableUnsafeArrays ? "ENABLED": "DISABLED");
             Console.WriteLine("Tester Unsafe arrays limit is {0}MB", !NumCIL.UnsafeAPI.DisableUnsafeAPI && NumCIL.UnsafeAPI.IsUnsafeSupported && !NumCIL.UnsafeAPI.DisableUnsafeArrays ? (NumCIL.UnsafeAPI.UnsafeArraysLargerThan/ (1024*1024)) : 0.0);
-
+            //NumCIL.cphVB.Utility.Activate();
             try
             {
                 TimeJacobi();
-                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadPool.TicksExecuted).TotalSeconds);
-                NumCIL.ThreadPool.TicksExecuted = 0;
+                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadRunner.TicksExecuted).TotalSeconds);
+                NumCIL.ThreadRunner.TicksExecuted = 0;
                 TimeJacobiFixed();
-                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadPool.TicksExecuted).TotalSeconds);
-                NumCIL.ThreadPool.TicksExecuted = 0;
+                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadRunner.TicksExecuted).TotalSeconds);
+                NumCIL.ThreadRunner.TicksExecuted = 0;
                 TimeScholes();
-                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadPool.TicksExecuted).TotalSeconds);
-                NumCIL.ThreadPool.TicksExecuted = 0;
+                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadRunner.TicksExecuted).TotalSeconds);
+                NumCIL.ThreadRunner.TicksExecuted = 0;
                 TimeShallowWater();
-                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadPool.TicksExecuted).TotalSeconds);
-                NumCIL.ThreadPool.TicksExecuted = 0;
+                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadRunner.TicksExecuted).TotalSeconds);
+                NumCIL.ThreadRunner.TicksExecuted = 0;
                 TimekNN();
-                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadPool.TicksExecuted).TotalSeconds);
-                NumCIL.ThreadPool.TicksExecuted = 0;
+                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadRunner.TicksExecuted).TotalSeconds);
+                NumCIL.ThreadRunner.TicksExecuted = 0;
                 TimenBody();
-                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadPool.TicksExecuted).TotalSeconds);
-                NumCIL.ThreadPool.TicksExecuted = 0;
+                Console.WriteLine("Seconds consumed by threads: {0}", TimeSpan.FromTicks(NumCIL.ThreadRunner.TicksExecuted).TotalSeconds);
+                NumCIL.ThreadRunner.TicksExecuted = 0;
 
                 //NumCIL.cphVB.Utility.Activate();
 

@@ -30,6 +30,12 @@ static cphvb_userfunc_impl random_impl = NULL;
 static cphvb_intp random_impl_id = 0;
 static cphvb_userfunc_impl matmul_impl = NULL;
 static cphvb_intp matmul_impl_id = 0;
+static cphvb_userfunc_impl lu_impl = NULL;
+static cphvb_intp lu_impl_id = 0;
+static cphvb_userfunc_impl fft_impl = NULL;
+static cphvb_intp fft_impl_id = 0;
+static cphvb_userfunc_impl fft2_impl = NULL;
+static cphvb_intp fft2_impl_id = 0;
 
 static cphvb_intp cphvb_ve_score_buffersizes = 0;
 static computeloop* cphvb_ve_score_compute_loops = NULL;
@@ -41,14 +47,14 @@ cphvb_error cphvb_ve_score_init(cphvb_component *self)
 {
     myself = self;                              // Assign config container.
 
-    char *env = getenv("CPHVB_VE_BLOCKSIZE");   // Override block_size from environment-variable.
+    char *env = getenv("CPHVB_VE_SCORE_BLOCKSIZE");   // Override block_size from environment-variable.
     if(env != NULL)
     {
         block_size = atoi(env);
     }
     if(block_size <= 0)                         // Verify it
     {
-        fprintf(stderr, "CPHVB_VE_BLOCKSIZE (%ld) should be greater than zero!\n", (long int)block_size);
+        fprintf(stderr, "CPHVB_VE_SCORE_BLOCKSIZE (%ld) should be greater than zero!\n", (long int)block_size);
         return CPHVB_ERROR;
     }
 
@@ -93,6 +99,7 @@ inline cphvb_error block_execute( cphvb_instruction* instr, cphvb_intp start, cp
     computeloop* compute_loops = cphvb_ve_score_compute_loops;
     cphvb_tstate* states = cphvb_ve_score_tstates;
     cphvb_intp  nelements, trav_end=0;
+    cphvb_error ret_errcode = CPHVB_SUCCESS;
     
     for(i=0; i<=end-start;i++)                      // Reset traversal coordinates
         cphvb_tstate_reset( &states[i] );
@@ -100,6 +107,15 @@ inline cphvb_error block_execute( cphvb_instruction* instr, cphvb_intp start, cp
     for(i=start, k=0; i <= end; i++,k++)            // Get the compute-loops
     {
         compute_loops[k] = cphvb_compute_get( &instr[i] );
+        if(compute_loops[k] == NULL)
+        {
+            end = start + k - 1;
+            instr[i].status = CPHVB_TYPE_NOT_SUPPORTED;
+            ret_errcode = CPHVB_PARTIAL_SUCCESS;
+            break;
+        }
+        else
+            instr[i].status = CPHVB_SUCCESS;
     }
                                                     // Block-size split
     nelements = cphvb_nelements( instr[start].operand[0]->ndim, instr[start].operand[0]->shape );
@@ -114,14 +130,8 @@ inline cphvb_error block_execute( cphvb_instruction* instr, cphvb_intp start, cp
             compute_loops[k]( &instr[i], &states[k], trav_end );
         }
     }
-
-    for(i=start; i <= end; i++)                     // Set instruction status
-    {
-        instr[i].status = CPHVB_SUCCESS;
-    }
     
-    return CPHVB_SUCCESS;
-
+    return ret_errcode;
 }
 
 cphvb_error cphvb_ve_score_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list )
@@ -172,6 +182,18 @@ cphvb_error cphvb_ve_score_execute( cphvb_intp instruction_count, cphvb_instruct
                 else if(inst->userfunc->id == matmul_impl_id)
                 {
                     inst->status = matmul_impl(inst->userfunc, NULL);
+                }
+                else if(inst->userfunc->id == lu_impl_id)
+                {
+                    inst->status = lu_impl(inst->userfunc, NULL);
+                }
+                else if(inst->userfunc->id == fft_impl_id)
+                {
+                    inst->status = fft_impl(inst->userfunc, NULL);
+                }
+                else if(inst->userfunc->id == fft2_impl_id)
+                {
+                    inst->status = fft2_impl(inst->userfunc, NULL);
                 }
                 else                            // Unsupported userfunc
                 {
@@ -286,6 +308,57 @@ cphvb_error cphvb_ve_score_reg_func(char *fun, cphvb_intp *id) {
         else
         {
         	*id = matmul_impl_id;
+        	return CPHVB_SUCCESS;
+        }
+    }
+    else if(strcmp("cphvb_lu", fun) == 0)
+    {
+    	if (lu_impl == NULL)
+    	{
+			cphvb_component_get_func(myself, fun, &lu_impl);
+			if (lu_impl == NULL)
+				return CPHVB_USERFUNC_NOT_SUPPORTED;
+
+			lu_impl_id = *id;
+			return CPHVB_SUCCESS;			
+        }
+        else
+        {
+        	*id = lu_impl_id;
+        	return CPHVB_SUCCESS;
+        }
+    }
+    else if(strcmp("cphvb_fft", fun) == 0)
+    {
+    	if (fft_impl == NULL)
+    	{
+			cphvb_component_get_func(myself, fun, &fft_impl);
+			if (fft_impl == NULL)
+				return CPHVB_USERFUNC_NOT_SUPPORTED;
+
+			fft_impl_id = *id;
+			return CPHVB_SUCCESS;			
+        }
+        else
+        {
+        	*id = fft_impl_id;
+        	return CPHVB_SUCCESS;
+        }
+    }
+    else if(strcmp("cphvb_fft2", fun) == 0)
+    {
+    	if (fft2_impl == NULL)
+    	{
+			cphvb_component_get_func(myself, fun, &fft2_impl);
+			if (fft2_impl == NULL)
+				return CPHVB_USERFUNC_NOT_SUPPORTED;
+
+			fft2_impl_id = *id;
+			return CPHVB_SUCCESS;			
+        }
+        else
+        {
+        	*id = fft2_impl_id;
         	return CPHVB_SUCCESS;
         }
     }
