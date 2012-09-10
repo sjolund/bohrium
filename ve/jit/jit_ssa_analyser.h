@@ -11,8 +11,6 @@
 #include <vector>
 
 
-
-
 typedef struct SSA_Version_Table1 {
     cphvb_intp  version;
     //std::map<cphvb_intp, cphvb_intp>* table;

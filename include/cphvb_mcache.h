@@ -65,7 +65,11 @@ DLLEXPORT cphvb_data_ptr cphvb_mcache_find( cphvb_intp bytes );
  * @param size Size in bytes of the allocated data.
  */
 DLLEXPORT void cphvb_mcache_insert( cphvb_data_ptr data, cphvb_intp size );
+
+
 DLLEXPORT cphvb_error cphvb_mcache_free( cphvb_instruction* inst );
+
+
 DLLEXPORT cphvb_error cphvb_mcache_malloc( cphvb_instruction* inst );
 
 #ifdef __cplusplus

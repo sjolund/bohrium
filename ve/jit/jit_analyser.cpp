@@ -18,7 +18,7 @@ using namespace std;
 bool jita_is_controll(cphvb_instruction* instr) {    
     return (instr->opcode == CPHVB_SYNC || 
             instr->opcode == CPHVB_DISCARD || 
-            instr->opcode == CPHVB_DESTROY || 
+            instr->opcode == CPHVB_FREE || 
             instr->opcode == CPHVB_NONE);
 }
 
@@ -227,7 +227,7 @@ cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_m
 }
 
 cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, cphvb_instruction* instr) {
-    logDebug("s jita_handle_arithmetic_instruction()\n");
+    logInfo("s jita_handle_arithmetic_instruction()\n");
     logDebug("opcode: %s\n", cphvb_opcode_text(instr->opcode));
     // get the first and second operands. Look them up, to see if they 
     // are already registered. If not register them, else reference the 
@@ -320,12 +320,10 @@ cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa
  * insert a assignment with array* = expression into the nametable.
  * @return name in the nametable. -1 if error.
  */
-cphvb_intp jita_insert_name(jit_name_table* nametable, jit_ssa_map* ssamap, cphvb_array* array, jit_expr* expr) {    
-    int loglevel = 4;
-    int DEBUG = 4, INFO = 3;
-    if (loglevel >= INFO) printf("jita_insert_name()\n");
-    if (loglevel >= DEBUG) printf(">>> arrayp* %p\n",array);
-    if (loglevel >= DEBUG) printf(">>> expr*   %p\n",expr);
+cphvb_intp jita_insert_name(jit_name_table* nametable, jit_ssa_map* ssamap, cphvb_array* array, jit_expr* expr) {        
+    logInfo("jita_insert_name()\n");
+    logDebug(">>> arrayp* %p\n",array);
+    logDebug(">>> expr*   %p\n",expr);
         
     // the ssamap, is a mapping from array* to nametable. We thus start
     // by creating the name_table entry.
@@ -340,11 +338,11 @@ cphvb_intp jita_insert_name(jit_name_table* nametable, jit_ssa_map* ssamap, cphv
     name_entry->arrayp = array;    
     name_entry->used_at = new std::vector<cphvb_intp>();
 
-    if (loglevel >= DEBUG) printf(">>> - entry %p\n",name_entry);
+    logDebug(">>> - entry %p\n",name_entry);
     
     // insert into nametable    
     cphvb_intp name = _jita_nametable_insert(nametable,name_entry);        
-    if (loglevel >= DEBUG) printf(">>> - name %ld\n",name);
+    logDebug(">>> - name %ld\n",name);
     
     // insert into ssamap
     //cphvb_intp added_version = _jita_ssamap_insert(ssamap,array,name);    
@@ -388,8 +386,7 @@ bool _test_jita_insert_name_arr() {
     jit_ssa_map* ssamap = new jit_ssa_map();
     jit_name_table* nametable = new jit_name_table();
     
-    cphvb_array* inpA = new cphvb_array();
-    inpA->owner = 2002;    
+    cphvb_array* inpA = new cphvb_array();    
     jit_expr* exprA = _test_make_expr_array(5,inpA);        
     
     if (loglevel > 0) printf("expr %p\narray %p\n",exprA,inpA);        
@@ -438,19 +435,19 @@ bool _test_jita_insert_name_complex() {
     // output, inputA, inputB    
     
     cphvb_array* inpA = new cphvb_array();
-    inpA->owner = 2002;    
+        
     jit_expr* exprA = _test_make_expr_array(9,inpA);            
     cphvb_intp nameA = jita_insert_name(nametable,ssamap,inpA,exprA);        
     if (loglevel >= INFO) printf("A (left):\narr* = %p\nexpr* = %p\nname = %ld\n",inpA,exprA,nameA);    
     
     cphvb_array* inpB = new cphvb_array();
-    inpB->owner = 3003;
+    
     jit_expr* exprB = _test_make_expr_array(2,inpB);
     cphvb_intp nameB = jita_insert_name(nametable,ssamap,inpB,exprB);    
     if (loglevel >= INFO) printf("B (right):\narr* = %p\nexpr* = %p\nname = %ld\n",inpB,exprB,nameB);
                 
     cphvb_array* out = new cphvb_array();    
-    out->owner = 1001;
+    
     
     jit_expr* exprComb = new jit_expr();
     exprComb->tag = bin_op;    
@@ -489,9 +486,9 @@ void jita_run_tests() {
     
     if (loglevel > 0) printf("\n** create array\n");    
     cphvb_array* arr = new cphvb_array();    
-    arr->owner = 1001;
+    
     printf("arr* = %p\n", arr);
-    printf("arr* owner = %ld\n", arr->owner);
+    
     
     if (loglevel > 0) printf("\n-- make expr()\n");    
     jit_expr* expr = _test_make_expr_array(5,arr);        
@@ -500,7 +497,7 @@ void jita_run_tests() {
     printf("expr* id = %ld\n",expr->id);
     printf("expr* depth = %ld\n",expr->depth);
     printf("expr* op.array = %p\n",expr->op.array);
-    printf("expr* op.array->owner = %ld\n",expr->op.array->owner);
+    
     if (loglevel > 0) printf("-- make expr() DONE\n");    
     
     if (loglevel > 0) printf("\n-- jita_test_insert_name_arr() \n");        

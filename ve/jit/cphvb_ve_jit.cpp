@@ -27,6 +27,7 @@
 #include <iostream>
 #include <cphvb.h>
 #include "cphvb_ve_jit.h"
+
 #include <cphvb_compute.h>
 #include "jit_ast.h"
 #include "jit_ssa_analyser.h"
@@ -178,7 +179,7 @@ cphvb_error instruction_handler_simple(cphvb_instruction *inst) {
     cphvb_intp nops, i;    
     cphvb_error ret;    
     
-    if(inst->status != CPHVB_INST_DONE)     // SKIP instruction
+    if(inst->status != CPHVB_SUCCESS)     // SKIP instruction
     {                
         nops = cphvb_operands(inst->opcode);    // Allocate memory for operands
         for(i=0; i<nops; i++)
@@ -197,7 +198,7 @@ cphvb_error instruction_handler_simple(cphvb_instruction *inst) {
             case CPHVB_NONE:                    // NOOP.
             case CPHVB_DISCARD:
             case CPHVB_SYNC:
-                inst->status = CPHVB_INST_DONE;
+                inst->status = CPHVB_SUCCESS;
                 break;
 
             case CPHVB_USERFUNC:                // External libraries
@@ -205,22 +206,22 @@ cphvb_error instruction_handler_simple(cphvb_instruction *inst) {
                 if(inst->userfunc->id == reduce_impl_id)
                 {
                     ret = reduce_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 else if(inst->userfunc->id == random_impl_id)
                 {
                     ret = random_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 else if(inst->userfunc->id == matmul_impl_id)
                 {
                     ret = matmul_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 else if(inst->userfunc->id == jacstenc_impl_id)
                 {
                     ret = jacstenc_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 
                 else                            // Unsupported userfunc
@@ -232,10 +233,10 @@ cphvb_error instruction_handler_simple(cphvb_instruction *inst) {
 
             default:                            // Built-in operations
                 ret = cphvb_compute_apply( inst );
-                inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
         }
         
-        if (inst->status != CPHVB_INST_DONE)    // Instruction failed
+        if (inst->status != CPHVB_SUCCESS)    // Instruction failed
         {
             return CPHVB_ERROR;
         }
@@ -415,13 +416,14 @@ cphvb_error cphvb_ve_jit_execute_split( cphvb_intp instruction_count, cphvb_inst
     cphvb_intp count;
     cphvb_error status;    
     
-    
+    return CPHVB_SUCCESS;
     //return CPHVB_SUCCESS;
     printf("\n\n------- Instr count = %ld --------\n", instruction_count);
     cphvb_pprint_instr_list(instruction_list,instruction_count,"");
     printf("-------------------------------------\n\n");    
     
-    return 
+    
+    
     if (do_test) {
         printf("DOING TEST!!! \n");
         std::list<ast*>* expression_list = new std::list<ast*>();    
@@ -649,11 +651,11 @@ cphvb_error cphvb_ve_jit_execute_org( cphvb_intp instruction_count, cphvb_instru
                 
                 if (output) {
                     // all operations status to
-                    (&instruction_list[count-4])->status = CPHVB_INST_DONE;
-                    (&instruction_list[count-3])->status = CPHVB_INST_DONE;
-                    (&instruction_list[count-2])->status = CPHVB_INST_DONE;
-                    (&instruction_list[count-1])->status = CPHVB_INST_DONE;
-                    (&instruction_list[count-0])->status = CPHVB_INST_DONE;
+                    (&instruction_list[count-4])->status = CPHVB_SUCCESS;
+                    (&instruction_list[count-3])->status = CPHVB_SUCCESS;
+                    (&instruction_list[count-2])->status = CPHVB_SUCCESS;
+                    (&instruction_list[count-1])->status = CPHVB_SUCCESS;
+                    (&instruction_list[count-0])->status = CPHVB_SUCCESS;
                     
                 } else {
                     // destroy world
@@ -685,7 +687,7 @@ cphvb_error cphvb_ve_jit_execute_org( cphvb_intp instruction_count, cphvb_instru
         //printf("Ex: %s\n", cphvb_opcode_text(inst->opcode));
 
 
-        if(inst->status == CPHVB_INST_DONE)     // SKIP instruction
+        if(inst->status == CPHVB_SUCCESS)     // SKIP instruction
         {
             continue;
         }
@@ -708,7 +710,7 @@ cphvb_error cphvb_ve_jit_execute_org( cphvb_intp instruction_count, cphvb_instru
             case CPHVB_NONE:                    // NOOP.
             case CPHVB_DISCARD:
             case CPHVB_SYNC:
-                inst->status = CPHVB_INST_DONE;
+                inst->status = CPHVB_SUCCESS;
                 break;
 
             case CPHVB_USERFUNC:                // External libraries
@@ -716,22 +718,22 @@ cphvb_error cphvb_ve_jit_execute_org( cphvb_intp instruction_count, cphvb_instru
                 if(inst->userfunc->id == reduce_impl_id)
                 {
                     ret = reduce_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 else if(inst->userfunc->id == random_impl_id)
                 {
                     ret = random_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 else if(inst->userfunc->id == matmul_impl_id)
                 {
                     ret = matmul_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 else if(inst->userfunc->id == jacstenc_impl_id)
                 {
                     ret = jacstenc_impl(inst->userfunc, NULL);
-                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                    inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
                 }
                 
                 else                            // Unsupported userfunc
@@ -743,10 +745,10 @@ cphvb_error cphvb_ve_jit_execute_org( cphvb_intp instruction_count, cphvb_instru
 
             default:                            // Built-in operations
                 ret = cphvb_compute_apply( inst );
-                inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_INST_DONE : ret;
+                inst->status = (ret == CPHVB_SUCCESS) ? CPHVB_SUCCESS : ret;
         }
         
-        if (inst->status != CPHVB_INST_DONE)    // Instruction failed
+        if (inst->status != CPHVB_SUCCESS)    // Instruction failed
         {
             break;
         }
@@ -772,13 +774,14 @@ cphvb_error cphvb_ve_jit_shutdown( void )
     return CPHVB_SUCCESS;
 }
 
-cphvb_error cphvb_ve_jit_reg_func(char *lib, char *fun, cphvb_intp *id) 
+
+cphvb_error cphvb_ve_jit_reg_func(char *fun, cphvb_intp *id) 
 {
     if(strcmp("cphvb_reduce", fun) == 0)
     {
     	if (reduce_impl == NULL)
     	{
-			cphvb_component_get_func(myself, lib, fun, &reduce_impl);
+			cphvb_component_get_func(myself, fun, &reduce_impl);
 			if (reduce_impl == NULL)
 				return CPHVB_USERFUNC_NOT_SUPPORTED;
 
@@ -795,7 +798,7 @@ cphvb_error cphvb_ve_jit_reg_func(char *lib, char *fun, cphvb_intp *id)
     {
     	if (random_impl == NULL)
     	{
-			cphvb_component_get_func(myself, lib, fun, &random_impl);
+			cphvb_component_get_func(myself, fun, &random_impl);
 			if (random_impl == NULL)
 				return CPHVB_USERFUNC_NOT_SUPPORTED;
 
@@ -812,7 +815,7 @@ cphvb_error cphvb_ve_jit_reg_func(char *lib, char *fun, cphvb_intp *id)
     {
     	if (matmul_impl == NULL)
     	{
-            cphvb_component_get_func(myself, lib, fun, &matmul_impl);
+            cphvb_component_get_func(myself, fun, &matmul_impl);
             if (matmul_impl == NULL)
                 return CPHVB_USERFUNC_NOT_SUPPORTED;
             
@@ -824,7 +827,9 @@ cphvb_error cphvb_ve_jit_reg_func(char *lib, char *fun, cphvb_intp *id)
         	*id = matmul_impl_id;
         	return CPHVB_SUCCESS;
         }
-    } 
+    }
+    
+
     /*
     // Demo to test the maximum effect the a JIT grouping can achieve
     else if(strcmp("cphvb_jacstenc",fun) == 0) 

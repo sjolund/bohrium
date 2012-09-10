@@ -7,7 +7,8 @@
 #include <string>
 #include <stdio.h>
 #include <stdarg.h>
-#define GLOBAL_LOG_LEVEL 1100// set > DEBUG for no logging!
+
+#define GLOBAL_LOG_LEVEL 31 // set < DEBUG for no logging!
 
 
 const char* log_level_text_full(LOG_LEVEL level) {

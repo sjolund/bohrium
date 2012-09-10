@@ -72,6 +72,7 @@ static void cphvb_sprint_array( cphvb_array *op, char buf[] ) {
 
 }
 
+
 static void cphvb_sprint_instr( cphvb_instruction *instr, char buf[] ) {
 
     char op_str[PPRINT_BUF_OPSTR_SIZE];
@@ -135,6 +136,72 @@ void cphvb_pprint_instr_list( cphvb_instruction* instruction_list, cphvb_intp in
     printf("%s %d {\n", txt, (int)instruction_count);
     for(count=0; count < instruction_count; count++) {
         cphvb_pprint_instr( &instruction_list[count] );
+    }
+    printf("}\n");
+}
+
+static void cphvb_sprint_instr_small( cphvb_instruction *instr, char buf[] ) {
+
+    char op_str[PPRINT_BUF_OPSTR_SIZE];
+    char tmp[PPRINT_BUF_OPSTR_SIZE];
+    int op_count = cphvb_operands(instr->opcode);
+    int i;
+    sprintf(buf, "%s OPS=%d{\n", cphvb_opcode_text( instr->opcode), op_count );
+    for(i=0; i < op_count; i++) {
+
+        if (!cphvb_is_constant(instr->operand[i])) {
+        
+            sprintf(op_str,"A:%p",instr->operand[i]);
+            
+            //cphvb_sprint_array( instr->operand[i], op_str );
+        } else {
+            sprintf(op_str, "CONSTANT");
+        }   
+        sprintf(tmp, "  OP%d %s", i, op_str);
+        strcat(buf, tmp);
+        
+    }
+    strcat(buf, "\n");
+    if (instr->opcode == CPHVB_USERFUNC)
+    {
+        cphvb_userfunc* userfunc = instr->userfunc;
+        for(i=0; i < userfunc->nout; i++) {
+            cphvb_sprint_array( userfunc->operand[i], op_str );
+            sprintf(tmp, "  OUT%d %s\n", i, op_str);
+            strcat(buf, tmp);
+            if (userfunc->operand[i]->base != NULL) {
+                cphvb_sprint_array( userfunc->operand[i]->base, op_str );
+                sprintf(tmp, "      %s\n", op_str);
+                strcat(buf, tmp);
+            }
+        }
+        for(i=userfunc->nout; i < userfunc->nout + userfunc->nin; i++) {
+            cphvb_sprint_array( userfunc->operand[i], op_str );
+            sprintf(tmp, "  IN%d %s\n", i, op_str);
+            strcat(buf, tmp);
+            if (userfunc->operand[i]->base != NULL) {
+                cphvb_sprint_array( userfunc->operand[i]->base, op_str );
+                sprintf(tmp, "      %s\n", op_str);
+                strcat(buf, tmp);
+            }
+        }
+    }
+    strcat(buf, "}");
+}
+
+void cphvb_pprint_instr_small( cphvb_instruction *instr ) {
+
+    char buf[PPRINT_BUF_SIZE];
+    cphvb_sprint_instr_small( instr, buf );
+    puts( buf );
+}
+
+void cphvb_pprint_instr_list_small( cphvb_instruction* instruction_list, cphvb_intp instruction_count, const char* txt )
+{
+    cphvb_intp count;
+    printf("%s %d {\n", txt, (int)instruction_count);
+    for(count=0; count < instruction_count; count++) {
+        cphvb_pprint_instr_small( &instruction_list[count] );
     }
     printf("}\n");
 }

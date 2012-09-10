@@ -38,7 +38,7 @@ DLLEXPORT cphvb_error cphvb_ve_jit_execute(cphvb_intp instruction_count, cphvb_i
 
 DLLEXPORT cphvb_error cphvb_ve_jit_shutdown(void);
 
-DLLEXPORT cphvb_error cphvb_ve_jit_reg_func(char *lib, char *fun, cphvb_intp *id);
+DLLEXPORT cphvb_error cphvb_ve_jit_reg_func(char *fun, cphvb_intp *id);
 
 #ifdef __cplusplus
 }

@@ -16,14 +16,16 @@ def test_pattern_001(H,W):
     cphvbbridge.handle_array(B)   
     
     work = A + B   
-    t = A
+    t = A[0,1]
+    
     
     
 def test_pattern_002(H,W):    
     type = np.float32; 
     A = np.ones((H,W),dtype=type)    
     cphvbbridge.handle_array(A)        
-    A = A + 2.0        
+    A = A + 2.0    
+    t = A[0,1]    
     return A
 
 
@@ -37,7 +39,7 @@ def test_pattern_003(H,W):
     cphvbbridge.handle_array(B)
 
     A = B * 2 
-    
+    t = A[0,1]
     return A
 
 def test_pattern_004(H,W):    
@@ -51,7 +53,7 @@ def test_pattern_004(H,W):
     cphvbbridge.handle_array(B)
 
     A += B 
-    
+    t = A[0,1]
     return A
 
 
@@ -66,7 +68,8 @@ def test_pattern_005(H,W):
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)   
     
-    A = A + A   
+    A = A + A 
+    t = A[0,1]  
     return A
 
 
@@ -85,6 +88,7 @@ def test_pattern_006(H,W):
     cphvbbridge.handle_array(D)   
     
     D = (A + B + A + D) * 4
+    t = D[0,1]
     return D
 
 #
@@ -109,10 +113,41 @@ def test_pattern_007(H,W):
     cphvbbridge.handle_array(B)   
     cphvbbridge.handle_array(C)   
     
-    A = B + C + A  # 6
-    B = A * 2  # 12
+    #A = B + C + A  # 6
+    B = A * 2  # 12    
+    #print A[0,1]
+    B[0,1]
     return A,B 
     
+
+def test_pattern_101(H,W):
+    print "- test_pattern_007()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    C = np.ones((H,W),dtype=type)    
+
+    B = B * 2;
+    C = C * 3
+            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)   
+    
+    for i in xrange(5):
+        A += B + C
+    
+    
+    print A
+    
+    #A = B + C + A  # 6
+    #B = A * 2  # 12
+    #return A,B 
+    
+
+
+
 
 
 
@@ -336,8 +371,12 @@ if __name__ == "__main__":
         test_pattern_005(1,5)        
     if do_num == 6:
         test_pattern_006(1,5)        
-    if do_num == 7:
+    if do_num == 7:        
         test_pattern_007(1,5)                                    
+
+
+    if do_num == 101:
+        test_pattern_101(1,5)                    
     #test_pattern_hit(5,5)
     
     #test_pattern_miss_a(5,5)
