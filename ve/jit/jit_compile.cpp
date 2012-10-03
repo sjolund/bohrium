@@ -22,7 +22,7 @@ using namespace std;
 // TCC (Tiny C Compiler)
 
 cphvb_intp compile_tcc(string func_name,string comput_func_text, jit_comp_kernel* kernel) {
-    logInfo("s compile_tcc()\n");    
+    //printf("s compile_tcc()\n");    
     
     const char* cphvb_headers = "/home/jolu/diku/speciale/cphVB/cphvb-priv/include";
     
@@ -36,15 +36,17 @@ cphvb_intp compile_tcc(string func_name,string comput_func_text, jit_comp_kernel
     }
         
     //tcc_set_lib_path(s,"/usr/local/lib/");
-    logInfo("state: %p\n",s);
+    //printf("state: %p\n",s);
     tcc_set_output_type(s, TCC_OUTPUT_MEMORY);        
     
-    //logInfo("compute_func:\n%s\n",comput_func_text.c_str());
+    //printf("compute_func:\n%s\n",comput_func_text.c_str());
     
     tcc_add_include_path(s,cphvb_headers);   
-    printf("Adding headers\n");
+    //printf("Adding headers\n");
+    
     if (tcc_compile_string(s, comput_func_text.c_str()) == -1) {
         printf("Failure to compile!\n");
+        
         return 1;
     }
     
@@ -52,7 +54,7 @@ cphvb_intp compile_tcc(string func_name,string comput_func_text, jit_comp_kernel
     
     /* get needed size of the code */
     size = tcc_relocate(s, NULL);
-    logInfo("tcc_relocate size: %d\n",size);
+    //printf("tcc_relocate size: %d\n",size);
     if (size == -1)
         return 1;
         
@@ -91,13 +93,14 @@ jit_comp_kernel* compile(string kernel_func_name,string codetext, jit_compile_me
     
     switch(method) {        
         default: 
-            logInfo("compile result: %d\n", compile_tcc(kernel_func_name,codetext,kernel));        
+            printf("compile result: %d\n", compile_tcc(kernel_func_name,codetext,kernel));        
             return kernel;            
     }
 }
 
-jit_comp_kernel* jitc_compile_computefunction(string kernel_func_name, string comput_func_text) {
-    return compile(kernel_func_name,comput_func_text,TCC);
+jit_comp_kernel* jitc_compile_computefunction(string kernel_func_name, string compute_func_text) {
+    //printf("........... %s\n",kernel_func_name.c_str());
+    return compile(kernel_func_name,compute_func_text,TCC);
 }
 
 

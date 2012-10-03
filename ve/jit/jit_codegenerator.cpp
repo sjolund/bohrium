@@ -55,6 +55,106 @@ void _jitcg_print_cphvb_array(cphvb_array* a0, cphvb_intp limit, stringstream* s
             }                                       // Loop then continues to increment the next dimension
         }
     }
+
+}
+
+
+//jit_comp_kernel* jitcg_create_kernel
+
+void jitcg_expr_traverse2(jit_expr* expr, jit_analyse_state* s, std::map<cphvb_intp,cphvb_intp>* as, std::map<cphvb_constant*,cphvb_intp>* cs, stringstream* comp_ss );
+string create_kernel_function_travers(string name,string computation_string);
+string create_kernel_function(string computation_string);
+
+void jitcg_create_kernel_code(jitcg_state* cgs, jit_analyse_state* s, jit_expr* expr) {
+    //printf("jitcg_create_kernel_code()\n");
+    // get the nametable entry for the expr.
+    jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
+    
+    // stringstream to build the math expression. 
+    stringstream comp_ss;
+    
+    // left hand side of the math expression    
+    comp_ss << "*(((" << cphvb_type_typetext(entr->arrayp->type) << "*) oa->data) + off_oa) = ";
+
+    // lists to hold input variables, Arrays and Constants, from traversal of expr.
+    std::map<cphvb_intp,cphvb_intp>* as = new std::map<cphvb_intp,cphvb_intp>();
+    std::map<cphvb_constant*,cphvb_intp>* cs = new std::map<cphvb_constant*,cphvb_intp>();
+
+    // travers the expr, building the math computation and extracting input variables.
+    jitcg_expr_traverse2(expr, s, as, cs, &comp_ss);
+
+    // convert maps into arrays with key==index        
+    cphvb_array** vasa      = (cphvb_array**)malloc(as->size() * sizeof(cphvb_array*));
+    cphvb_constant** vcsa   = (cphvb_constant**)malloc(cs->size() * sizeof(cphvb_constant*)); 
+        
+    std::map<cphvb_intp,cphvb_intp>::iterator ita;    
+    for(ita = as->begin();ita != as->end();ita++) {
+        cphvb_array* ainput = cphvb_base_array(jita_nametable_lookup(s->nametable,(*ita).first)->arrayp);
+        //cphvb_array* ainput = cphvb_base_array(jita_nametable_lookup(s->nametable,(*ita).first)->arrayp);
+        //printf("+++++ %d %p\n",(*ita).second,ainput);
+        
+        vasa[(*ita).second] = ainput;
+    }
+    std::map<cphvb_constant*,cphvb_intp>::iterator itc;    
+    for(itc = cs->begin();itc != cs->end();itc++) {                
+        vcsa[(*itc).second] = (*itc).first;
+    }
+
+    cgs->array_inputs = vasa;
+    cgs->array_inputs_len = as->size();
+
+    cgs->constant_inputs = vcsa;
+    cgs->constant_inputs_len = cs->size();
+
+    //string kernel_name = "kernel_func_001";
+    //printf("----------- %s\n",cgs->kernel_name.c_str());
+    string func_text = create_kernel_function_travers(cgs->kernel_name.c_str(),comp_ss.str());
+    //printf("----------- %s\n",func_text.c_str());
+    cgs->source_function = func_text;
+    cgs->source_math = comp_ss.str();
+
+
+
+
+        
+    //~ 
+    //~ size_t hash = string_hasher(comp_ss.str());
+    //~ char buff[30];
+    //~ sprintf(buff,"kernel_func_%d",hash);
+    //~ string kernel_name = buff;
+    //~ // create the text function    
+    //~ //string func_text = compute_func_text(comp_ss.str());
+    //~ //string func_text = create_kernel_function(comp_ss.str());
+    //~ string func_text = create_kernel_function_travers(kernel_name,comp_ss.str());    
+        //~ 
+    //~ // compile the computation function
+    //~ jit_comp_kernel* kernel = jitc_compile_computefunction(kernel_name,func_text);
+    //~ if (kernel == NULL) {
+        //~ logInfo("kernel == null\n");
+        //~ return;
+    //~ } 
+        //~ logInfo("kernel->function == %p\n",kernel->function);
+            //~ 
+    //~ // compile the comp_ss.str() into a compute function    
+    //~ //void (*compute_fun) () = 
+        //~ 
+    //~ 
+    //~ kernel->function(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
+    //~ //traverse_kernel_str(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
+    //~ 
+ //~ 
+    //~ 
+    //~ stringstream s;
+    //~ s << hash;
+    //~ 
+    //~ printf(" === hash %s ===",s.str().c_str());
+    
+    //traverse_kernel(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0, kernel->function);
+    logInfo("e test_computation()\n");
+
+
+    
+    
 }
 
 
@@ -156,6 +256,62 @@ void jitcg_codetext_opcode_stream(cphvb_opcode opcode, stringstream* oss) {
 }
 
 
+void jitcg_expr_traverse2(jit_expr* expr, jit_analyse_state* s, std::map<cphvb_intp,cphvb_intp>* as, std::map<cphvb_constant*,cphvb_intp>* cs, stringstream* comp_ss ) {
+    logInfo("s jitcg_expr_travers_array2()\n");
+    
+    jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
+    
+    if (is_array(expr) || entr->is_executed) {       
+        cphvb_intp ia = -1;        
+        // if not added yet        
+        if(as->find(expr->name) == as->end()) {                    
+            ia = as->size();
+            //printf("---------- %ld  %ld\n",expr->name,ia);
+            as->insert(pair<cphvb_intp,cphvb_intp>(expr->name,ia));             
+        } else {
+           ia = as->find(expr->name)->second;
+        }        
+        if (ia > -1) {;
+            if (is_array(expr)) {
+                *comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(expr->op.array->type) << "*) as[" << ia << "]->data))";
+            } else {                
+                *comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(entr->arrayp->type) << "*) as[" << ia << "]->data))";
+            }
+        }       
+        
+    } else if(is_bin_op(expr)) {    
+        *comp_ss << "(";
+        jitcg_expr_traverse2(expr->op.expression.left,s,as,cs,comp_ss);
+        jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);                                     
+        jitcg_expr_traverse2(expr->op.expression.right,s,as,cs,comp_ss);
+        *comp_ss << ")";
+        
+    } else if (is_un_op(expr)) {        
+        *comp_ss << "(";
+        jitcg_expr_traverse2(expr->op.expression.left,s,as,cs,comp_ss);        
+        jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);  
+        *comp_ss << ")";
+        
+    } else  if (is_constant(expr)) {     
+        cphvb_intp ic = -1;
+        // if not added yet
+        if(cs->find(expr->op.constant) == cs->end()) {            
+            ic = cs->size();
+            cs->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,ic));                                
+        } else {
+            ic = cs->find(expr->op.constant)->second;
+        }                
+        
+        *comp_ss << "*((" << cphvb_type_typetext(expr->op.constant->type)  << "*)" << " &cs[" << ic << "]->value)";         
+    }        
+    logInfo("e jitcg_expr_travers_array()\n");
+}
+
+
+
+
+
+
 void jitcg_expr_traverse(jit_expr* expr, jit_ssa_map* ssamap, std::map<cphvb_intp,cphvb_intp>* as, std::map<cphvb_constant*,cphvb_intp>* cs, stringstream* comp_ss ) {
     logInfo("s jitcg_expr_travers_array()\n");
     if(is_bin_op(expr)) {    
@@ -198,6 +354,7 @@ void jitcg_expr_traverse(jit_expr* expr, jit_ssa_map* ssamap, std::map<cphvb_int
     }        
     logInfo("e jitcg_expr_travers_array()\n");
 }
+
 
 
 
@@ -417,21 +574,23 @@ cphvb_error traverse_kernel(cphvb_array* oa, cphvb_array* as[],cphvb_index num_a
     return CPHVB_SUCCESS;
 }
 
-string create_kernel_function_travers(string name,string computation_string) {    
+string create_kernel_function_travers(string name,string computation_string) {
+    logDebug("create_kernel_function_travers(%s,comp)",name.c_str());
+    
     stringstream ss;
     ss << "#include \"cphvb_array.h\"\n";
     ss << "#include \"cphvb_type.h\"\n";
     ss << "#include \"cphvb.h\"\n";    
-    ss << "void " << name << "(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {\n"
+    ss << "void " << name.c_str() << "(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {\n"
 "        cphvb_index last_dim = oa->ndim-1;\n"
 "        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( oa->ndim, oa->shape );\n"
 "        cphvb_index ec = 0;\n"
 "        cphvb_index off_oa = 0;\n"
 "        cphvb_index* coord;\n"        
-"        coord = malloc(oa->ndim * sizeof(cphvb_index));\n"
+"        coord = (cphvb_index*) malloc(oa->ndim * sizeof(cphvb_index));\n"
 "        memset(coord, 0, oa->ndim * sizeof(cphvb_index));\n"  
 "        cphvb_index* offs;\n"
-"        offs = malloc(num_as * sizeof(cphvb_index));\n"
+"        offs = (cphvb_index*) malloc(num_as * sizeof(cphvb_index));\n"
 "        int j=0, i=0;\n"
 "        if (skip>0) {                                // Create coord based on skip\n"
 "            while(ec<skip) {\n"
@@ -660,3 +819,71 @@ void traverse_kernel_str(cphvb_array* oa, cphvb_array* as[],cphvb_index num_as, 
     }
 }
 
+
+void kernel_func_001(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_intp last_dim = (oa->ndim-1);
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( oa->ndim, oa->shape );
+        cphvb_index ec = 0;
+        cphvb_index off_oa = 0;
+        cphvb_index* coord;
+        coord = (cphvb_index*) malloc( (sizeof(cphvb_index) * (int)oa->ndim) );
+        memset(coord, 0, oa->ndim * sizeof(cphvb_index));
+        cphvb_index* offs;
+        offs = (cphvb_index*) malloc(num_as * sizeof(cphvb_index));
+        cphvb_array* test;
+        
+
+        int j=0, i=0;
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += oa->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        
+        while( ec < nelements ) {
+            
+            for(i=0;i<num_as;i++) {                                                
+                offs[i] = as[i]->start;
+                //printf("a %d %p,%d\n",i,as[i],offs[i]);            
+            }
+            printf("test1\n");
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+                for(i=0;i<num_as;i++) {
+                    offs[i] += coord[j] * as[i]->stride[j];
+                }
+            }
+            printf("test2\n");
+            for(j=0; j < oa->shape[last_dim]; j++ ) {
+                // computation code
+                //printf("out = %p, in %p %p\n",oa->data,as[0]->data,as[1]->data);
+                *(((cphvb_float32*) oa->data) + off_oa) = (*(offs[0]+((cphvb_float32*) as[0]->data)) + *(offs[1]+((cphvb_float32*) as[1]->data)));
+                //printf("1\n");
+                for(i=0;i<num_as;i++) {
+                    //printf("%ld, %ld\n",offs[i], as[i]->stride[last_dim]);
+                    //printf("ldim %ld\n", last_dim);
+                    offs[i] = offs[i] + (as[i]->stride[last_dim]);
+                    //printf("%ld\n",offs[i]);
+                }
+                //printf("2\n");
+                off_oa += oa->stride[last_dim];
+            }
+            printf("test3\n");
+            ec += oa->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < oa->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+        printf("test3\n");
+        free(coord);
+        free(offs);
+    }
+//~ 

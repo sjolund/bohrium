@@ -8,9 +8,11 @@
 #include <utility>
 #include <map>
 #include <list>
+#include <sstream>
+#include <iostream>
 
-typedef enum  {no_type = -1, bin_op = 0, un_op = 1, const_val = 2, array_val = 3} ExprType;
-
+typedef enum  {no_type = -1, bin_op = 0, un_op = 1, const_val = 2, array_val = 3} ExprType; 
+typedef enum  {no_status = -1, jit_expr_status_executed} jit_expr_status;
 //typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4} _LOG_LEVEL;
 
 typedef struct Exp {
@@ -18,6 +20,7 @@ typedef struct Exp {
     cphvb_intp                                      id; 
     cphvb_intp                                      name; 
     cphvb_intp                                      depth;
+    jit_expr_status                                 status;
                                                    
     union { cphvb_constant*                         constant;
             cphvb_array*                            array;
@@ -50,6 +53,8 @@ char* expr_type_to_string(ExprType enumval);
 
 cphvb_error print_ast_node(ast* node);
 
+
+
     
 bool at_add(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array, ast* ast);
 ast* at_lookup(std::map<cphvb_array*,ast*>* assignments, cphvb_array* array);
@@ -59,5 +64,6 @@ void test_constant_to_string(void);
 
 void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_array*,ast*>* nametable, cphvb_instruction* instr);
 ExprType ast_operand_count_to_tag(cphvb_intp operand_count) ;
+void print_ast_recursive_stream(int step, ast* node, std::stringstream* ss);
 
 #endif

@@ -1,8 +1,12 @@
 # python testing cphVB.
 
 import numpy as np
+import time
 #import numpytest
-import cphvbbridge
+try:
+    import cphvbbridge
+except:
+    None
 
 type=np.float32
 def test_pattern_000(H,W):
@@ -137,7 +141,8 @@ def test_pattern_006(H,W):
 def test_pattern_007(H,W):
     cphvbbridge.flush()
     print ''
-    print "- test_pattern_007()";    
+    print "- test_pattern_007()";
+    print 'Test of re-assignment of full array'
     
     A = np.ones((H,W),dtype=type)    
     B = np.ones((H,W),dtype=type)    
@@ -171,13 +176,320 @@ def test_pattern_008(H,W):
     A = A + B 
     print C
     
+    
+def test_pattern_009(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_009()";
+    
+    #A = np.ones((H,W),dtype=type)
+    A = np.ones((H,W),dtype=np.float64)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+    
+    # Aa = A[0,1:3] + 2
+    
+    #~ A[0,1:3] = B[0,1:3] + C[0,1:3]
+    #~ # Aa = A[0,1:3] + 2
+    #~ A[0,3:5] = B[0,1:3] + 2
+    #~ A[0,1:3] = A[0,1:3] + 8            
+    #~ print A[0,1:3]
+    #~ 
+    
+    # ---------------------------
+    #~ A = 3
+    #~ Aa = A[0,1:3] + 2
+    #~ A[0,1:3] = 0
+    #~ print Aa     
+    # Aa = 5, not 0.
+    # Aa thus hold as copy of A[0,1:3] + 2
+    # results of a operations is thus a copy in Numpy-land
+    # ---------------------------
+        
+    #~ A[0,2:4] = A[0,1:3] + 2
+    #~ A[0,1:3] = 0
+    #~ print A
+    #~ 
+    #~ 
+    #~ A[0,2:4] = A[0,2:4] + 2
+    #~ #A[0,2:4] += 2
+    #~ A[0,3:5] = 0
+    #~ print A
+    #~ 
+    #~ 
+
+    
+    # these will from the nametable view be destinct. Need to be able to handle this.
+    # A[0,2:4] = A[0,2:4] + 2
+    #A += 1
+    
+    #Aa = A[0,1:3] + A[0,2:4] + 10
+    
+    #A[0,0:2] = A[0,2:4] + C[0,2:4]
+    
+    #A[0,0:2] = A[0,0:2] + C[0,2:4]    
+    A[0,1:3] = A[0,0:2] + C[0,2:4]    
+
+    AA = A[0,0:2] + 2
+    
+    #~ A[0,3:5] = 0 # has no effect on Ba, but on A
+    #~ B[0,2:4] = B[0,1:3] + Aa 
+    #~ 
+    #~ A = A + B
+    #~
+
+
+    #A[0,1]
+    AA[0]
+    
+    #~ # assignments to the base array is done on the base array (the same view) as one would expect.
+    
+
+def test_pattern_010(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_010()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    BB = A[0,0:2] + 2
+    BB = A[0,1:3] + 2
+    BB = A[0,2:4] + 2
+
+def test_pattern_011(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_011()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    A[0,0:2] = A[0,0:2] + B[0,1:3]
+    A[0,0:2] = A[0,0:2] + B[0,2:4]
+    A[0,0:2] = A[0,0:2] + B[0,0:2]
+
+    #~ A[0,0:2] += B[0,1:3]
+    #~ A[0,0:2] += B[0,2:4]
+    #~ A[0,0:2] += B[0,0:2]
+
+    # A[0,0:2] = A[0,0:2] + B[0,1:3] + B[0,2:4] + B[0,0:2]    
+
+    #~ A[0,0:2] = A[0,0:2] + B[0,1:3]
+    #~ A[0,0:2] = A[0,0:2] + B[0,2:4]
+    A[0,1]
+
+def test_pattern_012(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_012()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    
+    A[0,0:2] = B[0,1:3]
+    A[0,2]
+
+
+
+
+
+def test_pattern_013(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_013()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    
+    A[0,0:2] = B[0,1:3] + 2
+    A[0,1]    
+
+def test_pattern_014(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_014()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)    
+    A = A * 3
+    B = B * 2
+    C = C * 2
+    
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    #s = time.time()    
+    #K1 = (A + B + C + A + B + C + A + B + C + A + B + C + A + B + C + A + B + C + A + B + C + A + B + C + A + B + C + B + C + A + B + C )
+    K1 = (A * B / C) +  (A * B / C) + (A * B / C) + (A * B / C)+ (A * B / C)+ (A * B / C)
+    #K1 += B
+    #K1 += C
+    print K1[1,0]
+    #print s - time.time()
+    
+    
+# ================================================
+
+def test_pattern_101(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_101()";
+    # exelist = [3,]
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    A += 2 + B
+    B = A + C    
+    A += 1
+       
+    A[0,1]
+
+# max expr DONs
+# good test for dependency and pre-execution list.
+def test_pattern_102(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_102()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type)
+    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    C += 10    
+    C[0,1:3] = A[0,0:2] + B[0,2:4]
+    Cc = C + B
+    Cc[0,1]
+
+
+def test_pattern_103(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_103()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type)
+    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+    
+    B += 10 + A
+    K = B+2
+    B[0,1:3] +=2    
+    C += B + 10 
+    C[0,1:3] = A[0,0:2] + B[0,2:4]
+    Cc = C + B
+
+        
+    Cc[0,1]
+    #K[]
+
+    
+    # Execute list:
+    #  B1 in l1, tdto = 2 (3: p[4,5]) 4 or 5 not reached from Cc expression tdto +1 (6 and 5 are the same. and identity is used)
+    #  B2 in l3, tdto = 2, (6: DTO [7,11,]), 7 should remain after dto erase, since only 11 is reachable from expr.  7 is not. #11's child expr is #3.
+    #  C1 in l4
+    #  C2 in l5
+
+
+    # [B1,B2,C1,C2] -> Cc  == [3,6,9,13] -> 14
+    # B1 since B is used by K. Unrelated Use (to the expr). tdto > 0 after expr-parent use removal
+    # B2 since B is update Out of Expression. Array shape different.
+    # C1 since C is used by C[]. Unrelated use.
+    # C2 since C is update Out of Expression. Array share different
+    # before Cc can be computed in l6
+
+
+    # B[0,2:4] should not be set as a update (added to the usage table) on the base array, since it is only read.
+    # if a array with a base array is defined, and the base array already exist, do not add its pressent to the usage list!
+
 
 if __name__ == "__main__":
     #~ test_pattern_000(1,5)     
     #~ exit(0)
-    #~ 
-    #~ 
-    test_pattern_001(1,5)    
+
+
+    # A + B
+    #test_pattern_003(1,5)
+
+    #test_pattern_012(1,5)
+
+    #test_pattern_101(1,5)
+     
+    #test_pattern_102(1,5)
+
+    #test_pattern_103(1,5)
+
+    #test_pattern_101(1,5)
+
+
+    s = time.time()    
+    #test_pattern_014(10000,3000)
+    test_pattern_103(10000,3000)
+    print time.time()-s
+
+#-0.0366699695587
+#-0.0363841056824
+#-0.0370109081268
+#-0.0359990596771
+
     #~ test_pattern_002(1,5)   
     #~ test_pattern_003(1,5)
     #~ 
@@ -191,5 +503,15 @@ if __name__ == "__main__":
     #~ test_pattern_008(1,5)
     #~ 
     #~ 
-    
-    
+
+
+
+#~ doing test_pattern 14 (10,10)
+#~ simple    
+#~ -0.000265121459961
+#~ -0.000275850296021
+#~ 
+#~ jit - with simple
+#~ -0.000304222106934
+#~ -0.000330924987793
+

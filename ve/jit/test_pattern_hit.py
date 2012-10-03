@@ -118,6 +118,33 @@ def test_pattern_007(H,W):
     #print A[0,1]
     B[0,1]
     return A,B 
+
+
+def test_pattern_008(H,W):
+    print "- test_pattern_008()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    C = np.ones((H,W),dtype=type)    
+
+    B = B * 2;
+    C = C * 3
+            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)   
+    
+    
+    A[0,1:3] = B[0,2:4]
+    #A = B + C + A  # 6
+    B = A * 2  # 12    
+    #print A[0,1]
+    B[0,1]
+    print B
+    
+    
+
     
 
 def test_pattern_101(H,W):
@@ -135,11 +162,11 @@ def test_pattern_101(H,W):
     cphvbbridge.handle_array(B)   
     cphvbbridge.handle_array(C)   
     
-    for i in xrange(5):
-        A += B + C
+    for i in xrange(2):
+        A = A + B + C
     
     
-    print A
+    A[1]
     
     #A = B + C + A  # 6
     #B = A * 2  # 12
@@ -330,7 +357,7 @@ def jacobi_stencil(H,W,Dist,elems=2):
       #~ delta = np.add.reduce(tmpdelta)
       cells[:] = work
       
-    return cells
+    cells[0,1]
 
 if __name__ == "__main__":
     
@@ -374,9 +401,14 @@ if __name__ == "__main__":
     if do_num == 7:        
         test_pattern_007(1,5)                                    
 
-
+    if do_num == 8:
+        test_pattern_008(1,5)                                           
+        
     if do_num == 101:
         test_pattern_101(1,5)                    
+    if do_num == 42:
+        jacobi_stencil(1,5,2)
+    
     #test_pattern_hit(5,5)
     
     #test_pattern_miss_a(5,5)

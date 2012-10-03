@@ -4,6 +4,7 @@
 #include "jit_ast.h"
 #include <vector>
 #include "jit_logging.h"
+#include "jit_common.h"
 
 
 #ifndef _LOG_LEVEL
@@ -12,6 +13,9 @@
 
 using namespace std;
 
+jit_name_entry* jita_nametable_lookup_a(jit_analyse_state* s, cphvb_array* array);
+cphvb_intp jita_lookup_name_a(jit_analyse_state* s, cphvb_array* array);
+jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* base_usage_table);
 /**
  * the opcode of is SYNC, DISCARD, FREE, 
  **/
@@ -29,7 +33,7 @@ bool jita_is_controll(cphvb_instruction* instr) {
  **/
 jit_name_entry* jita_nametable_lookup(jit_name_table* nametable, cphvb_intp index) {
     logInfo("jita_nametable_lookup()\n");
-    if( (int)nametable->size() > index-1) {    
+    if( (index != -1) && ((int)nametable->size() > index-1)) {    
         return nametable->at(index);
     }       
       
@@ -226,6 +230,166 @@ cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_m
     return -1;
 }
 
+cphvb_intp jita_handle_arithmetic_instruction3(jit_analyse_state* s, cphvb_instruction* instr) {
+    return jita_handle_arithmetic_instruction2(s->nametable, s->ssamap, s->base_usage_table, instr);
+}
+
+
+jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* base_usage_table) {
+   jit_analyse_state* s = (jit_analyse_state*) malloc(sizeof(jit_analyse_state));
+   s->ssamap = ssamap;
+   s->nametable = nametable;
+   s->base_usage_table = base_usage_table;
+   return s;
+}
+
+/**
+ * with base_array_usage_list / dependency_table
+ **/ 
+cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* basedep_table, cphvb_instruction* instr) {
+    logDebug("s jita_handle_arithmetic_instruction()\n");
+    logDebug("opcode: %s\n", cphvb_opcode_text(instr->opcode));
+    // get the first and second operands. Look them up, to see if they 
+    // are already registered. If not register them, else reference the 
+    // registered one and add "used_at".
+    
+    jit_base_dependency_table::iterator it;
+    jit_expr* first = NULL;        
+    jit_expr* second = NULL;    
+    jit_expr* expr = new jit_expr();
+    
+    jit_expr_tag instr_tag;
+    cphvb_intp expr_depth = 1;
+            
+    cphvb_intp name_first = -1;
+    cphvb_intp name_second = -1;
+    
+    
+         
+    //jit_name_entry* first_entry = jita_lookup_name(nametable,ssamap, instr->operand[1],-1);        
+    
+    jit_analyse_state* s = jita_make_jit_analyser_state(nametable,ssamap,basedep_table);
+     
+    jit_name_entry* first_entry = NULL;
+    if (!cphvb_is_constant( instr->operand[1])) {        
+        first_entry = jita_nametable_lookup_a(s, instr->operand[1]);            
+    }
+
+    
+    //printf("-- First %p\n",first_entry);
+    if (first_entry == NULL) {        
+        first = new jit_expr();            
+        operand_to_exp(instr,1,first);
+                           
+        logDebug("first created\n");
+        
+        if (!cphvb_is_constant(instr->operand[1])) {
+                    
+            // this step can be reached by newly created arrays.
+            name_first = jita_insert_name(nametable,ssamap,instr->operand[1],first);        
+            if (instr->operand[1]->base != NULL || instr->operand[1]->data != NULL ) {
+                
+                // add only usage if the basearray had not been added before!                                  
+                if (jita_base_usage_table_get_usage(basedep_table,cphvb_base_array(instr->operand[1])) == NULL) {
+                    jita_base_usage_table_add_usage(basedep_table,cphvb_base_array(instr->operand[1]),name_first);
+                }
+            } 
+        }                            
+    } else {
+        first = first_entry->expr;                
+        logDebug("first looked up.\n");
+    }
+    
+             
+    instr_tag = un_op;
+    expr_depth = first->depth;                        
+    
+    // binary
+    jit_name_entry* second_entry = NULL;    
+    if (cphvb_operands(instr->opcode) == 3) {                    
+        //second_entry = jita_lookup_name(nametable,ssamap, instr->operand[2],-1);
+        //cphvb_pprint_instr(instr);
+        if (instr->operand[2] != NULL)
+            second_entry = jita_nametable_lookup_a(s, instr->operand[2]);   
+
+        //printf("-- Second %p\n",second_entry);
+        if (second_entry == NULL) {
+            second = new jit_expr();
+            operand_to_exp(instr,2,second);
+            logDebug("second created\n");
+            if(!cphvb_is_constant(instr->operand[2])) {  
+                // this step is reached only once for each array! if it exists, it is caught in jita_lookup_name
+                name_second = jita_insert_name(nametable,ssamap,instr->operand[2],second);
+                if (instr->operand[2]->base != NULL || instr->operand[2]->data != NULL ) {
+                    if (jita_base_usage_table_get_usage(basedep_table,cphvb_base_array(instr->operand[2])) == NULL) {
+                        jita_base_usage_table_add_usage(basedep_table,cphvb_base_array(instr->operand[2]),name_second);
+                    }
+                    
+                }              
+            }            
+        } else {
+            second = second_entry->expr;
+            logDebug("second looked up.\n");            
+        }                    
+        instr_tag = bin_op;
+        expr_depth = std::max(first->depth,second->depth);
+    }
+    
+    // create expr. 
+    expr->tag = instr_tag;
+    expr->op.expression.opcode = instr->opcode;          
+    expr->op.expression.left = first;
+    expr->op.expression.right = second;
+    expr->depth = expr_depth + 1;
+
+    
+    // insert the new expression    
+    cphvb_intp name = jita_insert_name(nametable, ssamap, instr->operand[0], expr);
+    jita_nametable_lookup(nametable,name)->instr = instr;  
+    logDebug("expr inserted as %ld:\n",name);     
+
+    
+    // add operand0 assignment to the base_array_usages_list.
+    if (instr->operand[0]->base == NULL && instr->operand[0]->data == NULL ) {
+        
+    }
+    else {
+        jita_base_usage_table_add_usage(basedep_table,cphvb_base_array(instr->operand[0]),name);
+    }
+
+
+
+    //jit_pprint_nametable(s->nametable);
+    //printf("\n\n");
+    
+    // update first and second expression entries with used_at, 
+    // if not constant.    
+
+
+    
+    // update used_at entries
+    if(!cphvb_is_constant(instr->operand[1])) {
+        if (first_entry == NULL) {
+            first_entry = jita_nametable_lookup(nametable,name_first);
+        }
+        logDebug("first_entry->used_at->push_back(%ld);\n",name); 
+        logDebug("%p \n",first_entry); 
+        
+        first_entry->used_at->push_back(name);
+    }
+    
+    if(second != NULL && !cphvb_is_constant(instr->operand[2])) {
+        if (second_entry == NULL) {
+            second_entry = jita_nametable_lookup(nametable,name_second);
+        }        
+        logDebug("second_entry->used_at->push_back(%ld);\n",name); 
+        second_entry->used_at->push_back(name);                
+    }
+    logDebug("e jita_handle_arithmetic_instruction()\n");        
+    
+    return 1;
+}
+
 cphvb_intp jita_handle_arithmetic_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, cphvb_instruction* instr) {
     logInfo("s jita_handle_arithmetic_instruction()\n");
     logDebug("opcode: %s\n", cphvb_opcode_text(instr->opcode));
@@ -335,7 +499,8 @@ cphvb_intp jita_insert_name(jit_name_table* nametable, jit_ssa_map* ssamap, cphv
     jit_name_entry* name_entry = new jit_name_entry();
     name_entry->version = next_version;    
     name_entry->expr = expr;
-    name_entry->arrayp = array;    
+    name_entry->arrayp = array;
+      
     name_entry->used_at = new std::vector<cphvb_intp>();
 
     logDebug(">>> - entry %p\n",name_entry);
@@ -352,6 +517,197 @@ cphvb_intp jita_insert_name(jit_name_table* nametable, jit_ssa_map* ssamap, cphv
     
     return name;
 }
+
+
+// jit_dependency_graph() methods
+// ===================================
+
+jit_dependency_graph_node* jita_depgraph_get_node(jit_dependency_graph* graph, cphvb_intp name) {
+    jit_dependency_graph::iterator it = graph->find(name);
+    if (it==graph->end()) {
+        return NULL;
+    }    
+    return it->second;
+}
+
+/**
+ * @return 0 on success. 1 on failure.
+ */
+jit_dependency_graph_node* jita_depgraph_add_node(jit_dependency_graph* graph, jit_name_entry* name_table_entry) {    
+    jit_dependency_graph_node* n = (jit_dependency_graph_node*)malloc(sizeof(jit_dependency_graph_node));
+    n->name_table_entry = name_table_entry;    
+    n->dep_ons = new vector<jit_name_entry*>();
+    n->dep_tos = new vector<jit_name_entry*>();
+    bool sta = graph->insert(pair<cphvb_intp,jit_dependency_graph_node*>(name_table_entry->expr->name,n)).second;
+    logDebug("insert status: %d,%d,%p,%p\n",sta,name_table_entry->expr->name,n,graph);
+    if(sta==false) {
+        logDebug("element already exists\n");
+        
+        return jita_depgraph_get_node(graph,name_table_entry->expr->name);        
+    }
+    
+    return n;    
+}
+
+vector<jit_name_entry*>* jita_depgraph_get_dto(jit_dependency_graph* graph, cphvb_intp name) {
+     jit_dependency_graph_node* n = jita_depgraph_get_node(graph, name);
+     if (n != NULL) {
+         return n->dep_tos;
+     }
+     return NULL;
+}
+
+vector<jit_name_entry*>* jita_depgraph_get_don(jit_dependency_graph* graph, cphvb_intp name) {
+     jit_dependency_graph_node* n = jita_depgraph_get_node(graph, name);
+     if (n != NULL) {
+         return n->dep_ons;
+     }
+     return NULL;
+}
+
+cphvb_intp jita_depgraph_node_add_don(jit_dependency_graph_node* n,jit_name_entry* onnode) {
+    n->dep_ons->push_back(onnode);
+    return 0;
+}
+
+cphvb_intp jita_depgraph_node_add_dto(jit_dependency_graph_node* n,jit_name_entry* tonode) {
+    n->dep_tos->push_back(tonode);
+    return 0;
+}
+
+// jit_base_dependency_table() methods
+// ===================================
+
+vector<cphvb_intp>* jita_base_usage_table_get_usage(jit_base_dependency_table* dep_table, cphvb_array* base_array) {
+    logDebug("jita_base_usage_table_get_usage(%p,%p)\n",dep_table,base_array);
+    jit_base_dependency_table::iterator it = dep_table->find(base_array);    
+    //jit_pprint_base_dependency_table(dep_table);
+    
+    it = dep_table->find(base_array);
+    if (it==dep_table->end()) { 
+        logDebug("Deptable does not contain basearray\n");
+        return NULL;         
+    }
+    return it->second;
+}
+
+
+cphvb_intp jita_base_usage_table_add_usage(jit_base_dependency_table* dep_table, cphvb_array* base_array, cphvb_intp name) {
+    jit_base_dependency_table::iterator it = dep_table->find(base_array);
+    it = dep_table->find(base_array);
+    if (it==dep_table->end()) {
+        (*dep_table)[base_array] = new vector<cphvb_intp>(0);                
+    }
+    (*dep_table)[base_array]->push_back(name);
+}
+
+
+/**
+ * @return 0 if equal. 
+ **/
+int array_view_deep_compare(cphvb_array* a, cphvb_array* b ) {
+    if (a == b) {
+        return 0;    
+    }
+        
+    if ( a->base == NULL || b->base == NULL) {
+        return 1;
+    }
+    
+    // both are views on a base array?
+    if (a->base != b->base) {
+        return 2;
+    }
+    
+    // a and b are views on the same basearray.
+    bool equal = true;
+    int i;
+    
+    
+    // do compares on dimension, start, shape and stride
+    if (a->ndim != b->ndim) {
+        return 10;
+    }
+     
+    if (a->start != b->start) {
+        return 11;                
+    }
+    
+    for(i=0;i < a->ndim;i++) {
+        if (a->shape[i] != b->shape[i]) {
+            return 12;
+        }
+        
+        if (a->stride[i] != b->stride[i]) {
+            return 13;
+        }
+    }
+    
+    return 0;    
+}
+
+
+cphvb_intp jita_lookup_name_deep(jit_base_dependency_table* dep_table,jit_name_table* nametable, jit_ssa_map* ssamap, cphvb_array* array) {    
+    logDebug("jita_lookup_name_deep()\n");
+    
+    cphvb_array* base = cphvb_base_array(array);
+    // validate input   
+    if(base->data == NULL) {        
+        return -1;
+    }
+    
+    // get the base_usagelist for the array's base.    
+    std::vector<cphvb_intp>* base_deps = jita_base_usage_table_get_usage(dep_table,base);
+    if(base_deps == NULL) {
+        return -1;
+    }
+    //printf("..... %p \n", base_deps);
+    jit_pprint_base_dependency_list(base_deps);
+    // go through the baselist, and lookup the expressions changeing the base, to look for
+    // equal view to array.
+    jit_name_entry* entr;
+    std::vector<cphvb_intp>::iterator it;            
+    for(it=base_deps->end(); it!=base_deps->begin(); it--) {
+        entr = jita_nametable_lookup(nametable,*it);
+        if (entr != NULL) {
+            int res = array_view_deep_compare(entr->arrayp,array);  
+            //printf("compare %p == %p = %d \n",entr->arrayp,array,res);                      
+            if (res == 0) {                
+                return *it;
+            }                    
+        }
+    }
+    return -1;
+}
+
+cphvb_intp jita_lookup_name_deep_s(jit_analyse_state* s, cphvb_array* array) {
+    return jita_lookup_name_deep(s->base_usage_table,s->nametable, s->ssamap,array);
+}
+
+jit_name_entry* jita_nametable_lookup_a(jit_analyse_state* s, cphvb_array* array) {    
+    logDebug("jita_nametable_lookup_a(%p)\n",array);
+    
+    cphvb_intp name = jita_lookup_name_a(s,array);
+    
+    //printf("jita_nametable_lookup_a >> name : %ld for %p\n",name,array);
+    //jit_pprint_nametable(s->nametable);
+    return jita_nametable_lookup(s->nametable,name);                        
+}
+
+cphvb_intp jita_lookup_name_a(jit_analyse_state* s, cphvb_array* array) {
+    logDebug("jita_lookup_name_a()\n");
+    //printf("%p b> \n",array);
+    cphvb_intp name = jita_ssamap_version_lookup(s->ssamap,array,-1);    
+    //printf("%ld - %p\n",name, array->base);
+    if ((name == -1) && (cphvb_base_array(array)->data != NULL)) {                            
+        name = jita_lookup_name_deep_s(s,array);
+        //logDebug("deep %ld\n",name);
+        
+    }    
+    return name;
+}
+
+// ===================================
 
 // Test methods
 void _print_used_at(std::vector<cphvb_intp>* vec) {

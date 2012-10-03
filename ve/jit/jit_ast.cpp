@@ -8,10 +8,12 @@
 #include "jit_ast.h"
 #include <string>
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <list>
 #include "jit_ssa_analyser.h"
 #include <stdarg.h>
+#include "StringHasher.hpp"
 //#include <utility>
 
 void constant_value_text(cphvb_constant* constant, char buff[]);
@@ -43,14 +45,6 @@ cphvb_error array_to_exp(cphvb_array* array, ast* result) {
         result->id = 0;
         result->op.array = array;
         result->depth = 0;
-        
-        //std::cout << "--"  << sizeof(exp) << "\n";
-        //std::cout << "--"  << result << "\n";
-        //*result = *exp;
-        
-        //printf("2test \n");
-        //std::cout << "array:  " << exp->op.array << "\n";
-        //std::cout << "array_to_exp: result pointer:  " << result << "\n";
     } 
     catch (int e) 
     {
@@ -315,6 +309,44 @@ void print_nametable(std::map<cphvb_array*,ast*> nametable) {
     }    
 }
 
+void add_fill(int step, std::stringstream* ss) {
+    for(int i=0;i<step;i++) {
+        *ss << "--";
+    }
+}
+
+void print_ast_recursive_stream(int step, ast* node, std::stringstream* ss) {
+    
+    switch(node->tag) {
+        case bin_op:
+            add_fill(step,ss);
+            *ss << "B " << opcode_symbol_text(node->op.expression.opcode) << "\n";            
+            print_ast_recursive_stream(step+1,node->op.expression.left,ss);
+            print_ast_recursive_stream(step+1,node->op.expression.right,ss);
+            break;
+        
+        case un_op:
+            add_fill(step,ss);
+            *ss << "U " << opcode_symbol_text(node->op.expression.opcode) << "\n";            
+            print_ast_recursive_stream(step+1,node->op.expression.left,ss);
+            break;
+        
+        case const_val:
+            add_fill(step,ss);
+            *ss << "Const: " << node->op.constant << " " << node->tag << "\n"; 
+            //*ss << "[" << step << "] Const: " << node->op.constant << " " << node->tag << "\n"; 
+            //printf("[%d] Const: %p %d\n",step,node->op.constant,node->tag);
+            break;
+        
+        case array_val:
+            add_fill(step,ss);
+            *ss << "Array: " << node->op.array << " " << node->tag << "\n"; 
+            //*ss << "[" << step << "] Array: " << node->op.array << " " << node->tag << "\n"; 
+            //printf("[%d] Array: %p %d\n",step,node->op.array,node->tag);
+            break;
+    }
+    
+} 
 
 void print_ast_recursive(int step, ast* node) {
     
@@ -415,7 +447,9 @@ const char* opcode_symbol_text(cphvb_opcode opcode) {
         case CPHVB_MULTIPLY:
             return "*";
         case CPHVB_DIVIDE:
-          return "/";          
+            return "/";          
+        case CPHVB_IDENTITY:
+            return "==";
       }
       return "";
 }
