@@ -10,20 +10,32 @@
 #include "jit_ast.h"
 #include <set>
 
-typedef enum { JIT_DISCARDRD = 1, JIT_EXECUTE = 2} jit_entry_status;
-
-
+typedef enum { JIT_NO_VAL = 0, JIT_DEPTRAV_VISITED = 1, JIT_DEPTRAV_CUTED = 2} jit_entry_status;
 
 typedef struct {
     cphvb_array*                arrayp;
     cphvb_intp                  version;        // enables reverse lookup in ssa table with arrayp
     jit_expr*                   expr;           // the expression with pointers to other expressions.
-    jit_entry_status            status;
+    
     bool                        is_executed;    // indicate if the arrayp contains the result of expr.
+    
+    cphvb_instruction*          instr;          // the instruction, which is the basis for this entry
+    cphvb_intp                  instr_num;      // the number on the instruction_list.
+    cphvb_intp                  operand_num;    // the operand number, 1 if right, 2 if left. only available if expr = array_val.
+
+    bool                        dep_trav_visited;
+    
+    
+    std::set<cphvb_intp>*       tdon;
+    std::set<cphvb_intp>*       tdto;
+
+    cphvb_intp                  free_pos;
+    cphvb_intp                  discarded_pos;
+
+    // needed ?
     std::vector<cphvb_intp>*    used_at;
-    cphvb_instruction*          instr;
-    std::set<cphvb_intp>*    tdon;
-    std::set<cphvb_intp>*    tdto; 
+    jit_entry_status            status;         // set JIT_DEPTRAV_VISIT when expr.execution list is created.       
+    
 } jit_name_entry;
 
 
@@ -85,8 +97,9 @@ cphvb_intp jita_ssamap_version_lookup(jit_ssa_map* ssamap, cphvb_array* array, c
 // other
 jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* base_usage_table);
 cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_instruction* instr);
-cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* basedep_table, cphvb_instruction* instr);
+cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num);
 bool jita_is_controll(cphvb_instruction* instr);
+
 
 
 // testing stuff

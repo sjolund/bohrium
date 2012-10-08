@@ -370,7 +370,7 @@ def test_pattern_014(H,W):
 
 def test_pattern_101(H,W):
     cphvbbridge.flush()
-    print ''
+    print 'testing double dto'
     print "- test_pattern_101()";
     # exelist = [3,]
     
@@ -394,7 +394,7 @@ def test_pattern_101(H,W):
 # good test for dependency and pre-execution list.
 def test_pattern_102(H,W):
     cphvbbridge.flush()
-    print ''
+    print 'testing inline BoundedArray update'
     print "- test_pattern_102()";
     
     A = np.ones((H,W),dtype=type)    
@@ -461,6 +461,52 @@ def test_pattern_103(H,W):
     # if a array with a base array is defined, and the base array already exist, do not add its pressent to the usage list!
 
 
+def test_pattern_104(H,W):
+    cphvbbridge.flush()
+    print 'long distance dependency'
+    print "- test_pattern_104()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type)
+    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+    
+    A += 10
+    A[0,1:3] = B[0,1:3] / 5    
+    C = 3*B + (B-C)/3
+    A = A + C*2
+    A[0,1]
+
+        
+
+
+def test_pattern_200(H,W):
+    cphvbbridge.flush()
+    print 'loops'
+    print "- test_pattern_200()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type)
+    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    for i in xrange(4):
+        C += A + B
+    print C[0,1]
+
+
 if __name__ == "__main__":
     #~ test_pattern_000(1,5)     
     #~ exit(0)
@@ -468,6 +514,7 @@ if __name__ == "__main__":
 
     # A + B
     #test_pattern_003(1,5)
+    #test_pattern_004(1,5)
 
     #test_pattern_012(1,5)
 
@@ -477,18 +524,32 @@ if __name__ == "__main__":
 
     #test_pattern_103(1,5)
 
+    # testing double dto epxression
     #test_pattern_101(1,5)
 
+    # testing inline update to boundedArray
+    # [1,5,7]
+    #test_pattern_102(1,5)
 
-    s = time.time()    
-    #test_pattern_014(10000,3000)
-    test_pattern_103(10000,3000)
-    print time.time()-s
+    # testing double inline update to boundedArray
+    # [3,4,6,9,13,14,]
+    #test_pattern_103(1,5)
+    
+    #test_pattern_104(1,5)
+    
+    test_pattern_200(1,5)
+    
+    
+    #~ s = time.time()    
+    #~ #test_pattern_014(10000,3000)
+    #~ test_pattern_103(10000,3000)
+    #~ print time.time()-s
+    
 
-#-0.0366699695587
-#-0.0363841056824
-#-0.0370109081268
-#-0.0359990596771
+    #-0.0366699695587
+    #-0.0363841056824
+    #-0.0370109081268
+    #-0.0359990596771
 
     #~ test_pattern_002(1,5)   
     #~ test_pattern_003(1,5)
@@ -506,12 +567,11 @@ if __name__ == "__main__":
 
 
 
-#~ doing test_pattern 14 (10,10)
-#~ simple    
-#~ -0.000265121459961
-#~ -0.000275850296021
-#~ 
-#~ jit - with simple
-#~ -0.000304222106934
-#~ -0.000330924987793
-
+    #~ doing test_pattern 14 (10,10)
+    #~ simple    
+    #~ -0.000265121459961
+    #~ -0.000275850296021
+    #~ 
+    #~ jit - with simple
+    #~ -0.000304222106934
+    #~ -0.000330924987793

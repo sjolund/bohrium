@@ -4,7 +4,9 @@
 
 // print functions
 
+#include "cphvb.h"
 #include "jit_common.h"
+#include "MurmurHash3.h"
 #include <string>
 #include <set>
 #include <iostream>
@@ -16,6 +18,32 @@
 #define PPRINT_BUF_SIZE PPRINT_BUF_OPSTR_SIZE*4
 
 using namespace std;
+
+
+
+/// compare two cphvb_intp array.
+
+
+
+cphvb_intp instuctionlist_hash(cphvb_instruction* instruction_list, cphvb_intp instruction_count) {
+    cphvb_intp hash_val = 0;
+
+    // lookup length in a bit map. no entry with length, it is resonable to skip.
+    cphvb_intp opcodes[instruction_count];
+    cphvb_intp runninghash = 0;
+    
+    for(int i=0;i<instruction_count;i++) {
+        opcodes[i] = ((cphvb_intp)instruction_list[i].opcode);              
+    }
+
+    uint32_t result = 0;
+    uint32_t seed = 42;
+    
+    MurmurHash3_x86_32(&opcodes,(int)instruction_count*2,seed,&result);
+    hash_val = result;
+    
+    return hash_val;
+}
 
 static void cphvb_sprint_instr_small( cphvb_instruction *instr, char buf[] ) {
 
@@ -87,6 +115,9 @@ void jit_pprint_cg_state(jitcg_state* cgs) {
     printf(ss.str().c_str());
 }
     
+
+void jit_pprint_epxr_childs_names(){
+}
 
 void cphvb_pprint_instr_list_small( cphvb_instruction* instruction_list, cphvb_intp instruction_count, const char* txt )
 {
@@ -239,6 +270,13 @@ void jit_pprint_dependency_graph(jit_dependency_graph* graph) {
     printf(ss.str().c_str());
 }
 
+void jit_pprint_name_expr(jit_expr* expr) {
+    stringstream ss;
+    print_ast_name_recursive_stream(0,expr,&ss);
+    printf(ss.str().c_str());
+}
+
+
 void jit_pprint_expr(jit_expr* expr) {
     stringstream ss;
     print_ast_recursive_stream(0,expr,&ss);
@@ -337,11 +375,14 @@ string jit_pprint_nametable(jit_name_table* nt) {
     for (it=nt->begin();it != nt->end();it++) {
         ss << (*it)->expr->name << ":" ;
         //nametable_entry_text((*it),&ss);
+        ss << "Array: " << (*it)->arrayp << ""<< " T3V = " << (((*it)->dep_trav_visited) ? "T" : "F") << "\n";
         if ((*it)->expr->depth > 0) {
-            ss << "Array: " << (*it)->arrayp << " =\n";
+           print_ast_name_recursive_stream(0,(*it)->expr,&ss);   
         }
-        print_ast_recursive_stream(0,(*it)->expr,&ss);
-                
+        
+        
+        //print_ast_recursive_stream(0,(*it)->expr,&ss);
+                         
     }    
     ss << "]";
     printf(ss.str().c_str());

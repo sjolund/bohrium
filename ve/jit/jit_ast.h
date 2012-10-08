@@ -65,5 +65,6 @@ void test_constant_to_string(void);
 void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_array*,ast*>* nametable, cphvb_instruction* instr);
 ExprType ast_operand_count_to_tag(cphvb_intp operand_count) ;
 void print_ast_recursive_stream(int step, ast* node, std::stringstream* ss);
+void print_ast_name_recursive_stream(int step, ast* node, std::stringstream* ss);
 
 #endif

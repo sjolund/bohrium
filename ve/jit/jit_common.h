@@ -25,4 +25,5 @@ void jit_pprint_nametable_dependencies(jit_name_table* nt);
 void jit_pprint_nametable_entry(jit_name_entry* entry);
 
 void jit_pprint_cg_state(jitcg_state* cgs);
+cphvb_intp instuctionlist_hash(cphvb_instruction* instruction_list, cphvb_intp instruction_count);
 #endif

@@ -39,8 +39,7 @@ jit_name_entry* jita_nametable_lookup(jit_name_table* nametable, cphvb_intp inde
       
     // TODO: handle error (out of bound exception)    
     return NULL;
-}
-
+}    
 
 /**
  * @return a version-vector with mappings to the nametable.
@@ -183,10 +182,10 @@ cphvb_intp jita_handle_discard(jit_name_table* nametable, jit_ssa_map* ssamap, j
     cphvb_intp name = jita_ssamap_version_lookup(ssamap,array,-1);
     jit_name_entry* e = jita_nametable_lookup(nametable,name);
     if( ((int)e->used_at->size()) > 0) {
-        e->status = JIT_DISCARDRD;
+        //e->status = JIT_DISCARDRD;
         logDebug("Marked as DISCARDED: A:%p V:%ld  N:%ld, used_at-size =%ld \n",e->arrayp, e->version ,name,e->used_at->size() );        
     } else {
-        e->status = JIT_EXECUTE;        
+        //e->status = JIT_EXECUTE;        
         exelist->push_back(name);
         logDebug("Added to execute: %ld\n",name);        
     }
@@ -230,9 +229,7 @@ cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_m
     return -1;
 }
 
-cphvb_intp jita_handle_arithmetic_instruction3(jit_analyse_state* s, cphvb_instruction* instr) {
-    return jita_handle_arithmetic_instruction2(s->nametable, s->ssamap, s->base_usage_table, instr);
-}
+
 
 
 jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* base_usage_table) {
@@ -246,7 +243,8 @@ jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_s
 /**
  * with base_array_usage_list / dependency_table
  **/ 
-cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* basedep_table, cphvb_instruction* instr) {
+//cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* basedep_table, cphvb_instruction* instr) {
+cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instruction* instr, cphvb_intp instr_num) {
     logDebug("s jita_handle_arithmetic_instruction()\n");
     logDebug("opcode: %s\n", cphvb_opcode_text(instr->opcode));
     // get the first and second operands. Look them up, to see if they 
@@ -257,6 +255,7 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ss
     jit_expr* first = NULL;        
     jit_expr* second = NULL;    
     jit_expr* expr = new jit_expr();
+    jit_name_entry* e;
     
     jit_expr_tag instr_tag;
     cphvb_intp expr_depth = 1;
@@ -264,11 +263,8 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ss
     cphvb_intp name_first = -1;
     cphvb_intp name_second = -1;
     
-    
-         
     //jit_name_entry* first_entry = jita_lookup_name(nametable,ssamap, instr->operand[1],-1);        
-    
-    jit_analyse_state* s = jita_make_jit_analyser_state(nametable,ssamap,basedep_table);
+         
      
     jit_name_entry* first_entry = NULL;
     if (!cphvb_is_constant( instr->operand[1])) {        
@@ -286,12 +282,18 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ss
         if (!cphvb_is_constant(instr->operand[1])) {
                     
             // this step can be reached by newly created arrays.
-            name_first = jita_insert_name(nametable,ssamap,instr->operand[1],first);        
+            name_first = jita_insert_name(s->nametable,s->ssamap,instr->operand[1],first);
+            e = jita_nametable_lookup(s->nametable,name_first);
+            e->instr = instr;
+            e->instr_num = instr_num;
+            e->operand_num = 1;           
+            e->tdto = new set<cphvb_intp>();
+            e->tdon = new set<cphvb_intp>();      
             if (instr->operand[1]->base != NULL || instr->operand[1]->data != NULL ) {
                 
                 // add only usage if the basearray had not been added before!                                  
-                if (jita_base_usage_table_get_usage(basedep_table,cphvb_base_array(instr->operand[1])) == NULL) {
-                    jita_base_usage_table_add_usage(basedep_table,cphvb_base_array(instr->operand[1]),name_first);
+                if (jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(instr->operand[1])) == NULL) {
+                    jita_base_usage_table_add_usage(s->base_usage_table,cphvb_base_array(instr->operand[1]),name_first);
                 }
             } 
         }                            
@@ -319,10 +321,16 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ss
             logDebug("second created\n");
             if(!cphvb_is_constant(instr->operand[2])) {  
                 // this step is reached only once for each array! if it exists, it is caught in jita_lookup_name
-                name_second = jita_insert_name(nametable,ssamap,instr->operand[2],second);
+                name_second = jita_insert_name(s->nametable,s->ssamap,instr->operand[2],second);
+                e = jita_nametable_lookup(s->nametable,name_second);
+                e->instr = instr;
+                e->instr_num = instr_num;
+                e->operand_num = 2;
+                e->tdto = new set<cphvb_intp>();
+                e->tdon = new set<cphvb_intp>();                  
                 if (instr->operand[2]->base != NULL || instr->operand[2]->data != NULL ) {
-                    if (jita_base_usage_table_get_usage(basedep_table,cphvb_base_array(instr->operand[2])) == NULL) {
-                        jita_base_usage_table_add_usage(basedep_table,cphvb_base_array(instr->operand[2]),name_second);
+                    if (jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(instr->operand[2])) == NULL) {
+                        jita_base_usage_table_add_usage(s->base_usage_table,cphvb_base_array(instr->operand[2]),name_second);
                     }
                     
                 }              
@@ -344,8 +352,14 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ss
 
     
     // insert the new expression    
-    cphvb_intp name = jita_insert_name(nametable, ssamap, instr->operand[0], expr);
-    jita_nametable_lookup(nametable,name)->instr = instr;  
+    cphvb_intp name = jita_insert_name(s->nametable, s->ssamap, instr->operand[0], expr);
+    
+    e= jita_nametable_lookup(s->nametable,name);
+    e->instr = instr;
+    e->instr_num = instr_num;
+    e->operand_num = 2;
+    e->tdto = new set<cphvb_intp>();
+    e->tdon = new set<cphvb_intp>();     
     logDebug("expr inserted as %ld:\n",name);     
 
     
@@ -354,7 +368,7 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ss
         
     }
     else {
-        jita_base_usage_table_add_usage(basedep_table,cphvb_base_array(instr->operand[0]),name);
+        jita_base_usage_table_add_usage(s->base_usage_table,cphvb_base_array(instr->operand[0]),name);
     }
 
 
@@ -368,23 +382,23 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ss
 
     
     // update used_at entries
-    if(!cphvb_is_constant(instr->operand[1])) {
-        if (first_entry == NULL) {
-            first_entry = jita_nametable_lookup(nametable,name_first);
-        }
-        logDebug("first_entry->used_at->push_back(%ld);\n",name); 
-        logDebug("%p \n",first_entry); 
-        
-        first_entry->used_at->push_back(name);
-    }
-    
-    if(second != NULL && !cphvb_is_constant(instr->operand[2])) {
-        if (second_entry == NULL) {
-            second_entry = jita_nametable_lookup(nametable,name_second);
-        }        
-        logDebug("second_entry->used_at->push_back(%ld);\n",name); 
-        second_entry->used_at->push_back(name);                
-    }
+    //~ if(!cphvb_is_constant(instr->operand[1])) {
+        //~ if (first_entry == NULL) {
+            //~ first_entry = jita_nametable_lookup(s->nametable,name_first);
+        //~ }
+        //~ logDebug("first_entry->used_at->push_back(%ld);\n",name); 
+        //~ logDebug("%p \n",first_entry); 
+        //~ 
+        //~ first_entry->used_at->push_back(name);
+    //~ }
+    //~ 
+    //~ if(second != NULL && !cphvb_is_constant(instr->operand[2])) {
+        //~ if (second_entry == NULL) {
+            //~ second_entry = jita_nametable_lookup(nametable,name_second);
+        //~ }        
+        //~ logDebug("second_entry->used_at->push_back(%ld);\n",name); 
+        //~ second_entry->used_at->push_back(name);                
+    //~ }
     logDebug("e jita_handle_arithmetic_instruction()\n");        
     
     return 1;

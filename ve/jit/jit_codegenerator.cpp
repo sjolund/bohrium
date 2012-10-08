@@ -825,12 +825,14 @@ void kernel_func_001(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphv
         cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( oa->ndim, oa->shape );
         cphvb_index ec = 0;
         cphvb_index off_oa = 0;
-        cphvb_index* coord;
-        coord = (cphvb_index*) malloc( (sizeof(cphvb_index) * (int)oa->ndim) );
+        cphvb_index coord[oa->ndim];
+        //~ cphvb_index* coord;
+        //~ coord = (cphvb_index*) malloc( (sizeof(cphvb_index) * (int)oa->ndim) );
         memset(coord, 0, oa->ndim * sizeof(cphvb_index));
-        cphvb_index* offs;
-        offs = (cphvb_index*) malloc(num_as * sizeof(cphvb_index));
-        cphvb_array* test;
+        cphvb_index offs[num_as];
+        //~ cphvb_index* offs;
+        //~ offs = (cphvb_index*) malloc(num_as * sizeof(cphvb_index));
+        //~ cphvb_array* test;
         
 
         int j=0, i=0;
@@ -867,11 +869,10 @@ void kernel_func_001(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphv
                     //printf("ldim %ld\n", last_dim);
                     offs[i] = offs[i] + (as[i]->stride[last_dim]);
                     //printf("%ld\n",offs[i]);
-                }
-                //printf("2\n");
+                }                
                 off_oa += oa->stride[last_dim];
             }
-            printf("test3\n");
+            
             ec += oa->shape[last_dim];
             for(j = last_dim-1; j >= 0; --j) {
                 coord[j]++;
@@ -883,7 +884,7 @@ void kernel_func_001(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphv
             }
         }
         printf("test3\n");
-        free(coord);
-        free(offs);
+        //free(coord);
+        //free(offs);
     }
 //~ 

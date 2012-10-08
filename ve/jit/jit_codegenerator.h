@@ -26,7 +26,7 @@ typedef struct {
     
     string                      source_function;            // function source
     string                      source_math;                // math operation source
-    jit_comp_kernel*            kernel;                     // pointer to the kernel
+    jit_comp_kernel*            kernel;                     // pointer to the kernel. set after compilation
     
     cphvb_array**               array_inputs;
     cphvb_intp                  array_inputs_len;
