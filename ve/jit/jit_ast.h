@@ -11,7 +11,7 @@
 #include <sstream>
 #include <iostream>
 
-typedef enum  {no_type = -1, bin_op = 0, un_op = 1, const_val = 2, array_val = 3} ExprType; 
+typedef enum  {no_type = -1, bin_op = 0, un_op = 1, const_val = 2, array_val = 3, userdef = 4} ExprType; 
 typedef enum  {no_status = -1, jit_expr_status_executed} jit_expr_status;
 //typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4} _LOG_LEVEL;
 
@@ -21,14 +21,17 @@ typedef struct Exp {
     cphvb_intp                                      name; 
     cphvb_intp                                      depth;
     jit_expr_status                                 status;
-                                                   
+
+    
+    struct Exp*                                     parent;                                       
     union { cphvb_constant*                         constant;
             cphvb_array*                            array;
+            cphvb_userfunc*                         userfunc;
                                 
             struct {    cphvb_opcode    opcode;
                         struct Exp*     left;
                         struct Exp*     right; }    expression;            
-    } op;    
+    } op;
 } ast;
 
 typedef ast jit_expr;
@@ -37,6 +40,7 @@ typedef ExprType jit_expr_tag;
 bool is_bin_op(jit_expr* expr);
 bool is_un_op(jit_expr* expr);
 bool is_array(jit_expr* expr);
+bool is_userfunc(jit_expr* expr);
 bool is_constant(jit_expr* expr);
 
 //void ast_log(char* buff, _LOG_LEVEL level);
@@ -52,7 +56,7 @@ cphvb_error create_ast_from_instruction(cphvb_instruction *inst, ast *result);
 char* expr_type_to_string(ExprType enumval);
 
 cphvb_error print_ast_node(ast* node);
-
+void constant_value_text_s(cphvb_constant* constant);
 
 
     

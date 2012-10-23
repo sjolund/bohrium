@@ -32,6 +32,11 @@ bool is_un_op(jit_expr* expr) {
 bool is_array(jit_expr* expr) {
     return expr->tag == array_val;
 }
+bool is_userfunc(jit_expr* expr) {
+    return expr->tag == userdef;
+}
+
+
 bool is_constant(jit_expr* expr) {
     return expr->tag == const_val;
 }
@@ -545,6 +550,12 @@ void constant_value_text(cphvb_constant* constant, char buff[]) {
     //printf(out,constant->value);
 }
 
+void constant_value_text_s(cphvb_constant* constant) {
+    char buff[10];
+    constant_value_text(constant,buff);
+    printf("%s",buff);
+}
+    
 
 void test_constant_to_string(void) {    
     char buff[50];

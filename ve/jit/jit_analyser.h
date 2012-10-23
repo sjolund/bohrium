@@ -23,14 +23,17 @@ typedef struct {
     cphvb_intp                  instr_num;      // the number on the instruction_list.
     cphvb_intp                  operand_num;    // the operand number, 1 if right, 2 if left. only available if expr = array_val.
 
-    bool                        dep_trav_visited;
-    
+    bool                        dep_trav_visited;    
     
     std::set<cphvb_intp>*       tdon;
     std::set<cphvb_intp>*       tdto;
 
-    cphvb_intp                  free_pos;
-    cphvb_intp                  discarded_pos;
+    cphvb_index                 freed_at;
+    cphvb_index                 discarded_at;
+
+    // userfunc hack handling!
+    bool                        is_userfunction;
+    /// TODO: add a way to handle userfunc!! (multi output)
 
     // needed ?
     std::vector<cphvb_intp>*    used_at;
@@ -94,13 +97,19 @@ jit_name_entry*     jita_nametable_lookup_a(jit_analyse_state* s, cphvb_array* a
 cphvb_intp jita_ssamap_version_lookup(jit_ssa_map* ssamap, cphvb_array* array, cphvb_intp version);
 
 
-// other
-jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* base_usage_table);
-cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_instruction* instr);
+// Instruction handlers. Functions to handle different instruction types.
 cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num);
+void jita_handle_free_instruction(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num);
+void jita_handle_discard_instruction(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num);
+void jita_handle_userfunc_instruction(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num);
+
+cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_instruction* instr);
 bool jita_is_controll(cphvb_instruction* instr);
 
+jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* base_usage_table);
+void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset);
 
+cphvb_intp jita_get_prior_element(std::vector<cphvb_intp>* base_dep, cphvb_intp elem);
 
 // testing stuff
 void jita_run_tests();

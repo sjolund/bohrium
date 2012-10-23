@@ -22,4 +22,6 @@ void logInfo(const char * format, ...);
 void logWarning(const char * format, ...);
 void logError(const char * format, ...);
 
+
+void logcustom(bool* level, int index, const char * format, ...);
 #endif

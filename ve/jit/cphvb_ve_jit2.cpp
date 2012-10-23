@@ -28,6 +28,8 @@ If not, see <http://www.gnu.org/licenses/>.
 #include "jit_ssa_analyser.h"
 #include "jit_logging.h"
 #include "jit_common.h"
+#include "jit_kernel.h"
+#include "jit_kernel_cache.h"
 #include "StringHasher.hpp"
 
 #include <iostream>
@@ -47,22 +49,39 @@ static cphvb_intp random_impl_id = 0;
 static cphvb_userfunc_impl matmul_impl = NULL;
 static cphvb_intp matmul_impl_id = 0;
 
-jit_ssa_map* jitssamap;
-jit_name_table* jitnametable;
-jit_execute_list* jitexecutelist;
-cphvb_instruction* jit_prev_instruction;
-jit_base_dependency_table* jitbasedeptable;
+jit_ssa_map*                jitssamap;
+jit_name_table*             jitnametable;
+jit_base_dependency_table*  jitbasedeptable;
+jit_analyse_state*          jitanalysestate;
 
+jit_kernel_cache*           jitkernelcache;
+jit_execute_list*           jitexecutelist;
+
+cphvb_instruction*          jit_prev_instruction;
+cphvb_index                 jitcompound_kernel_count;
+cphvb_index                 jitinstr_list_count;
+cphvb_index                 last_nametable_size;
 using namespace std;
 
 cphvb_error cphvb_ve_jit_init(cphvb_component *self)
 {
     myself = self;
-    cphvb_mcache_init( 10 );        
+    cphvb_mcache_init( 10 );
+     
     jitssamap = new jit_ssa_map();
-    jitnametable = new jit_name_table();
-    jitexecutelist = new jit_execute_list(); 
+    jitnametable = new jit_name_table();    
     jitbasedeptable = new jit_base_dependency_table();
+    jitanalysestate = jita_make_jit_analyser_state(jitnametable,jitssamap,jitbasedeptable);
+
+
+    //jitexecutelist = new jit_execute_list(); 
+    jitkernelcache = new jit_kernel_cache();
+    jitcompound_kernel_count = 0;
+    
+    jitinstr_list_count = 0;
+    last_nametable_size = 0;
+    
+    
     jit_prev_instruction = NULL;
     
     return CPHVB_SUCCESS;
@@ -174,60 +193,60 @@ std::vector<cphvb_intp>* get_expr_dependencies(jit_base_dependency_table* bd_tab
 
 
 
-/// find the element lower or prior to the input element in the base_dep 
-cphvb_intp get_prior_element(vector<cphvb_intp>* base_dep, cphvb_intp elem) {
-    if (base_dep == NULL)
-        return -2;
-    
-    vector<cphvb_intp>::iterator it;
-    cphvb_intp prior = -1;
-    int i;
-    
-    for(i=0; i<base_dep->size();i++) {
-        if(base_dep->at(i) < elem) {
-            prior = base_dep->at(i);                                    
-        } else {
-            break;
-        }            
-    }
-    return prior;    
-}
+//~ /// find the element lower or prior to the input element in the base_dep 
+//~ cphvb_intp get_prior_element(vector<cphvb_intp>* base_dep, cphvb_intp elem) {
+    //~ if (base_dep == NULL)
+        //~ return -2;
+    //~ 
+    //~ vector<cphvb_intp>::iterator it;
+    //~ cphvb_intp prior = -1;
+    //~ int i;
+    //~ 
+    //~ for(i=0; i<base_dep->size();i++) {
+        //~ if(base_dep->at(i) < elem) {
+            //~ prior = base_dep->at(i);                                    
+        //~ } else {
+            //~ break;
+        //~ }            
+    //~ }
+    //~ return prior;    
+//~ }
 
 
-/// determin dependencies on a child node.
-cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* parent, jit_expr* expr) {
-    cphvb_array* basea;
-    if (!is_constant(expr)) {
-        jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-        
-        logDebug(" ! %p %p\n",entr->arrayp->base, entr->arrayp->data);
-
-        basea = cphvb_base_array(entr->arrayp);
-        // Child must write to a BoundedArray, before parent can be dependent on it        
-        if (basea->data != NULL) {
-                        
-            vector<cphvb_intp>* base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);
-
-            // get the element which write to the same basearray last.
-            cphvb_intp dep_on_name = get_prior_element(base_dep,parent->expr->name);
-            
-            //logDebug("dependencylist for %p",a);
-            //jit_pprint_base_dependency_list(base_dep);            
-            
-            
-            
-            // if parent did not write to the base array
-            // if not self and a sanity check
-            if (dep_on_name != -1 && dep_on_name != parent->expr->name) { 
-                // nametable entries dependency
-                printf("updating dependency! dep_on_name: %ld %ld\n",dep_on_name, parent->expr->name);
-                parent->tdon->insert(dep_on_name);                
-                entr->tdto->insert(parent->expr->name);    
-            }    
-        }
-    }
-    return 1;
-}
+//~ /// determin dependencies on a child node.
+//~ cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* parent, jit_expr* expr) {
+    //~ cphvb_array* basea;
+    //~ if (!is_constant(expr)) {
+        //~ jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
+        //~ 
+        //~ logDebug(" ! %p %p\n",entr->arrayp->base, entr->arrayp->data);
+//~ 
+        //~ basea = cphvb_base_array(entr->arrayp);
+        //~ // Child must write to a BoundedArray, before parent can be dependent on it        
+        //~ if (basea->data != NULL) {
+                        //~ 
+            //~ vector<cphvb_intp>* base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);
+//~ 
+            //~ // get the element which write to the same basearray last.
+            //~ cphvb_intp dep_on_name = get_prior_element(base_dep,parent->expr->name);
+            //~ 
+            //~ //logDebug("dependencylist for %p",a);
+            //~ //jit_pprint_base_dependency_list(base_dep);            
+            //~ 
+            //~ 
+            //~ 
+            //~ // if parent did not write to the base array
+            //~ // if not self and a sanity check
+            //~ if (dep_on_name != -1 && dep_on_name != parent->expr->name) { 
+                //~ // nametable entries dependency
+                //~ //printf("updating dependency! dep_on_name: %ld %ld\n",dep_on_name, parent->expr->name);
+                //~ parent->tdon->insert(dep_on_name);                
+                //~ entr->tdto->insert(parent->expr->name);    
+            //~ }    
+        //~ }
+    //~ }
+    //~ return 1;
+//~ }
 
 cphvb_intp update_expr_dependencies(jit_analyse_state* s, jit_dependency_graph* graph, jit_dependency_graph_node* nt_entry_node, jit_expr* expr) {
 
@@ -242,7 +261,7 @@ cphvb_intp update_expr_dependencies(jit_analyse_state* s, jit_dependency_graph* 
             vector<cphvb_intp>* base_dep = jita_base_usage_table_get_usage(s->base_usage_table,a);
 
             // get the element which write to the same basearray last.
-            cphvb_intp dep_on_name = get_prior_element(base_dep,nt_entry_node->name_table_entry->expr->name);
+            cphvb_intp dep_on_name = jita_get_prior_element(base_dep,nt_entry_node->name_table_entry->expr->name);
             
             logDebug("dependenylist for %p",a);
             //jit_pprint_base_dependency_list(base_dep);
@@ -464,10 +483,10 @@ void print_true_false(bool stm) {
 // function which finds dependency violations in and expr, and splits it into a list sub expr
 void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_intp>* execute_list, set<cphvb_intp>* grand_parent_DON) {    
     if (is_array(expr)) {
-        printf("expr_dependecy_travers3(Array:%ld)\n",expr->name);
+        //printf("expr_dependecy_travers3(Array:%ld)\n",expr->name);
          return;
     }
-    printf("expr_dependecy_travers3(%ld)\n",expr->name);
+    //printf("expr_dependecy_travers3(%ld)\n",expr->name);
     jit_expr* echild;
     jit_name_entry* entr_child;
     jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
@@ -490,7 +509,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
     if (is_un_op(expr) || is_bin_op(expr)) {
         int children_num = is_bin_op(expr) ? 2 : 1;    
         jit_expr* children[2] = {expr->op.expression.left, expr->op.expression.right};
-        printf("children_num: %d \n",children_num);
+        //printf("children_num: %d \n",children_num);
         for(int i=0;i<children_num;i++) {
                     
             // for the current expr.
@@ -501,22 +520,21 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
             entr_child = jita_nametable_lookup(s->nametable,echild->name);
 
             //printf("Child is expression\n",echild->name);
-            printf( (is_un_op(echild) || is_bin_op(echild)) ? "exp ": "val ");
+            //printf( (is_un_op(echild) || is_bin_op(echild)) ? "exp ": "val ");
             //print_ast_node(echild); 
             //printf("after copy %ld\n",echild->name);
-            if( (is_un_op(echild) || is_bin_op(echild))  ) {
-                printf("test\n");
+            if( (is_un_op(echild) || is_bin_op(echild))  ) {                
                 if (entr_child->tdto->size() > 1) {                
                     // if child is depended on by more then one.
                     execute_list->insert(echild->name);            
                     /// TODO: determin how to travers the echild from here.
                     /// DONE
-                    printf("Adding to execute:1: %ld\n",echild->name);
+                    logDebug("Adding to execute:1: %ld\n",echild->name);
                     expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);
                     return;                
                         
                 } else {
-                    printf("test1\n");
+                    
                     //vector<cphvb_intp>* dep_table = jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(entr_child->arrayp));
                     //printf("%p %ld\n",dep_table, echild->name);
                      
@@ -525,11 +543,10 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                         execute_list->insert(echild->name);
                         /// TODO: determin how to travers the echild from here.
                         /// DONE
-                        printf("Adding to execute:2: %ld\n",echild->name);
+                        logDebug("Adding to execute:2: %ld\n",echild->name);
                         expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);
                         return;
-                    }
-                    
+                    }                    
                 }
                 
                 set<cphvb_intp>::iterator itp,itc;
@@ -537,7 +554,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                 for (itp=entr->tdon->begin(); itp!=entr->tdon->end(); itp++) {                    
                     grand_parent_DON->insert(*itp);
                 }
-                printf("test2\n");
+                
                 // get dependency 
                 if(entr_child->tdon->size() > 0 ) {                                 
                     if (entr->tdon->size() > 0) {                                                                
@@ -560,7 +577,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                                         // parent is dependent on a higher version of the BoundedArray.
                                         // cutting closest to expression dependency conflict
                                         execute_list->insert(echild->name);
-                                        printf("Adding to execute:3: %ld\n",echild->name);
+                                        logDebug("Adding to execute:3: %ld\n",echild->name);
                                         grand_parent_DON->erase(*itp);
                                                                                         
                                     }                            
@@ -589,7 +606,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                                         // a grand parent is dependent on a higher version of the BoundedArray.
                                         // cutting closest to expression dependency conflict
                                         execute_list->insert(echild->name);
-                                        printf("Adding to execute:4: %ld",echild->name);
+                                        logDebug("Adding to execute:4: %ld",echild->name);
                                         grand_parent_DON->erase(*itp);                              
                                     }                            
                                 }
@@ -602,6 +619,8 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
         } // end for loop        
     }
 }
+
+
 
 void expr_dependecy_travers2(jit_analyse_state* s,jit_expr* expr,set<cphvb_intp>* execute_list) {
     logInfo("expr_dependecy_travers2(%p,%ld)\n",s,expr->name);
@@ -739,8 +758,7 @@ cphvb_intp execute_instruction_simple(cphvb_instruction* instr) {
     if (cphvb_base_array(instr->operand[0])->data == NULL) {
         cphvb_data_malloc(instr->operand[0]);
     }
-        
-    
+                
     // call simple with the expr->arrayp,expr->left->arrayp,expr->right->arrayp
     if (cphvb_compute_apply(instr) == CPHVB_SUCCESS) {
         //printf("compute_apply() == CPHVB_SUCCESS\n");
@@ -943,6 +961,8 @@ cphvb_intp expr_computational_complexity(jit_analyse_state* s, jit_expr* expr) {
 
 
 
+
+
 cphvb_intp execute_expression(jit_analyse_state* s, set<cphvb_intp>* preexecutelist, cphvb_intp executename) {
     // for each element in preexecutelist, execute the element if is not already executed (checked with is_executed(expr) ).
     bool verbose = true;    
@@ -976,11 +996,6 @@ cphvb_intp execute_expression(jit_analyse_state* s, set<cphvb_intp>* preexecutel
     // 2) compile into kernel.
     //printf("Complexity: %ld\n", expr_computational_complexity(s,entr->expr));
     return execute_expression_multi(s,entr);
-    
-    
-    /*
-
-    */
     
 }
 
@@ -1235,53 +1250,12 @@ void expr_pre_execute_list(jit_analyse_state* s, vector<jit_expr*>* executelist,
         }       
     }
     logDebug("execution2-"); jit_pprint_list_of_expr(executelist);
-     
 
-           
-
-            
-/*
-    # do cuts in left tree or remove child/parent relations
-    if el.dtos.size() > 1:
-        el.status = executed
-        expr_execute_list(, , ,el);
-        add_to_executelist(el);
-    elif el.dtos.size() == 1: 
-        if (expr->name == el.dto[0]):
-            local_dons.remove(el.dto[0])
-        elif el.dto[0] > expr->name:
-            el.status = executed        
-            expr_execute_list(, , ,el);
-            add_to_executelist(el);
-*/
-       
-    //~ 
-    //~ if (e->dtos.size() > 1) {
-        //~ e->status = execute;
-        
-        //~ add_to_execute(e);
-
-        //~ 
-    //~ } else if (e->dtos.size() == 1) {            
-        //~ if(e->parent->name < e->dto[0]) {
-            //~ e->status = execute;
-            
-            //~ add_to_execute(e);
-            
-        //~ }
-    //~ }
-//~ 
-    //~ if e->dons.size() > 0 {
-        //~ e.preExecute.add(dons)
-    //~ }
-//~ 
-    //~ 
-    //~ if(e->parent == NULL) {
-        //~ // add root to execute
-        //~ add_to_execute(e);
-        //~ e->status = execute;
-    //~ }   
 }
+
+
+
+
 
 
 
@@ -1290,7 +1264,7 @@ void expr_pre_execute_list(jit_analyse_state* s, vector<jit_expr*>* executelist,
 // executed and in what order. a list of expressions are generated based on the
 // analyse_state tables. This will contain a copy of the existing structure, but point
 // to the existing data.
-set<cphvb_intp>* generate_execution_list(jit_analyse_state* s, cphvb_array* sync_array) {
+set<cphvb_intp>* generate_execution_list(jit_analyse_state* s) {
     logDebug("===== Generate_execution_list()\n");
     // loop through the sync_array's expression structure.
     // top down, left to right.
@@ -1324,7 +1298,7 @@ set<cphvb_intp>* generate_execution_list(jit_analyse_state* s, cphvb_array* sync
     cphvb_array* basea;
     cphvb_intp name;
 
-
+    /*
     //~ for(it=s->nametable->begin(); it != s->nametable->end(); it++) {
         //~ entr = (*it);                    
         //~ name = entr->expr->name;
@@ -1337,10 +1311,11 @@ set<cphvb_intp>* generate_execution_list(jit_analyse_state* s, cphvb_array* sync
     // be a good optimization to do incremental updates of the dependencies, thus introduce
     // and offset to the start on the nametable.
     logInfo("nametable size: %ld\n",s->nametable->size());
-    printf("===== Build dependencies for Nametable\n");
+    //printf("===== Build dependencies for Nametable\n");
 
+    
     for(it=s->nametable->begin(); it != s->nametable->end(); it++) {
-        printf("NT: %ld\n",(*it)->expr->name);
+        //printf("NT: %ld\n",(*it)->expr->name);
         // iterator points to name_entry.
         entr = (*it);                    
         name = entr->expr->name;
@@ -1388,7 +1363,7 @@ set<cphvb_intp>* generate_execution_list(jit_analyse_state* s, cphvb_array* sync
             base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);
             
             dep_on_name = get_prior_element(base_dep,name);            
-            printf("base_dep.size() %d. dep_on: %d name:%d\n",base_dep->size(),dep_on_name,name);
+            //printf("base_dep.size() %d. dep_on: %d name:%d\n",base_dep->size(),dep_on_name,name);
             
             if (dep_on_name > -1) {
                 // the entry depends on dep_on_name.
@@ -1405,28 +1380,29 @@ set<cphvb_intp>* generate_execution_list(jit_analyse_state* s, cphvb_array* sync
                 //~ if (tnode != dg_node && tnode->name_table_entry->arrayp != dg_node->name_table_entry->arrayp) {                    
                     //~ jita_depgraph_node_add_don(dg_node,tnode->name_table_entry);                                        
                     //~ jita_depgraph_node_add_dto(tnode,dg_node->name_table_entry); 
-                //~ }
-                
+                //~ }                
             }                            
         }
         // printf("nametable name: %ld\n",name);
-    }
+    }    
     printf("===== Build dependencies DONE\n");
+    */
     
-    jit_name_entry* sync_entr = jita_nametable_lookup_a(s,sync_array);
-    if (sync_entr == NULL) {
-        if (cphvb_base_array(sync_array)->data != NULL ) {
-            logDebug("no result int nametable lookup a, and sync_array is a base array.\n");
-            logDebug("setting sync_entry as the last use of sync_array's base\n");
-            sync_entr = jita_nametable_lookup(s->nametable, jita_base_usage_table_get_usage(s->base_usage_table,sync_array)->back());
-        }
-    }
+    //~ jit_name_entry* sync_entr = jita_nametable_lookup_a(s,sync_array);
+    //~ if (sync_entr == NULL) {
+        //~ if (cphvb_base_array(sync_array)->data != NULL ) {
+            //~ logDebug("no result int nametable lookup a, and sync_array is a base array.\n");
+            //~ logDebug("setting sync_entry as the last use of sync_array's base\n");
+            //~ sync_entr = jita_nametable_lookup(s->nametable, jita_base_usage_table_get_usage(s->base_usage_table,sync_array)->back());
+        //~ }
+    //~ }
 
 
     
     
     //jit_pprint_dependency_graph(dep_graph);
-    jit_pprint_nametable(s->nametable);
+    //jit_pprint_nametable(s->nametable);
+    
     s->dep_graph = dep_graph;    
     set<cphvb_intp>* exelist = new set<cphvb_intp>();
     //create_expr_deps(s,entr->expr);
@@ -1438,238 +1414,101 @@ set<cphvb_intp>* generate_execution_list(jit_analyse_state* s, cphvb_array* sync
 
     // travers and remove child/parent relations in dependencie graph.
     //expr_dependecy_travers(s,sync_entr->expr); printf("\n\n");
-    jit_pprint_nametable_dependencies(s->nametable);
+    //jit_pprint_nametable_dependencies(s->nametable);
 
     // travers expr and create execution. Non recursive!! as of now. (can not handle dependencies in expression used in indirectly dependent expression.)
     //expr_dependecy_travers2(s,sync_entr->expr,exelist);
     for(int i=s->nametable->size()-1;i>-1;i--) {
         
         if (!s->nametable->at(i)->dep_trav_visited && !is_array(s->nametable->at(i)->expr)) {
-            printf("DepTravers: %d\n",i);
+            //printf("DepTravers: %d\n",i);
             expr_dependecy_travers3(s,s->nametable->at(i)->expr,exelist,new set<cphvb_intp>());            
             exelist->insert(i);
         }
         
     }
-    
-    
+
     // create vector of jit_expr to return
     
-    printf("-----");jit_pprint_set(exelist);
-    jit_pprint_base_dependency_table(s->base_usage_table);                
+    //printf("\n\n--- executionlist:");jit_pprint_set(exelist); printf("\n\n");
+    //jit_pprint_base_dependency_table(s->base_usage_table);                
     return exelist;
-    
-    
-    
-
-
-
-
-
-
-
-
-    
-
-    
-    /*
-    //expr_preexelist_travers(s,exelist,entr->expr);
-
-    jit_pprint_set(exelist);
-    printf("\n\n");
-    
-    printf("\n\n");
-    vector<jit_name_entry*>* dons1;
-    dons1 = jita_depgraph_get_don(s->dep_graph,entr->expr->name);
-    printf("   %ld lc DONs [",entr->expr->name);
-    for(int i=0;i<dons1->size();i++) {
-        printf("%ld, ",dons1->at(i)->expr->name);
-    }
-    printf("]\n");
-    dons1 = jita_depgraph_get_dto(s->dep_graph,entr->expr->name);
-    printf("   %ld lc DTOs [",entr->expr->name);
-    for(int i=0;i<dons1->size();i++) {
-        printf("%ld, ",dons1->at(i)->expr->name);
-    }
-    printf("]\n");
-    */    
-    
-    /*
-    //vector<jit_expr*>* executelist = new vector<jit_expr*>();
-    //expr_travers(s,executelist,entr->expr);
-    //printf("\n\n");
-    
-    if (sync_array->base == NULL && sync_array->data == NULL) {
-        
-        printf("temp array SYNC\n");
-        // 1) follow the entr and build its dependencyes
-        // 2) **do for all, and build a complete dependencygraph for all assignments.
-        //    This could lead to a bit more work, but at it should be asumed that
-        //    the code provided is needed, the end result should be related to all the
-        //    parts.
-        //    For later instructions lists after sync's, the right now not needed parts
-        //    will be needed (again asumed that the code include only needed code and computations).
-        
-        // have all dependencies determined for the nametable entries.
-    
-        jit_name_entry* entr = jita_nametable_lookup_a(s,sync_array);
-
-        // determin if there is dependencies in the expr.
-        //~ vector<jit_expr*>* executelist = new vector<jit_expr*>();
-        
-        
-        printf("pre-exelist size= %d\n",exelist->size());
-        //printf("execution-"); jit_pprint_list_of_expr(executelist);
-        
-    } else {
-        // dependencies of sync_array must all be computed.
-
-        printf("basearray SYNC\n");
-        int i;
-        vector<cphvb_intp>* sync_array_usage = jita_base_usage_table_get_usage(s->base_usage_table, cphvb_base_array(sync_array));
-
-        jit_pprint_base_dependency_list(sync_array_usage);
-        if (sync_array_usage != NULL) {
-
-            printf("creating execution list bsed on '%p' usage list\n",cphvb_base_array(sync_array));
-            
-            set<cphvb_intp>* execute_list = new set<cphvb_intp>();   
-            for(i=0;i < sync_array_usage->size() ;i++) {
-                printf("%d %d\n",i,sync_array_usage->size());
-                vector<jit_name_entry*>* ds = jita_depgraph_get_dto(dep_graph,sync_array_usage->at(i));
-
-                
-                // dependent to
-                if(ds->size() > 1) {
-                    printf("\n");                    
-                }
-                ds = jita_depgraph_get_don(dep_graph,sync_array_usage->at(i));
-                
-                // dependent on
-                if(ds != NULL) {
-                    depend_on_travers(s,dep_graph,execute_list,ds);
-                }
-                printf("t\n");
-                                            
-                execute_list->insert(sync_array_usage->at(i));
-
-                jit_dependency_graph_node* node = jita_depgraph_get_node(dep_graph,sync_array_usage->at(i));
-                //~ node->dep_ons
-                //~ 
-                //~ execute_list->push_back();
-            }
-            
-            printf("execute set! %d\n",execute_list->size());
-            set<cphvb_intp>::iterator it;
-            for(it=execute_list->begin();it!=execute_list->end();it++) {
-                printf("%ld, ",*it);
-            }
-            printf("\n");
-
-            
-        }        
-    }
-
-    
-    printf("done\n");
-    */
 }
-
-
-/// old and not used!
-vector<cphvb_intp>* jit_prepare_execute(jit_analyse_state* s, cphvb_array* sync_array) {    
-    printf("s jit_prepare_execute()\n");
-    if(sync_array->base == NULL) {
-        // output is a basearray. compute all base_array_steps
-        printf("array_base == NULL\n");        
-        
-        return jita_base_usage_table_get_usage(s->base_usage_table,sync_array);
-    }
-
-    // lookup the name for the output. Get the expression.
-    cphvb_intp name = jita_ssamap_version_lookup(s->ssamap,sync_array,-1);                
-    jit_name_entry* nt_entry = jita_nametable_lookup(s->nametable, name);                        
-    if (nt_entry == NULL) {
-        // no entry with this name.
-        // nothing to execute.    
-        return NULL;
-    }
-    
-    printf("name: %ld\n",name);
-    jit_pprint_ssamap(s->ssamap);
-                            
-    
-    
-    
-    //std::vector<cphvb_intp>* expr_dependent_on = get_expr_dependencies(bd_table,nt_entry->expr);
-    
-    
-    // travers the root expr. for base dependencies.
-    
-    
-    
-    // 
-    printf("e jit_prepare_execute()\n");
-}
-        
-
+       
+//~ 
+//~ cphvb_error jit_analyse_instruction_list(
+        //~ jit_ssa_map* jitssamap, 
+        //~ jit_name_table* jitnametable, 
+        //~ jit_base_dependency_table* bd_table,        
+        //~ cphvb_intp instruction_count,
+        //~ cphvb_instruction* instruction_list) {
+            
 cphvb_error jit_analyse_instruction_list(
-        jit_ssa_map* jitssamap, 
-        jit_name_table* jitnametable, 
-        jit_base_dependency_table* bd_table,
-        cphvb_intp instruction_count, cphvb_instruction* instruction_list) {
+        jit_analyse_state* s,        
+        cphvb_instruction* instruction_list,
+        cphvb_intp instruction_count) {
 
-    cphvb_intp sync_name;
-    cphvb_array* sync_array;    
-    cphvb_array* op0;
-    jit_expr* expr;
-    cphvb_intp name;
+    cphvb_intp      sync_name;
+    cphvb_array*    sync_array;    
+    cphvb_array*    op0;
+    jit_expr*       expr;
+    cphvb_intp      name;
     jit_name_entry* nt_entry;
-    int count;
-    cphvb_instruction* inst;
-    std::vector<cphvb_intp>* execute_list ;
-    jit_analyse_state* s;
+    int             count;
+    cphvb_instruction*          inst;        
+
     jit_base_dependency_table::iterator it;
     std::vector<cphvb_intp>::iterator itvec;
 
-    set<cphvb_intp>* pre_execution_list;
-    cphvb_intp execute_result;
-
-    s = jita_make_jit_analyser_state(jitnametable,jitssamap,jitbasedeptable);
-    
+    set<cphvb_intp>*            execution_list;
+    cphvb_intp                  execute_result;
+    cphvb_intp                  res;
+        
+    jit_compound_kernel* compound_kernel = (jit_compound_kernel*) malloc(sizeof(jit_compound_kernel));
+        
     for(count=0; count < instruction_count; count++) { 
         inst = &instruction_list[count];                
         switch (inst->opcode) {                     // Dispatch instruction
 
             case CPHVB_NONE:                        // NOOP.
             case CPHVB_DISCARD:
+                jita_handle_discard_instruction(s,&instruction_list[count],count);
                 break;
-            case CPHVB_SYNC:
-                printf("SYNC");
-                //cphvb_pprint_instr(inst);
-                sync_array = inst->operand[0];
-                //printf("name: %p\n",sync_array);
-
-
+            case CPHVB_SYNC:                
+                // will always be the last element in a list
+                /*
                 
+                //printf("SYNC");
+
+                //cphvb_pprint_instr(inst);
+                //sync_array = inst->operand[0];
                 
                 //jit_pprint_base_dependency_table(jitbasedeptable);
                 //execute_list = jit_prepare_execute(s,inst->operand[0]);
+                            
+                //execution_list = generate_execution_list(s,sync_array);
 
-                pre_execution_list = generate_execution_list(s,sync_array);
-            
+                //compound_kernel->kernels = (jit_kernel**) malloc(sizeof(jit_kernel*)*execution_list->size());
+                //compound_kernel->kernels_length = execution_list->size();
                 
+                //res = build_compound_kernel(s, execution_list, 1337, compound_kernel);
+
+                //printf("++++++++++ %p\n",compound_kernel);
+
+
+                //execute_compound_kernel();
+                
+                //exe_expr = compound_kernel->kernels[0]->ek.execution_expr;                
+                //map_to_exe_expr(exe_expr,instruction_list);
                 //sync_name = jita_ssamap_version_lookup(s->ssamap,sync_array,-1);
-                
-                //execute_result = execute_expression(s,pre_execution_list,sync_name);
-
+                //execute_result = execute_expression(s,execution_list,sync_name);
                 //jit_pprint_nametable(jitnametable);
                 
 
-                inst->status = CPHVB_ERROR;
-                if (execute_result == 0) {
-                    inst->status = CPHVB_SUCCESS;
-                }
+                //~ inst->status = CPHVB_ERROR;
+                //~ if (execute_result == 0) {
+                    //~ inst->status = CPHVB_SUCCESS;
+                //~ }
                 // build an expr to compute the value of the sync target
                 //
 
@@ -1680,41 +1519,15 @@ cphvb_error jit_analyse_instruction_list(
                 // make and execute_list, which is copies from the namelist of expr.
                 // but these are modified before execution. will differ in the building of
                 // these execution_trees.
-                
-                
-
-                
-                // get an complete list of dependencies to the expr.
-
-                // execute the dependencies
-
-                // 
-                
-                // create kernel
-                // execute kernel
-
-                
-                
-                
-                /*
-                name = jita_ssamap_version_lookup(jitssamap,sync_array,-1);
-                jit_pprint_ssamap(jitssamap);
-                printf(jit_pprint_nametable(jitnametable).c_str());
-                
-                printf("name: %ld\n",name);
-                nt_entry = jita_nametable_lookup(jitnametable, name);
-                
-                
-                
-                if (nt_entry != NULL) {
-                    jit_pprint_expr(nt_entry->expr);
-                }
-                */
+                */                                        
                 
                 break;
             case CPHVB_FREE:                        // Store data-pointer in malloc-cache
+                jita_handle_free_instruction(s,&instruction_list[count],count);
+                break;
             case CPHVB_USERFUNC:
-                // TODO:handle include into handle_instruction code!
+                /// TODO: not fully implemented
+                jita_handle_userfunc_instruction(s,&instruction_list[count],count);                
                 break;
                 
             default:                                              
@@ -1722,30 +1535,127 @@ cphvb_error jit_analyse_instruction_list(
                 break;
         }        
     }
-    
     //printf("%s",jit_pprint_nametable(jitnametable).c_str());
-    
 }
 
 
 cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list )
 {
     bool output_testing = true;
-    // Debug - print the execution list
-    
-    
+    // Debug - print the execution list        
     if (output_testing) {
-        cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
         
+        cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
+
+        bool cloglevel[2] = {true,true};        
+        
+        bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
+        bool put_in_cache = false;
+        
+        // true if the list is split by a fixed number. If the last element is not a SYNC operation it could be split 
+        bool connected_instruction_list = false;//(instruction_list[instruction_count-1].opcode != CPHVB_SYNC); 
+        if(connected_instruction_list) {
+           /// todo: might want to handle this case (or just restrict the VEM to never to split up instructionlists.)
+           printf("* * * * Connected Instruction list detected. Nametable should not be reset.\n");
+           return 0;  
+        } // else 
+
+
+        // reset the jit_analyse_state.
+        ///TODO: Free old analyser state.        
+        jitssamap = new jit_ssa_map();
+        jitnametable = new jit_name_table();    
+        jitbasedeptable = new jit_base_dependency_table();
+        jitanalysestate = jita_make_jit_analyser_state(jitnametable,jitssamap,jitbasedeptable);
+                
+        jit_compound_kernel* compound_kernel = NULL;        
+        // cache lookup.
+        cphvb_intp instr_list_hash = instructionlist_hash(instruction_list,instruction_count);
+        compound_kernel = jit_kernel_cache_lookup(jitkernelcache,instr_list_hash);
+        
+        logcustom(cloglevel,0,"=== Kernel from cache: %p  H: %ld\n",compound_kernel, instr_list_hash);
+        // cache miss
+        set<cphvb_intp>* execution_list = NULL;
+        if (compound_kernel == NULL) {
+                        
+            // setup                                
+            /// do analysis - check on free/discard only isntruction list.
+            jit_analyse_instruction_list(jitanalysestate,instruction_list,instruction_count);            
+            logcustom(cloglevel,1,"== Instruction-list initial analysis done\n");
+            
+            //logcustom(cloglevel,2,"last_nametable_size %ld\n",last_nametable_size);
+            /// do dependency analysis
+            jita_perform_dependecy_analysis(jitanalysestate,0);
+            logcustom(cloglevel,1,"== Dependency analysis done\n");
+            
+            /// build execution list
+            execution_list = generate_execution_list(jitanalysestate);
+            logcustom(cloglevel,1,"== Executionlist created %p, size()=%ld\n",execution_list,execution_list->size());
+            jit_pprint_set(execution_list);
+
+            if (execution_list->size() > 0) {
+                        
+                // in the creation of the compoundkernel and executionkernels the executionkernels are bounded to the data of the
+                // insturctionlist used to create the kernels. This is and uptimization step and as it is needed to visit the
+                // input arrays and constants to determin their position in the instructionlist revisiting the same operands again
+                // would be inefficient.
+                /// create compund kernel with creation execution kernels.
+                compound_kernel = (jit_compound_kernel*) malloc(sizeof(jit_compound_kernel));            
+                //compound_kernel->kernels = (jit_kernel**) malloc(sizeof(jit_kernel*)*execution_list->size());
+                compound_kernel->exekernels = (jit_execute_kernel**) malloc(sizeof(jit_execute_kernel*)*execution_list->size());
+                compound_kernel->kernels_length = execution_list->size();                    
+                cphvb_intp buildresult = build_compound_kernel(jitanalysestate, execution_list, jitcompound_kernel_count, compound_kernel);
+                
+                logcustom(cloglevel,1,"== Compund kernel created. res: %ld  P: %p\n", buildresult, compound_kernel);
+                
+                // increment the compound_kernel_id.
+                jitcompound_kernel_count++;
+            }
+            
+        }
+
+
+        // execute the 
+        if (compound_kernel != NULL) {
+            /// execute ckernel
+
+            // bind execute_kernels with instruction list
+            bind_compound_kernel(compound_kernel,instruction_list,jitinstr_list_count);
+            
+            // execute execute kernels
+            execute_compound_kernel(compound_kernel);
+
+            // if execution happened without errors, the compund_kernel is stored in the cache
+            jit_kernel_cache_insert(jitkernelcache,instr_list_hash,compound_kernel);
+            
+        } else if(execution_list != NULL && execution_list->size() > 0){
+            jit_pprint_set(execution_list);
+            // return error!! ckernel == NULL and is_error
+            printf("something horrible happened! No compound kernel created for instruction list\n");    
+        } 
+
+        /// perform cleanup
+        // go through the used arrays and ensure that discarded and free'd temp arrays are marked as unused.
+        
+
+        /// Before return
+        jitinstr_list_count++;
+        last_nametable_size = instruction_count;
         //printf("Running Analyser\n");
-        jit_analyse_instruction_list(jitssamap,jitnametable,jitbasedeptable,instruction_count,  instruction_list); 
+        //jit_analyse_instruction_list(jitssamap,jitnametable,jitbasedeptable,instruction_count,  instruction_list); 
                         
         //printf("Executing with simple\n\n\n\n");
         //execute_simple(instruction_count,instruction_list);
-        cphvb_intp hash = instuctionlist_hash(instruction_list,instruction_count);
-        printf("hsah of the instructionlist: %ld\n",hash);
+        //cphvb_intp hash = instructionlist_hash(instruction_list,instruction_count);
+        //printf("hsah of the instructionlist: %ld\n",hash);
+
+        
+        
         return CPHVB_SUCCESS;
     }
+
+
+
     
     cphvb_intp count;
     cphvb_instruction* inst;
@@ -1776,7 +1686,7 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             
             stringstream pss; 
             printf("++++++++++++++++\nresult:\n");
-            jitcg_print_cphvb_array( ne->arrayp,5, &pss);
+            //jitcg_print_cphvb_array( ne->arrayp,5, &pss);
             printf("%s\n\n",pss.str().c_str());
                         
             inst->status = CPHVB_SUCCESS;

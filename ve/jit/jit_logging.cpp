@@ -37,14 +37,21 @@ const char* log_level_text(LOG_LEVEL level) {
     return *buff;
 }
 
+void logcustom(bool* levels, int index, const char * format, ...) {
+    if (levels[index]) {
+        va_list args;        
+        va_start(args, format);
+        vfprintf(stdout,format,args);   
+        va_end (args);
+    }
+}
+
 void _log_list(LOG_LEVEL level, const char * format, va_list args) {    
     
     if (GLOBAL_LOG_LEVEL >= level ) {
         fprintf(stdout, "%s: ",log_level_text(level));
         vfprintf(stdout,format,args);    
-    }   
-    
-    
+    }    
 }
 
 void log(LOG_LEVEL level, const char * format, ...) {        

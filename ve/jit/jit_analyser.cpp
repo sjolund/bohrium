@@ -206,30 +206,28 @@ cphvb_intp jita_handle_discard(jit_name_table* nametable, jit_ssa_map* ssamap, j
     return -1;
 }
 
-cphvb_intp jita_handle_sync(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_array* array) {    
-    return 0;
-}
+//~ cphvb_intp jita_handle_sync(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_array* array) {    
+    //~ return 0;
+//~ }
 
-cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_instruction* instr) {        
-    logInfo("s jita_handle_controll_instruction()\n");    
-    switch(instr->opcode) {
-        case CPHVB_DISCARD:              
-            jita_handle_discard(nametable, ssamap, exelist , instr->operand[0]);                        
-            break;        
-            
-        case CPHVB_SYNC:
-            jita_handle_sync(nametable, ssamap, exelist , instr->operand[0]);
-            break;
-            
-        case CPHVB_NONE:
-            break;
-    }
-    logInfo("e jita_handle_controll_instruction()\n");
-    
-    return -1;
-}
-
-
+//~ cphvb_intp jita_handle_controll_instruction(jit_name_table* nametable, jit_ssa_map* ssamap, jit_execute_list* exelist, cphvb_instruction* instr) {        
+    //~ logInfo("s jita_handle_controll_instruction()\n");    
+    //~ switch(instr->opcode) {
+        //~ case CPHVB_DISCARD:              
+            //~ jita_handle_discard(nametable, ssamap, exelist , instr->operand[0]);                        
+            //~ break;        
+            //~ 
+        //~ case CPHVB_SYNC:
+            //~ jita_handle_sync(nametable, ssamap, exelist , instr->operand[0]);
+            //~ break;
+            //~ 
+        //~ case CPHVB_NONE:
+            //~ break;
+    //~ }
+    //~ logInfo("e jita_handle_controll_instruction()\n");
+    //~ 
+    //~ return -1;
+//~ }
 
 
 jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* base_usage_table) {
@@ -239,6 +237,195 @@ jit_analyse_state* jita_make_jit_analyser_state(jit_name_table* nametable, jit_s
    s->base_usage_table = base_usage_table;
    return s;
 }
+
+
+/// find the element lower or prior to the input element in the base_dep 
+cphvb_intp jita_get_prior_element(vector<cphvb_intp>* base_dep, cphvb_intp elem) {
+    if (base_dep == NULL)
+        return -2;
+    
+    vector<cphvb_intp>::iterator it;
+    cphvb_intp prior = -1;
+    int i;
+    
+    for(i=0; i<base_dep->size();i++) {
+        if(base_dep->at(i) < elem) {
+            prior = base_dep->at(i);                                    
+        } else {
+            break;
+        }            
+    }
+    return prior;    
+}
+
+cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* parent, jit_expr* expr) {
+    cphvb_array* basea;
+    if (!is_constant(expr)) {
+        jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
+        
+        logDebug(" ! %p %p\n",entr->arrayp->base, entr->arrayp->data);
+
+        basea = cphvb_base_array(entr->arrayp);
+        // Child must write to a BoundedArray, before parent can be dependent on it        
+        if (basea->data != NULL) {
+                        
+            vector<cphvb_intp>* base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);
+
+            // get the element which write to the same basearray last.
+            cphvb_intp dep_on_name = jita_get_prior_element(base_dep,parent->expr->name);
+            
+            //logDebug("dependencylist for %p",a);
+            //jit_pprint_base_dependency_list(base_dep);            
+            
+            
+            
+            // if parent did not write to the base array
+            // if not self and a sanity check
+            if (dep_on_name != -1 && dep_on_name != parent->expr->name) { 
+                // nametable entries dependency
+                //printf("updating dependency! dep_on_name: %ld %ld\n",dep_on_name, parent->expr->name);
+                parent->tdon->insert(dep_on_name);                
+                entr->tdto->insert(parent->expr->name);    
+            }    
+        }
+    }
+    return 1;
+}
+
+/**
+ * Perform dependency analysis on the analyse_state. The analysis is done 
+ * by going thruw the nametable and dertermining the depency for each
+ * element. If offset is set it is used as the starting entry for the
+ * analysis.
+ **/
+void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
+
+    vector<cphvb_intp>* base_dep;    
+
+    jit_name_entry* entr;            
+    cphvb_array* basea;
+    cphvb_intp name;
+    cphvb_intp dep_on_name;    
+    
+    jit_name_table::iterator it,start;    
+    start = s->nametable->begin();
+    if (offset != 0) {
+        printf("setting offset: %ld\n",offset);
+        start = start+offset;
+    }
+    
+    for(it=start; it != s->nametable->end(); it++) {
+        printf("NT: %ld\n",(*it)->expr->name);
+        // iterator points to name_entry.
+        
+        entr = (*it);                    
+        name = entr->expr->name;                        
+        if(is_un_op(entr->expr) || is_bin_op(entr->expr)) {  // left expr dependency
+            logDebug("un ");
+            update_expr_dependencies2(s,entr,entr->expr->op.expression.left);                        
+        }
+        
+        if(is_bin_op(entr->expr)) {  // right expr dependency
+            logDebug("bin ");
+            update_expr_dependencies2(s,entr,entr->expr->op.expression.right);            
+        }
+
+        // create 
+        if (entr->tdon == NULL) {                        
+            entr->tdon = new set<cphvb_intp>();                                                
+        }       
+        if (entr->tdto == NULL) {
+            entr->tdto = new set<cphvb_intp>();                        
+        }
+
+        // determin dependencies for target array.
+        
+        basea = cphvb_base_array(entr->arrayp);
+        
+            
+        if (basea->data != NULL) {
+            // The entr affects the basearray by changeing it.
+            // This has been recorded in the 'instruction handler', who build
+            // the initial analyse_state.
+
+            // this also means that this is dependent on previous changes.
+            // It is unknown how this entry, (with the view and expression), changes
+            // the basea. It could be writing a single value, a row or everything is changed.
+            // This we do not know. (Might be able to figure this out later).
+            
+            // Add lookup usage_list of the basea.
+            
+            base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);            
+            dep_on_name = jita_get_prior_element(base_dep,name);            
+            //printf("base_dep.size() %d. dep_on: %d name:%d\n",base_dep->size(),dep_on_name,name);
+            
+            if (dep_on_name > -1) {
+                // the entry depends on dep_on_name.
+                // add dep_on_name to DependON list for the entry.
+                
+                entr->tdon->insert(dep_on_name);                
+                jita_nametable_lookup(s->nametable,dep_on_name)->tdto->insert(entr->expr->name);                                
+            }                            
+        }        
+    } // end for loop
+
+    // dependencies of the nametable done. 
+}
+
+
+void jita_handle_userfunc_instruction(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num) {
+    // handle the userdefined function as a dependency hotspot tree node.
+    // Thus a must-execute where all inputs must be pre-executed. 
+
+    // add to nametable.
+    // set nametable-entry to *userfunc*
+    // add all input as DON
+    // add all output as DTO
+
+    // futher
+    // ignore in the dependecy analysis
+    // add to execution list + with input, in the executionlist creation.
+}
+
+/**
+ * with base_array_usage_list / dependency_table
+ **/ 
+void jita_handle_free_instruction(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num) {
+    // lookup instruction
+    //cphvb_array* base = cphvb_base_array(instr->operand[0]);
+    jit_name_entry* e = jita_nametable_lookup_a(s,instr->operand[0]);
+    if (e == NULL) {
+        // trying to free a un-registered instruction
+        return;
+    }
+    //printf("%p %p %ld %p\n",s,instr,instr_num,e);
+    
+    // set last nametable entry as the point in "analyse time" where the free happened.
+    // For temp array this will then be the same as the array name. 
+    e->freed_at = s->nametable->size();
+    printf("freed registered: %ld: %ld\n",e->expr->name, s->nametable->size());
+}
+
+/**
+ * with base_array_usage_list / dependency_table
+ **/ 
+void jita_handle_discard_instruction(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num) {    
+    // lookup instruction
+    //cphvb_array* base = cphvb_base_array(instr->operand[0]);
+    jit_name_entry* e = jita_nametable_lookup_a(s,instr->operand[0]);
+    if (e == NULL) {
+        // trying to discard a un-registered instruction
+        return;
+    }
+    //printf("%p %p %ld %p\n",s,instr->operand[0],instr_num,e);
+    
+    // set last nametable entry as the point in "analyse time" where the free happened.
+    // For temp array this will then be the same as the array name. 
+    e->discarded_at = s->nametable->size();
+    printf("discarded registered: %ld: %ld\n",e->expr->name, s->nametable->size());
+}
+
+
 
 /**
  * with base_array_usage_list / dependency_table
@@ -264,13 +451,11 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
     cphvb_intp name_second = -1;
     
     //jit_name_entry* first_entry = jita_lookup_name(nametable,ssamap, instr->operand[1],-1);        
-         
      
     jit_name_entry* first_entry = NULL;
     if (!cphvb_is_constant( instr->operand[1])) {        
         first_entry = jita_nametable_lookup_a(s, instr->operand[1]);            
     }
-
     
     //printf("-- First %p\n",first_entry);
     if (first_entry == NULL) {        
@@ -334,7 +519,7 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
                     }
                     
                 }              
-            }            
+            }          
         } else {
             second = second_entry->expr;
             logDebug("second looked up.\n");            
@@ -349,7 +534,13 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
     expr->op.expression.left = first;
     expr->op.expression.right = second;
     expr->depth = expr_depth + 1;
+    expr->parent = NULL;
 
+    first->parent = expr;
+    if (second != NULL) {
+        second->parent = expr;
+    }
+    
     
     // insert the new expression    
     cphvb_intp name = jita_insert_name(s->nametable, s->ssamap, instr->operand[0], expr);
@@ -357,9 +548,10 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
     e= jita_nametable_lookup(s->nametable,name);
     e->instr = instr;
     e->instr_num = instr_num;
-    e->operand_num = 2;
+    e->operand_num = 0;
     e->tdto = new set<cphvb_intp>();
-    e->tdon = new set<cphvb_intp>();     
+    e->tdon = new set<cphvb_intp>();
+    
     logDebug("expr inserted as %ld:\n",name);     
 
     
@@ -370,35 +562,7 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
     else {
         jita_base_usage_table_add_usage(s->base_usage_table,cphvb_base_array(instr->operand[0]),name);
     }
-
-
-
-    //jit_pprint_nametable(s->nametable);
-    //printf("\n\n");
     
-    // update first and second expression entries with used_at, 
-    // if not constant.    
-
-
-    
-    // update used_at entries
-    //~ if(!cphvb_is_constant(instr->operand[1])) {
-        //~ if (first_entry == NULL) {
-            //~ first_entry = jita_nametable_lookup(s->nametable,name_first);
-        //~ }
-        //~ logDebug("first_entry->used_at->push_back(%ld);\n",name); 
-        //~ logDebug("%p \n",first_entry); 
-        //~ 
-        //~ first_entry->used_at->push_back(name);
-    //~ }
-    //~ 
-    //~ if(second != NULL && !cphvb_is_constant(instr->operand[2])) {
-        //~ if (second_entry == NULL) {
-            //~ second_entry = jita_nametable_lookup(nametable,name_second);
-        //~ }        
-        //~ logDebug("second_entry->used_at->push_back(%ld);\n",name); 
-        //~ second_entry->used_at->push_back(name);                
-    //~ }
     logDebug("e jita_handle_arithmetic_instruction()\n");        
     
     return 1;

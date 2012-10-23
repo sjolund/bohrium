@@ -4,28 +4,147 @@
 
 // print functions
 
-#include "cphvb.h"
 #include "jit_common.h"
+
 #include "MurmurHash3.h"
-#include <string>
-#include <set>
-#include <iostream>
-#include <sstream>
 
 #define PPRINT_BUF_STRIDE_SIZE 50
 #define PPRINT_BUF_SHAPE_SIZE 50
 #define PPRINT_BUF_OPSTR_SIZE 512
 #define PPRINT_BUF_SIZE PPRINT_BUF_OPSTR_SIZE*4
 
-using namespace std;
+template <typename T1>
+void _jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit, stringstream* ss) {    
+    T1* d0 = (T1*) cphvb_base_array(a0)->data;    
+    
+    cphvb_index j,                              
+                last_dim = a0->ndim-1,
+                off0,
+                nelements = (limit>0) ? limit : cphvb_nelements( a0->ndim, a0->shape ),
+                ec = 0;
+
+    cphvb_index coord[CPHVB_MAXDIM];
+    memset(coord, 0, CPHVB_MAXDIM * sizeof(cphvb_index));
+    //*ss << "test ";
+    //printf("%d %d %d %d\n",(int)ec,(int)nelements,(long)a0->ndim, a0->shape[1]);
+    while( ec < nelements ) {
+        //printf(". %d %d .\n",ec,last_dim);
+        off0 = a0->start;                           // Compute offset based on coord
+        for( j=0; j<last_dim; ++j) {
+            off0 += coord[j] * a0->stride[j];
+        }
+        *ss << "[";                
+        for( j=0; j < a0->shape[last_dim]; j++ ) {    // Iterate over "last" / "innermost" dimension                    
+            *ss << *(off0+d0) << ",";
+            off0 += a0->stride[last_dim];
+        }
+        *ss << "]\n";
+        ec += a0->shape[last_dim];
+
+        for(j = last_dim-1; j >= 0; --j) {           // Increment coordinates for the remaining dimensions      
+            coord[j]++;
+            if (coord[j] < a0->shape[j]) {          // Still within this dimension
+                break;
+            } else {                                // Reached the end of this dimension
+                coord[j] = 0;                       // Reset coordinate
+            }                                       // Loop then continues to increment the next dimension
+        }
+    }
+}
+
+void jit_pprint_cphvb_array_stream(cphvb_array* a0, cphvb_intp limit, stringstream* ss) {
+    //logInfo("jitcg_print_cphvb_array()\n");        
+    //logDebug("Array: %p\n",a0);
+    if (a0 == NULL)
+        return;           
+    //logDebug("ArrayType: %s\n",cphvb_type_typetext(a0->type)) ;
+    
+    switch(a0->type) {
+        case CPHVB_BOOL:
+            _jit_pprint_cphvb_array<cphvb_bool>(a0,limit,ss);         
+            break;   
+        case CPHVB_INT8:
+            _jit_pprint_cphvb_array<cphvb_int8>(a0,limit,ss);            
+            break;   
+        case CPHVB_INT16:
+            _jit_pprint_cphvb_array<cphvb_int16>(a0,limit,ss);            
+            break;   
+        case CPHVB_INT32:
+            _jit_pprint_cphvb_array<cphvb_int32>(a0,limit,ss);            
+            break;   
+        case CPHVB_INT64:
+            _jit_pprint_cphvb_array<cphvb_int64>(a0,limit,ss);            
+            break;   
+        case CPHVB_UINT8:
+            _jit_pprint_cphvb_array<cphvb_uint8>(a0,limit,ss);            
+            break;   
+        case CPHVB_UINT16:
+            _jit_pprint_cphvb_array<cphvb_uint16>(a0,limit,ss);            
+            break;   
+        case CPHVB_UINT32:
+            _jit_pprint_cphvb_array<cphvb_uint32>(a0,limit,ss);            
+            break;   
+        case CPHVB_UINT64:
+            _jit_pprint_cphvb_array<cphvb_uint64>(a0,limit,ss);            
+            break;   
+        case CPHVB_FLOAT16:        
+            _jit_pprint_cphvb_array<cphvb_float16>(a0,limit,ss);            
+            break;   
+        case CPHVB_FLOAT32:        
+            _jit_pprint_cphvb_array<cphvb_float32>(a0,limit,ss);            
+            break;   
+        case CPHVB_FLOAT64:        
+            _jit_pprint_cphvb_array<cphvb_float64>(a0,limit,ss);            
+            break;   
+        default:            
+            break;   
+    }    
+}
+
+void jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit) {
+    stringstream ss;
+    jit_pprint_cphvb_array_stream(a0,limit,&ss);
+    printf("%s",ss.str().c_str());
+}
 
 
+void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
+    if (is_array(expr)) {
+        chain->push_back(expr->name^expr->tag);
+        
+    } else if (is_constant(expr)) {
+        chain->push_back(expr->name^expr->tag);
+        
+    } else if(is_bin_op(expr)) {
+        chain->push_back(expr->name^expr->depth);
+        expr_travers_for_hashing(expr->op.expression.left,chain);
+        expr_travers_for_hashing(expr->op.expression.right,chain);
+        
+    } else if (is_un_op(expr)) {
+        chain->push_back(expr->name^expr->depth);
+        expr_travers_for_hashing(expr->op.expression.left,chain);
+    }
+}
 
-/// compare two cphvb_intp array.
+cphvb_intp expr_hash(jit_expr* expr) {
+    vector<cphvb_intp> hashinputvector;
+    expr_travers_for_hashing(expr,&hashinputvector);
+    cphvb_intp hashinput[hashinputvector.size()];
+    
+    for(int i=0;i<hashinputvector.size();i++) {
+        hashinput[i] = hashinputvector[i];              
+    }
+    uint32_t result = 0;
+    uint32_t seed = 42;
+    cphvb_intp hash_val = 0;
+    MurmurHash3_x86_32(&hashinput,(int)hashinputvector.size()*2,seed,&result);
+    hash_val = result;
+    
+    return hash_val;
+}
 
-
-
-cphvb_intp instuctionlist_hash(cphvb_instruction* instruction_list, cphvb_intp instruction_count) {
+// compare two cphvb_intp array.
+cphvb_intp instructionlist_hash(cphvb_instruction* instruction_list, cphvb_intp instruction_count) {
     cphvb_intp hash_val = 0;
 
     // lookup length in a bit map. no entry with length, it is resonable to skip.
@@ -375,7 +494,7 @@ string jit_pprint_nametable(jit_name_table* nt) {
     for (it=nt->begin();it != nt->end();it++) {
         ss << (*it)->expr->name << ":" ;
         //nametable_entry_text((*it),&ss);
-        ss << "Array: " << (*it)->arrayp << ""<< " T3V = " << (((*it)->dep_trav_visited) ? "T" : "F") << "\n";
+        ss << "Array: " << (*it)->arrayp << ""<< " DTV = " << (((*it)->dep_trav_visited) ? "T" : "F") << " ,  FreedAt: " << (*it)->freed_at << "  DiscardedAt: " << (*it)->discarded_at << "(" << (*it)->instr_num << "," << (*it)->operand_num << ")\n";
         if ((*it)->expr->depth > 0) {
            print_ast_name_recursive_stream(0,(*it)->expr,&ss);   
         }
@@ -388,4 +507,120 @@ string jit_pprint_nametable(jit_name_table* nt) {
     printf(ss.str().c_str());
     return ss.str();
 }
+void jit_pprint_il_map2(jit_io_instruction_list_map_lists* il_map) {
+    stringstream ss;
+    int i=0;
+    cphvb_index instr,operand;
+
+    ss << "IL map2\n";
+    ss << "Array map:\n";    
+    for(i = 0; i < il_map->array_map->size(); i++) {
+        instr = il_map->array_map->at(i)->first;
+        operand = il_map->array_map->at(i)->second;
+        ss << "(" << instr << "," << operand << "), ";
+    }
+    ss << "\nConstant map:\n";
+    // input constants
+    for(i = 0; i < il_map->constant_map->size(); i++) {
+        instr = il_map->constant_map->at(i)->first;
+        operand = il_map->constant_map->at(i)->second;
+        ss << "(" << instr << "," << operand << "), ";
+    }
+
+    ss << "\nOutput map:\n";
+    // output arrays
+    for(i = 0; i < il_map->output_array_map->size(); i++) {
+        instr = il_map->output_array_map->at(i)->first;
+        operand = il_map->output_array_map->at(i)->second;
+        ss << "(" << instr << "," << operand << "), ";        
+    }
+    ss << "\n";
+    printf("%s",ss.str().c_str());
+}
+
+void jit_pprint_il_map(jit_io_instruction_list_map* il_map) {
+    stringstream ss;
+    int i=0;
+    cphvb_index instr,operand;
+
+    ss << "IL map\n";
+    ss << "Array map:\n";    
+    for(i = 0; i < il_map->array_map_length; i++) {
+        instr = il_map->array_map[i].instruction;
+        operand = il_map->array_map[i].operand;
+        ss << "(" << instr << "," << operand << "), ";
+    }
+    ss << "\nConstant map:\n";
+    // input constants
+    for(i = 0; i < il_map->constant_map_length; i++) {
+        instr = il_map->constant_map[i].instruction;
+        operand = il_map->constant_map[i].operand;
+        ss << "(" << instr << "," << operand << "), ";
+    }
+
+    ss << "\nOutput map:\n";
+    // output arrays
+    for(i = 0; i < il_map->output_array_map_length; i++) {
+        instr = il_map->output_array_map[i].instruction;
+        operand = il_map->output_array_map[i].operand;
+        ss << "(" << instr << "," << operand << "), ";        
+    }
+    ss << "\n";
+    printf("%s",ss.str().c_str());
+}
+
+void jit_pprint_execute_kernel(jit_execute_kernel* exekernel) {
+    stringstream ss;
+
+    //~ cphvb_array**       outputarrays;
+    //~ cphvb_index         outputarrays_length;
+    //~ 
+    //~ // distinct array input count
+    //~ cphvb_array**       inputarrays;
+    //~ cphvb_index         inputarrays_length;
+        //~ 
+    //~ // constant input count 
+    //~ cphvb_constant**    inputconstants;
+    //~ cphvb_index         inputconstants_length;
+    
+    ss << "\n+Kernel:" << exekernel->kernel << "  " << executekernel_type(exekernel) << "  ";
+    if (exekernel->kernel->type == JIT_COMPILE_KERNEL) {
+        ss << "computekernel pointer:" << exekernel->kernel->compute_kernel << "\n";; 
+    } else {    
+        ss << "name: " << exekernel->kernel->expr_kernel->expr->name << "\n";;        
+    }
+    
+    ss << "output arrays [" << exekernel->outputarrays_length << "] ";
+    for(int i=0;i<exekernel->outputarrays_length;i++) {
+        ss << "{" << exekernel->outputarrays[i] << "}"; 
+    }
+    ss << "\ninput  arrays [" << exekernel->inputarrays_length << "] ";
+    for(int i=0;i<exekernel->inputarrays_length;i++) {
+        ss << "{" << exekernel->inputarrays[i] << "}"; 
+    }
+    ss << "\nconstants     [" << exekernel->inputconstants_length << "] ";
+    for(int i=0;i<exekernel->inputconstants_length;i++) {
+        ss << "{" << exekernel->inputconstants[i] << "}"; 
+    }
+    ss << "\n";
+    printf("%s",ss.str().c_str());
+
+    if (exekernel->kernel->type == JIT_EXPR_KERNEL) {    
+        printf("expr instruction list\n");
+        cphvb_index i, il = exekernel->kernel->expr_kernel->instructions_length;
+        cphvb_instruction* tinstr;
+        for(i=0;i<il;i++) {
+            tinstr = &exekernel->kernel->expr_kernel->instructions[i];
+            if (tinstr != NULL) {
+                printf("instr: %p   T %p\n",tinstr,tinstr->operand[0]);
+            }
+        }        
+    }
+    
+    jit_pprint_il_map2(exekernel->kernel->il_map);
+}
+
+
+
+
 

@@ -42,8 +42,9 @@ def test_pattern_001(H,W):
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)   
     
-    t = A + B
-    C[0,1]
+    C = A + B
+    print C
+    
     
 
 def test_pattern_002(H,W):
@@ -92,14 +93,17 @@ def test_pattern_004(H,W):
     B = np.ones((H,W),dtype=type)    
     C = np.ones((H,W), dtype=type)    
     A = A * 3;
+    A[0,1] = 0
     B = B * 2
     
     cphvbbridge.handle_array(C)    
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)   
     
-    A = A + B + C   
+    A = A + B + C
+    
     A[0,1]
+    print "A",A
     
 def test_pattern_005(H,W):
     cphvbbridge.flush()
@@ -430,16 +434,26 @@ def test_pattern_103(H,W):
     cphvbbridge.handle_array(B)   
     cphvbbridge.handle_array(C)
     
-    B += 10 + A
-    K = B+2
-    B[0,1:3] +=2    
-    C += B + 10 
+    B += 10 + A    
+    K = B + 2     
+    B[0,1:3] += 2
+    C += B + 10
     C[0,1:3] = A[0,0:2] + B[0,2:4]
     Cc = C + B
 
-        
-    Cc[0,1]
+        #~ 
+    #~ Cc[0,1]
+    #~ print Cc # [[ 41.  37.  35.  41.  41.]]
+    #~ 
     #K[]
+
+    #B += 10 + A                        B=[15,15,15,15,15]
+    #K = B+2                            k=[17,17,17,17,17]
+    #B[0,1:3] +=2                       B=[15,17,17,15,15]
+    #C += B + 10                        C=[26,28,28,26,26]
+    #C[0,1:3] = A[0,0:2] + B[0,2:4]     C=[26,20,18,26,26] << [26,0 , 0,26,26] + 3,3 + 17,15
+    
+    #Cc = C + B                         C=[41,37,35,41,41]
 
     
     # Execute list:
@@ -507,13 +521,37 @@ def test_pattern_200(H,W):
     print C[0,1]
 
 
+
+def test_pattern_201(H,W):
+    cphvbbridge.flush()
+    print 'loop with sync'
+    print "- test_pattern_201()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type)
+    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    for i in xrange(10):
+        C += A + B
+        C[0,2]  
+    C[0,1]
+
+
 if __name__ == "__main__":
     #~ test_pattern_000(1,5)     
     #~ exit(0)
 
 
     # A + B
-    #test_pattern_003(1,5)
+    #test_pattern_001(1,5)
+
     #test_pattern_004(1,5)
 
     #test_pattern_012(1,5)
@@ -522,7 +560,7 @@ if __name__ == "__main__":
      
     #test_pattern_102(1,5)
 
-    #test_pattern_103(1,5)
+    test_pattern_103(1,5)
 
     # testing double dto epxression
     #test_pattern_101(1,5)
@@ -534,11 +572,12 @@ if __name__ == "__main__":
     # testing double inline update to boundedArray
     # [3,4,6,9,13,14,]
     #test_pattern_103(1,5)
+
     
     #test_pattern_104(1,5)
     
-    test_pattern_200(1,5)
-    
+    #test_pattern_200(1,5)
+    #test_pattern_201(1,5)
     
     #~ s = time.time()    
     #~ #test_pattern_014(10000,3000)
