@@ -368,8 +368,27 @@ def test_pattern_014(H,W):
     #K1 += C
     print K1[1,0]
     #print s - time.time()
+
+
+def test_pattern_015(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_103()";
     
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type)
     
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+    
+    B += 10 + A    
+    K = B + 2         
+    print K
 # ================================================
 
 def test_pattern_101(H,W):
@@ -554,13 +573,13 @@ if __name__ == "__main__":
 
     #test_pattern_004(1,5)
 
-    #test_pattern_012(1,5)
+    test_pattern_015(1,5)
 
     #test_pattern_101(1,5)
      
     #test_pattern_102(1,5)
 
-    test_pattern_103(1,5)
+    #test_pattern_103(1,5)
 
     # testing double dto epxression
     #test_pattern_101(1,5)
