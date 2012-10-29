@@ -1,6 +1,7 @@
 import numpy as np
 #import numpytest
 import cphvbbridge
+import time
 
 type=np.float32
 def test_pattern_001(H,W):
@@ -17,9 +18,7 @@ def test_pattern_001(H,W):
     
     work = A + B   
     t = A[0,1]
-    
-    
-    
+        
 def test_pattern_002(H,W):    
     type = np.float32; 
     A = np.ones((H,W),dtype=type)    
@@ -311,6 +310,7 @@ def test_001():
     
     #print A
 type = np.float32
+
 def jacobi_stencil(H,W,Dist,elems=2):
     full = np.zeros((H+2,W+2), dtype=type)
     work = np.zeros((H,W), dtype=type)
@@ -340,24 +340,31 @@ def jacobi_stencil(H,W,Dist,elems=2):
     #while epsilon<delta:
     #for i in xrange(400):
     for i in xrange(elems):
-      i+=1
-      work[:] = cells
-      work += up
-      work += left
-      work += right
-      work += down
-      work *= 0.2
-      
-      # alternative writing:      
-      #~ work[:] = (cells + up + left + right + down) * 0.2
-      
-      #~ np.subtract(cells,work,diff)
-      #~ diff = np.absolute(diff)
-      #~ np.add.reduce(diff, out=tmpdelta)
-      #~ delta = np.add.reduce(tmpdelta)
-      cells[:] = work
-      
+        i+=1
+        #~ work[:] = cells
+        #~ work += up
+        #~ work += left
+        #~ work += right
+        #~ work += down
+        #~ work *= 0.2
+
+        # alternative writing:      
+        work[:] = (cells + up + left + right + down) * 0.2
+
+        #~ np.subtract(cells,work,diff)
+        #~ diff = np.absolute(diff)
+        #~ np.add.reduce(diff, out=tmpdelta)
+        #~ delta = np.add.reduce(tmpdelta)
+    
+        cells[:] = work
+
     cells[0,1]
+    
+
+
+
+#delta = np.add.reduce(diff)
+#delta = np.add.reduce(delta)
 
 if __name__ == "__main__":
     
@@ -384,7 +391,8 @@ if __name__ == "__main__":
         
     #print args
     #print "do_num",do_num
-    
+
+    start = time.time()
     
     if do_num == 1:
         test_pattern_001(1,5)
@@ -407,8 +415,9 @@ if __name__ == "__main__":
     if do_num == 101:
         test_pattern_101(1,5)                    
     if do_num == 42:
-        jacobi_stencil(1,5,2)
-    
+        jacobi_stencil(1000,10000,1,20)
+
+    print "execution time", time.time() - start
     #test_pattern_hit(5,5)
     
     #test_pattern_miss_a(5,5)

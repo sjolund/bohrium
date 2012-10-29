@@ -7,6 +7,7 @@
 #include "jit_compile.h"
 #include "jit_analyser.h"
 #include "jit_mcache.h"
+#include "jit_computing.h"
 #include <map>
 #include <vector>
 
@@ -46,6 +47,9 @@ typedef struct {
     jit_expr*           expr;
     cphvb_instruction*  instructions;    
     cphvb_index         instructions_length;
+    cphvb_index         instruction_num;
+    bool                is_userfunc;
+    
     
 } jit_expr_kernel;
 
@@ -104,7 +108,7 @@ typedef struct {
 
 cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* execution_list, cphvb_intp compound_id, jit_compound_kernel* out);
 cphvb_intp bind_compound_kernel(jit_compound_kernel* ckernel, cphvb_instruction* instruction_list, cphvb_intp id);
-cphvb_intp execute_compound_kernel(jit_compound_kernel* ckernel);
+cphvb_intp execute_compound_kernel(jit_compute_functions* compute_functions, jit_compound_kernel* ckernel, cphvb_instruction* list);
 
 const char* executekernel_type(jit_execute_kernel* exekernel);
 

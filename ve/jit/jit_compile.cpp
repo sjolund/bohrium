@@ -92,8 +92,9 @@ jit_comp_kernel* compile(string kernel_func_name,string codetext, jit_compile_me
     jit_comp_kernel* kernel = ((jit_comp_kernel*) malloc(sizeof(jit_comp_kernel))) ;
     
     switch(method) {        
-        default: 
-            printf("compile result: %d\n", compile_tcc(kernel_func_name,codetext,kernel));        
+        default:
+            cphvb_intp res = compile_tcc(kernel_func_name,codetext,kernel);
+            //printf("compile result: %d\n", res);        
             return kernel;            
     }
 }

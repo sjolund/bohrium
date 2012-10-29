@@ -15,7 +15,7 @@
 #include <map>
 #include <set>
 
-#define __JIT_KERNEL_CACHE_DEBUG 1
+#define __JIT_KERNEL_CACHE_DEBUG 0
 
 using namespace std;
 
@@ -25,7 +25,7 @@ using namespace std;
 bool jit_kernel_cache_insert(jit_kernel_cache* kc,cphvb_intp key, jit_compound_kernel* kernel) {
     pair<jit_kernel_cache::iterator,bool> res = kc->insert( pair<cphvb_intp, jit_compound_kernel* >(key,kernel) );
     if(__JIT_KERNEL_CACHE_DEBUG == 1) {
-        printf(" KernelCache: inserting %ld  -  %s\n",kernel->id, (res.second)? "SUCCESS": "ERROR");
+        printf("KCI KernelCache: inserting %ld  -  %s\n",kernel->id, (res.second)? "SUCCESS": "ERROR");
     }  
     return res.second;
 }
@@ -37,7 +37,7 @@ jit_compound_kernel* jit_kernel_cache_lookup(jit_kernel_cache* kc, cphvb_intp ke
     jit_kernel_cache::iterator it;
     it = kc->find(key);
     if(__JIT_KERNEL_CACHE_DEBUG == 1) {
-        printf(" KernelCache: lookup %ld  -  %s\n",key, (it != kc->end())? "SUCCESS": "ERROR");
+        printf("KCL KernelCache: lookup %ld  -  %s\n",key, (it != kc->end())? "SUCCESS": "ERROR");
     }    
     if (it == kc->end()) {
         return NULL;

@@ -21,6 +21,8 @@ If not, see <http://www.gnu.org/licenses/>.
 #define __CPHVB_VE_SIMPLE_H
 
 #include <cphvb.h>
+#include <map>
+#include "jit_computing.h"
 
 #ifdef __cplusplus
 extern "C" {

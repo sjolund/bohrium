@@ -33,7 +33,7 @@ bool is_array(jit_expr* expr) {
     return expr->tag == array_val;
 }
 bool is_userfunc(jit_expr* expr) {
-    return expr->tag == userdef;
+    return expr->tag == expr_type_userfunc;
 }
 
 
@@ -41,7 +41,28 @@ bool is_constant(jit_expr* expr) {
     return expr->tag == const_val;
 }
 
+jit_expr* cphvb_constant_to_jit_expr(cphvb_constant* constant) {
+    jit_expr* e = new jit_expr();    
+    e->tag = const_val;    
+    e->op.constant = constant;
+    
+    e->id = 0;
+    e->depth = 0;
+    e->parent = NULL;
+    return e;
+}
 
+jit_expr* cphvb_array_to_jit_expr(cphvb_array* array) {
+    jit_expr* e = new jit_expr();
+    e->tag = array_val;
+    e->op.array = array;
+    
+    e->id = 0;    
+    e->depth = 0;
+    e->name = -1;
+    e->parent = NULL;
+    return e;   
+}
 
 cphvb_error array_to_exp(cphvb_array* array, ast* result) {     
     try 

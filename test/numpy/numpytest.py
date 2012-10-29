@@ -172,7 +172,9 @@ if __name__ == "__main__":
             assert False, "unhandled option"
 
     if len(script_list) == 0:
-        script_list = os.listdir(os.path.dirname(os.path.abspath(__file__)))
+        #script_list = os.listdir(os.path.dirname(os.path.abspath(__file__)))
+        script_list = ["test_views.py"]
+        
 
     print "*"*3, "Testing the equivalency of cphVB-NumPy and NumPy", "*"*3
     for i in xrange(len(script_list)):

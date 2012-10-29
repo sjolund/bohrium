@@ -7,11 +7,12 @@
 #include "cphvb.h"
 #include <utility>
 #include <map>
+#include <vector>
 #include <list>
 #include <sstream>
 #include <iostream>
 
-typedef enum  {no_type = -1, bin_op = 0, un_op = 1, const_val = 2, array_val = 3, userdef = 4} ExprType; 
+typedef enum  {no_type = -1, bin_op = 0, un_op = 1, const_val = 2, array_val = 3, expr_type_userfunc = 4} ExprType; 
 typedef enum  {no_status = -1, jit_expr_status_executed} jit_expr_status;
 //typedef enum { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4} _LOG_LEVEL;
 
@@ -21,17 +22,21 @@ typedef struct Exp {
     cphvb_intp                                      name; 
     cphvb_intp                                      depth;
     jit_expr_status                                 status;
-
     
-    struct Exp*                                     parent;                                       
+    struct Exp*                                     parent;
+                                         
     union { cphvb_constant*                         constant;
             cphvb_array*                            array;
             cphvb_userfunc*                         userfunc;
-                                
-            struct {    cphvb_opcode    opcode;
-                        struct Exp*     left;
-                        struct Exp*     right; }    expression;            
+                                                                                                               
+            struct {
+                cphvb_opcode            opcode;
+                struct Exp*             left;
+                struct Exp*             right; }    expression;            
     } op;
+
+    std::vector<Exp*>*                              userfunction_inputs;
+    
 } ast;
 
 typedef ast jit_expr;
@@ -70,5 +75,8 @@ void ast_handle_instruction(std::list<ast*>* expression_list, std::map<cphvb_arr
 ExprType ast_operand_count_to_tag(cphvb_intp operand_count) ;
 void print_ast_recursive_stream(int step, ast* node, std::stringstream* ss);
 void print_ast_name_recursive_stream(int step, ast* node, std::stringstream* ss);
+
+jit_expr* cphvb_array_to_jit_expr(cphvb_array* array);
+jit_expr* cphvb_constant_to_jit_expr(cphvb_constant* array);
 
 #endif

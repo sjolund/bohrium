@@ -170,7 +170,7 @@ const char* cphvb_type_typetext(cphvb_type type) {
 
 string build_expression_string(cphvb_opcode c, string s1, string s2) {
     stringstream ss;
-    printf("build_expression_string(%s)\n", cphvb_opcode_text(c));
+    //printf("build_expression_string(%s)\n", cphvb_opcode_text(c));
     switch(c) {
         case CPHVB_ADD:		// Add arguments element-wise.        
             ss << "(" << s1 << " + " << s2 << ")";        
@@ -862,15 +862,15 @@ string create_kernel_function_travers(string name,string computation_string) {
 "        }\n"
 "        while( ec < nelements ) {\n"
 "            for(i=0;i<num_as;i++) {\n"
-"                offs[i] = as[i]->start;\n"
-"                off_oa = oa->start;\n"
+"                offs[i] = as[i]->start;\n"               
 "            }\n"
+"            off_oa = oa->start;\n"
 "            // Compute offset based on coord\n"
 "            for(j=0; j<last_dim; ++j) {\n"
 "                for(i=0;i<num_as;i++) {\n"
 "                    offs[i] += coord[j] * as[i]->stride[j];\n"
-"                    off_oa += coord[j] * oa->stride[j];\n"
 "                }\n"
+"                off_oa += coord[j] * oa->stride[j];\n"
 "            }\n"  
 "            for(j=0; j < oa->shape[last_dim]; j++ ) {\n"
 "                // computation code\n";
@@ -1080,3 +1080,69 @@ void kernel_func_321436602_3(cphvb_array* oa, cphvb_array** as, cphvb_index num_
         free(offs);
     }
 
+
+
+void kernel_func_4265622974_0(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = oa->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( oa->ndim, oa->shape );
+        cphvb_index ec = 0;
+        cphvb_index off_oa = 0;
+        cphvb_index* coord;
+        coord = (cphvb_index*) malloc(oa->ndim * sizeof(cphvb_index));
+        memset(coord, 0, oa->ndim * sizeof(cphvb_index));
+        cphvb_index* offs;
+        offs = (cphvb_index*) malloc(num_as * sizeof(cphvb_index));
+        int j=0, i=0;
+        cphvb_array** ds;
+        ds = (cphvb_array**) malloc(num_as * sizeof(cphvb_array*));
+        
+        cphvb_array* doa = cphvb_base_array(oa);
+        for(i=0;i<num_as;i++) {
+           ds[i] = cphvb_base_array(as[i]);
+        }
+        
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += oa->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        printf("starts: %ld %ld %ld %ld \n",oa->start,as[0]->start,as[1]->start,as[2]->start);
+        while( ec < nelements ) {
+            for(i=0;i<num_as;i++) {
+                offs[i] = as[i]->start;                
+            }
+            off_oa = oa->start;
+            printf("off_oa: %ld\n",off_oa);
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+                for(i=0;i<num_as;i++) {
+                    offs[i] += coord[j] * as[i]->stride[j];                    
+                }
+                off_oa += coord[j] * oa->stride[j];
+            }
+            printf("off_oa: %ld\n",off_oa);
+            for(j=0; j < oa->shape[last_dim]; j++ ) {
+                // computation code
+                printf("Os: %ld %ld %ld %ld, nelements: %ld\n",off_oa,offs[0],offs[1],offs[2],nelements);
+                *(off_oa+((cphvb_float32*) doa->data)) = ((*(offs[0]+((cphvb_float32*) ds[0]->data)) + *(offs[1]+((cphvb_float32*) ds[1]->data))) + *(offs[2]+((cphvb_float32*) ds[2]->data)));
+                for(i=0;i<num_as;i++) {
+                   offs[i] += as[i]->stride[last_dim];
+                }
+                off_oa += oa->stride[last_dim];
+            }
+            ec += oa->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < oa->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+        free(coord);
+        free(offs);
+    }

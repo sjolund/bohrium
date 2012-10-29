@@ -492,16 +492,17 @@ string jit_pprint_nametable(jit_name_table* nt) {
     jit_name_table::iterator it;  
     ss << "Nametable: [\n";  
     for (it=nt->begin();it != nt->end();it++) {
-        ss << (*it)->expr->name << ":" ;
-        //nametable_entry_text((*it),&ss);
-        ss << "Array: " << (*it)->arrayp << ""<< " DTV = " << (((*it)->dep_trav_visited) ? "T" : "F") << " ,  FreedAt: " << (*it)->freed_at << "  DiscardedAt: " << (*it)->discarded_at << "(" << (*it)->instr_num << "," << (*it)->operand_num << ")\n";
-        if ((*it)->expr->depth > 0) {
-           print_ast_name_recursive_stream(0,(*it)->expr,&ss);   
-        }
-        
-        
-        //print_ast_recursive_stream(0,(*it)->expr,&ss);
-                         
+        if ((*it)->is_userfunction) {
+            ss << (*it)->expr->name << ":Userfunc. "<< (*it)->arrayp << "|"<< (*it)->expr <<" In: "<< (*it)->expr->userfunction_inputs->size() <<"   Out: " << (*it)->span << "\n";
+        } else {
+            ss << (*it)->expr->name << ":" ;
+            //nametable_entry_text((*it),&ss);
+            ss << "Array: " << (*it)->arrayp << ""<< " DTV = " << (((*it)->dep_trav_visited) ? "T" : "F") << " ,  FreedAt: " << (*it)->freed_at << "  DiscardedAt: " << (*it)->discarded_at << "(" << (*it)->instr_num << "," << (*it)->operand_num << ")\n";
+            if ((*it)->expr->depth > 0) {
+               print_ast_name_recursive_stream(0,(*it)->expr,&ss);   
+            }
+        }        
+        //print_ast_recursive_stream(0,(*it)->expr,&ss);                         
     }    
     ss << "]";
     printf(ss.str().c_str());

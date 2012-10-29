@@ -13,7 +13,7 @@
 typedef enum { JIT_NO_VAL = 0, JIT_DEPTRAV_VISITED = 1, JIT_DEPTRAV_CUTED = 2} jit_entry_status;
 
 typedef struct {
-    cphvb_array*                arrayp;
+    cphvb_array*                arrayp;         // The assignment to or target of the expression
     cphvb_intp                  version;        // enables reverse lookup in ssa table with arrayp
     jit_expr*                   expr;           // the expression with pointers to other expressions.
     
@@ -32,7 +32,13 @@ typedef struct {
     cphvb_index                 discarded_at;
 
     // userfunc hack handling!
-    bool                        is_userfunction;
+    // userfunctions are registered in multiple NT entries. One fo each output of the userdefined function.
+    // The span and span_index, is the number of NT entries the userfunction spans over and the index in this
+    // span the current entry is.
+    bool                        is_userfunction;        
+    cphvb_index                 span;
+    cphvb_index                 span_index;
+    
     /// TODO: add a way to handle userfunc!! (multi output)
 
     // needed ?
@@ -116,4 +122,5 @@ void jita_run_tests();
 void _print_used_at(std::vector<cphvb_intp>* vec);
 
 #endif
+
 

@@ -93,7 +93,7 @@ def test_pattern_004(H,W):
     B = np.ones((H,W),dtype=type)    
     C = np.ones((H,W), dtype=type)    
     A = A * 3;
-    A[0,1] = 0
+    A[:,1] = 0
     B = B * 2
     
     cphvbbridge.handle_array(C)    
@@ -103,7 +103,7 @@ def test_pattern_004(H,W):
     A = A + B + C
     
     A[0,1]
-    print "A",A
+    print A
     
 def test_pattern_005(H,W):
     cphvbbridge.flush()
@@ -459,7 +459,7 @@ def test_pattern_103(H,W):
     C += B + 10
     C[0,1:3] = A[0,0:2] + B[0,2:4]
     Cc = C + B
-
+    print Cc
         #~ 
     #~ Cc[0,1]
     #~ print Cc # [[ 41.  37.  35.  41.  41.]]
@@ -560,7 +560,36 @@ def test_pattern_201(H,W):
     for i in xrange(10):
         C += A + B
         C[0,2]  
-    C[0,1]
+    print C
+
+
+
+def test_pattern_300(H,W):
+    cphvbbridge.flush()
+    print 'reduce userfunc'
+    print "- test_pattern_300()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    
+    A = A * 4;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)       
+
+    h = np.add.reduce(A)    
+    t = np.add.reduce(h)
+    print t
+    A = B * t
+    print A
+
+
+    
+
+
+#delta = np.add.reduce(diff)
+#delta = np.add.reduce(delta)
 
 
 if __name__ == "__main__":
@@ -570,16 +599,16 @@ if __name__ == "__main__":
 
     # A + B
     #test_pattern_001(1,5)
+    #test_pattern_004(10,40)
 
-    #test_pattern_004(1,5)
-
-    test_pattern_015(1,5)
+    # PROBLEM WITH THIS TEST!
+    #test_pattern_015(1,5)
 
     #test_pattern_101(1,5)
      
     #test_pattern_102(1,5)
 
-    #test_pattern_103(1,5)
+    #test_pattern_103(30,50)
 
     # testing double dto epxression
     #test_pattern_101(1,5)
@@ -624,7 +653,7 @@ if __name__ == "__main__":
     #~ 
 
 
-
+    test_pattern_300(1,5)
     #~ doing test_pattern 14 (10,10)
     #~ simple    
     #~ -0.000265121459961

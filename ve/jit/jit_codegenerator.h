@@ -50,4 +50,7 @@ string build_expression_string(cphvb_opcode c, string s1, string s2);
 string create_kernel_function_travers(string name,string computation_string);
 string create_kernel_function_travers_static(string name,string computation_string,int num_arrays, int num_constants, int num_outarray_dimension);
 
+
+void kernel_func_4265622974_0(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit);
 #endif
+
