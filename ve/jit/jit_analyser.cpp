@@ -6,7 +6,6 @@
 #include "jit_logging.h"
 #include "jit_common.h"
 
-
 #ifndef _LOG_LEVEL
 #define _LOG_LEVEL 0 // NONE
 #endif
@@ -198,35 +197,37 @@ cphvb_intp jita_get_prior_element(vector<cphvb_intp>* base_dep, cphvb_intp elem)
 
 
 cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* parent, jit_expr* expr) {
-    bool cloglevel[2] = {0,0};
+    bool cloglevel[] = {0,0,0};
     logcustom(cloglevel,0,"update_expr_dependencies2(state,%ld,%ld)\n",parent->expr->name,expr->name);
     cphvb_array* basea = NULL;
     vector<cphvb_intp>* base_dep;
         
     if (!is_constant(expr)) {
         jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);        
-        logcustom(cloglevel,1,"UED2 ! %p %p\n",entr->arrayp->base, entr->arrayp->data);
+            logcustom(cloglevel,1,"UED2 ! %p %p\n",entr->arrayp->base, entr->arrayp->data);
 
         basea = cphvb_base_array(entr->arrayp);
-        logcustom(cloglevel,1,"UED2 -basea: %p\n",basea);
+            logcustom(cloglevel,1,"UED2 -basea: %p\n",basea);
+        
         // Child must write to a BoundedArray, before parent can be dependent on it        
-        if (basea->data != NULL) {
-                    
+        if (basea->data != NULL) {                
             base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);
 
             // get the element which write to the same basearray last.
             cphvb_intp dep_on_name = jita_get_prior_element(base_dep,parent->expr->name);
 
             logcustom(cloglevel,1,"UED2 base: basedeps:%d depON: %ld\n",base_dep->size(),dep_on_name);
-            //logDebug("dependencylist for %p",a);
-            //jit_pprint_base_dependency_list(base_dep);                                
+            if (cloglevel[2]) {
+                logcustom(cloglevel,2,"dependencylist for basea: %p",basea);
+                jit_pprint_base_dependency_list(base_dep);
+            }
             
             // if parent did not write to the base array
             // if not self and a sanity check
             if (dep_on_name != -1 && dep_on_name != parent->expr->name) {
-                logcustom(cloglevel,1,"UED2 parent->tdon: %p, entr->tdto: %p\n",parent->tdon,entr->tdto);
-                // nametable entries dependency
-                //printf("updating dependency! dep_on_name: %ld %ld\n",dep_on_name, parent->expr->name);
+                    logcustom(cloglevel,1,"UED2 parent->tdon: %p, entr->tdto: %p\n",parent->tdon,entr->tdto);
+
+                // nametable entries dependency                
                 parent->tdon->insert(dep_on_name);                
                 entr->tdto->insert(parent->expr->name);                
             }        
@@ -273,7 +274,6 @@ void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
                 update_expr_dependencies2(s,entr,entr->expr->userfunction_inputs->at(i));
             }
             
-
             jit_name_entry* tentr;
             for(int i=0;i < entr->span;i++) {
                 tentr = jita_nametable_lookup(s->nametable,j+i);      
@@ -282,7 +282,7 @@ void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
                 if (basea->data != NULL) {                   
                     base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);            
                     dep_on_name = jita_get_prior_element(base_dep,j+i);            
-                    //printf("base_dep.size() %d. dep_on: %d name:%d\n",base_dep->size(),dep_on_name,name);
+                    logcustom(cloglevel,1,"base_dep.size() %d. dep_on: %d name:%d\n",base_dep->size(),dep_on_name,name);
                     
                     if (dep_on_name > -1) {
                         // the entry depends on dep_on_name.
@@ -294,6 +294,7 @@ void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
                 }                
             }
             j+= (entr->span-1);
+
             
         } else {
             logcustom(cloglevel,1,"JPDA %d = not userfunctions\n",entr->expr->name);        
@@ -308,15 +309,6 @@ void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
                 logcustom(cloglevel,1,"bin ");
                 update_expr_dependencies2(s,entr,entr->expr->op.expression.right);            
             }
-
-            // this cant be used!
-            //~ // create 
-            //~ if (entr->tdon == NULL) {                
-                //~ entr->tdon = new set<cphvb_intp>();                                                
-            //~ }       
-            //~ if (entr->tdto == NULL) {
-                //~ entr->tdto = new set<cphvb_intp>();                        
-            //~ }
 
             // determin dependencies for target array.
             basea = cphvb_base_array(entr->arrayp);
@@ -347,8 +339,6 @@ void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
             }
         }        
     } // end for loop
-
-    // dependencies of the nametable done. 
 }
 
 

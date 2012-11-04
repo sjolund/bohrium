@@ -903,6 +903,17 @@ cphvb_intp build_compile_kernel(jit_analyse_state* s, jit_name_entry* entr, cphv
     return 0;
 }
 
+
+/**
+ * Update the depth indicator for and expression to reflect if children
+ * have been added to the executionlist. (dependency-cut-offs).
+ *
+ * @return correct depth of the expr.
+ **/
+cphvb_index jit_update_expr_depth(jit_expr* expr) {
+    
+}
+
 /**
  * 
  **/
@@ -922,7 +933,6 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
     for(it=execution_list->begin();it!=execution_list->end();it++) {
         entr = jita_nametable_lookup(s->nametable,*it);
         logcustom(cloglevel,1,"BCK name:%d  depth: %ld\n",*it, entr->expr->depth);
-
         exprhash = expr_hash(entr->expr);
         
         jit_execute_kernel* execute_kernel = (jit_execute_kernel*) malloc(sizeof(jit_execute_kernel));
@@ -930,6 +940,7 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
         if(entr->is_userfunction) {
             logcustom(cloglevel,1,"BCK %d build_expr_kernel \n",*it);
             build_expr_kernel(s,entr,exprhash,kernel_count,execute_kernel);
+            entr->is_executed = true;
         } else         
         if (entr->expr->depth == -1) {
             // a single instruction as and expression.

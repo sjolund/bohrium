@@ -520,18 +520,16 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
         logcustom(cloglevel,1,"EDT3 is userfun. returning.\n");
         return;
     }
+
     
     if (is_un_op(expr) || is_bin_op(expr)) {
         int children_num = is_bin_op(expr) ? 2 : 1;    
         jit_expr* children[2] = {expr->op.expression.left, expr->op.expression.right};
         //printf("children_num: %d \n",children_num);
-        for(int i=0;i<children_num;i++) {
-                    
-            // for the current expr.
-            // for each don not with a dton in its child expr.                   
-            echild = children[i];
-            //printf("for children %d : %ld\n",i,echild->name);
-            
+
+        // do for both left and right expression. Left first.
+        for(int i=0;i<children_num;i++) {                                                        
+            echild = children[i];                        
             entr_child = jita_nametable_lookup(s->nametable,echild->name);
 
             //printf("Child is expression\n",echild->name);
@@ -544,7 +542,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                     execute_list->insert(echild->name);            
                     /// TODO: determin how to travers the echild from here.
                     /// DONE
-                    logDebug("Adding to execute:1: %ld\n",echild->name);
+                    logcustom(cloglevel,1,"Adding to execute:1: %ld\n",echild->name);
                     expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);
                     return;                
                         
@@ -558,7 +556,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                         execute_list->insert(echild->name);
                         /// TODO: determin how to travers the echild from here.
                         /// DONE
-                        logDebug("Adding to execute:2: %ld\n",echild->name);
+                        logcustom(cloglevel,1,"Adding to execute:2: %ld\n",echild->name);
                         expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);
                         return;
                     }                    
@@ -592,13 +590,13 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                                         // parent is dependent on a higher version of the BoundedArray.
                                         // cutting closest to expression dependency conflict
                                         execute_list->insert(echild->name);
-                                        logDebug("Adding to execute:3: %ld\n",echild->name);
+                                        logcustom(cloglevel,1,"Adding to execute:3: %ld\n",echild->name);
                                         grand_parent_DON->erase(*itp);
                                                                                         
                                     }                            
                                 }
                             }
-                        }
+                        } // end double forloop.                        
                     }                                                        
                     
                     if (grand_parent_DON->size() > 0) {
@@ -621,7 +619,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                                         // a grand parent is dependent on a higher version of the BoundedArray.
                                         // cutting closest to expression dependency conflict
                                         execute_list->insert(echild->name);
-                                        logDebug("Adding to execute:4: %ld",echild->name);
+                                        logcustom(cloglevel,1,"Adding to execute:4: %ld",echild->name);
                                         grand_parent_DON->erase(*itp);                              
                                     }                            
                                 }
@@ -632,7 +630,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
             } // end expression check
             expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);        
         } // end for loop        
-    }
+    } // if array or constant the traveresal stops.
 }
 
 
