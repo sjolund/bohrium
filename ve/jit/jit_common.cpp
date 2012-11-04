@@ -108,6 +108,14 @@ void jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit) {
 }
 
 
+
+string jit_pprint_true_false(bool stm) {
+    if(stm)
+        return string("true");
+    else
+        return string("true");
+}
+
 void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
     if (is_array(expr)) {
         chain->push_back(expr->name^expr->tag);
@@ -124,6 +132,18 @@ void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
         chain->push_back(expr->name^expr->depth);
         expr_travers_for_hashing(expr->op.expression.left,chain);
     }
+}
+
+timespec diff(timespec start, timespec end) {
+	timespec temp;
+	if ((end.tv_nsec-start.tv_nsec)<0) {
+		temp.tv_sec = end.tv_sec-start.tv_sec-1;
+		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+	} else {
+		temp.tv_sec = end.tv_sec-start.tv_sec;
+		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+	}
+	return temp;
 }
 
 cphvb_intp expr_hash(jit_expr* expr) {
@@ -508,6 +528,8 @@ string jit_pprint_nametable(jit_name_table* nt) {
     printf(ss.str().c_str());
     return ss.str();
 }
+
+
 void jit_pprint_il_map2(jit_io_instruction_list_map_lists* il_map) {
     stringstream ss;
     int i=0;
@@ -595,9 +617,9 @@ void jit_pprint_execute_kernel(jit_execute_kernel* exekernel) {
     for(int i=0;i<exekernel->outputarrays_length;i++) {
         ss << "{" << exekernel->outputarrays[i] << "}"; 
     }
-    ss << "\ninput  arrays [" << exekernel->inputarrays_length << "] ";
-    for(int i=0;i<exekernel->inputarrays_length;i++) {
-        ss << "{" << exekernel->inputarrays[i] << "}"; 
+    ss << "\ninput  arrays [" << exekernel->arrays_length << "] ";
+    for(int i=0;i<exekernel->arrays_length;i++) {
+        ss << "{" << exekernel->arrays[i] << "}"; 
     }
     ss << "\nconstants     [" << exekernel->inputconstants_length << "] ";
     for(int i=0;i<exekernel->inputconstants_length;i++) {
@@ -621,7 +643,28 @@ void jit_pprint_execute_kernel(jit_execute_kernel* exekernel) {
     jit_pprint_il_map2(exekernel->kernel->il_map);
 }
 
-
+int timeval_subtract (timeval* result, timeval* x, timeval* y) {     
+    
+       /* Perform the carry for the later subtraction by updating y. */
+       if (x->tv_usec < y->tv_usec) {
+         int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
+         y->tv_usec -= 1000000 * nsec;
+         y->tv_sec += nsec;
+       }
+       if (x->tv_usec - y->tv_usec > 1000000) {
+         int nsec = (x->tv_usec - y->tv_usec) / 1000000;
+         y->tv_usec += 1000000 * nsec;
+         y->tv_sec -= nsec;
+       }
+     
+       /* Compute the time remaining to wait.
+          tv_usec is certainly positive. */
+       result->tv_sec = x->tv_sec - y->tv_sec;
+       result->tv_usec = x->tv_usec - y->tv_usec;
+     
+       /* Return 1 if result is negative. */
+       return x->tv_sec < y->tv_sec;
+     }
 
 
 

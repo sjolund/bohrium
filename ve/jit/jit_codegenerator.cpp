@@ -39,101 +39,41 @@ string kernel_define_header() {
 
     return ss.str();
 }
+string jitcg_nameing_array_offset(string prefix,cphvb_index i) {
+    stringstream ss;
+    ss << prefix << "OffA" << i;
+    return ss.str();
+}
+
+string jitcg_nameing_array_datapointer(string prefix,cphvb_index i) {
+    stringstream ss;
+    ss << prefix << "DA" << i;
+    return ss.str();
+}
+
+string jitcg_nameing_constant(cphvb_index i) {
+    stringstream ss;
+    ss << "C" << i;
+    return ss.str();
+}
+
+string jitcg_nameing_constant_datapointer(cphvb_index i) {
+    stringstream ss;
+    ss << "DC" << i;
+    return ss.str();
+}
+
+string jitcg_nameing_array(cphvb_index i) {
+    stringstream ss;
+    ss << "A" << i;
+    return ss.str();
+}
 
 
 
 //jit_comp_kernel* jitcg_create_kernel
 
 void jitcg_expr_traverse2(jit_expr* expr, jit_analyse_state* s, std::map<cphvb_intp,cphvb_intp>* as, std::map<cphvb_constant*,cphvb_intp>* cs, stringstream* comp_ss );
-string create_kernel_function_travers(string name,string computation_string);
-string create_kernel_function(string computation_string);
-
-void jitcg_create_kernel_code(jitcg_state* cgs, jit_analyse_state* s, jit_expr* expr) {
-    //printf("jitcg_create_kernel_code()\n");
-    // get the nametable entry for the expr.
-    jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-    
-    // stringstream to build the math expression. 
-    stringstream comp_ss;
-    
-    // left hand side of the math expression    
-    comp_ss << "*(((" << cphvb_type_typetext(entr->arrayp->type) << "*) oa->data) + off_oa) = ";
-
-    // lists to hold input variables, Arrays and Constants, from traversal of expr.
-    std::map<cphvb_intp,cphvb_intp>* as = new std::map<cphvb_intp,cphvb_intp>();
-    std::map<cphvb_constant*,cphvb_intp>* cs = new std::map<cphvb_constant*,cphvb_intp>();
-
-    // travers the expr, building the math computation and extracting input variables.
-    jitcg_expr_traverse2(expr, s, as, cs, &comp_ss);
-
-    // convert maps into arrays with key==index        
-    cphvb_array** vasa      = (cphvb_array**)malloc(as->size() * sizeof(cphvb_array*));
-    cphvb_constant** vcsa   = (cphvb_constant**)malloc(cs->size() * sizeof(cphvb_constant*)); 
-        
-    std::map<cphvb_intp,cphvb_intp>::iterator ita;    
-    for(ita = as->begin();ita != as->end();ita++) {
-        cphvb_array* ainput = cphvb_base_array(jita_nametable_lookup(s->nametable,(*ita).first)->arrayp);
-        //cphvb_array* ainput = cphvb_base_array(jita_nametable_lookup(s->nametable,(*ita).first)->arrayp);
-        //printf("+++++ %d %p\n",(*ita).second,ainput);
-        
-        vasa[(*ita).second] = ainput;
-    }
-    std::map<cphvb_constant*,cphvb_intp>::iterator itc;    
-    for(itc = cs->begin();itc != cs->end();itc++) {                
-        vcsa[(*itc).second] = (*itc).first;
-    }
-
-    cgs->array_inputs = vasa;
-    cgs->array_inputs_len = as->size();
-
-    cgs->constant_inputs = vcsa;
-    cgs->constant_inputs_len = cs->size();
-
-    //string kernel_name = "kernel_func_001";
-    //printf("----------- %s\n",cgs->kernel_name.c_str());
-    string func_text = create_kernel_function_travers(cgs->kernel_name.c_str(),comp_ss.str());
-    //printf("----------- %s\n",func_text.c_str());
-    cgs->source_function = func_text;
-    cgs->source_math = comp_ss.str();
- 
-    //~ 
-    //~ size_t hash = string_hasher(comp_ss.str());
-    //~ char buff[30];
-    //~ sprintf(buff,"kernel_func_%d",hash);
-    //~ string kernel_name = buff;
-    //~ // create the text function    
-    //~ //string func_text = compute_func_text(comp_ss.str());
-    //~ //string func_text = create_kernel_function(comp_ss.str());
-    //~ string func_text = create_kernel_function_travers(kernel_name,comp_ss.str());    
-        //~ 
-    //~ // compile the computation function
-    //~ jit_comp_kernel* kernel = jitc_compile_computefunction(kernel_name,func_text);
-    //~ if (kernel == NULL) {
-        //~ logInfo("kernel == null\n");
-        //~ return;
-    //~ } 
-        //~ logInfo("kernel->function == %p\n",kernel->function);
-            //~ 
-    //~ // compile the comp_ss.str() into a compute function    
-    //~ //void (*compute_fun) () = 
-        //~ 
-    //~ 
-    //~ kernel->function(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
-    //~ //traverse_kernel_str(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
-    //~ 
- //~ 
-    //~ 
-    //~ stringstream s;
-    //~ s << hash;
-    //~ 
-    //~ printf(" === hash %s ===",s.str().c_str());
-    
-    //traverse_kernel(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0, kernel->function);
-    logInfo("e test_computation()\n");
-}
-
-
-
 
 
 const char* cphvb_type_typetext(cphvb_type type) {
@@ -244,156 +184,150 @@ string build_expression_string(cphvb_opcode c, string s1, string s2) {
             ss << "(" << s1 << " < " << s2 << " ? " << s1 << ":" << s2 << ")";   
             break;
 
-/*
-        CPHVB_BITWISE_AND:		// Compute the bit-wise AND of two arrays element-wise.
-         *op2 & *op3;
-        return ss.str();
-        break;
+
+        case CPHVB_BITWISE_AND:		// Compute the bit-wise AND of two arrays element-wise.
+            ss << "(" << s1 << " & " << s2 << ")";
+            break;                
         
-        CPHVB_BITWISE_OR:		// Compute the bit-wise OR of two arrays element-wise.
-        *op2 | *op3;
-        return ss.str();
-        break;
+        case CPHVB_BITWISE_OR:		// Compute the bit-wise OR of two arrays element-wise.
+            ss << "(" << s1 << " | " << s2 << ")";            
+            break;
         
-        CPHVB_BITWISE_XOR:		// Compute the bit-wise XOR of two arrays element-wise.
-        *op2 ^ *op3;
-        return ss.str();
-        break;
+        case CPHVB_BITWISE_XOR:		// Compute the bit-wise XOR of two arrays element-wise.
+            ss << "(" << s1 << " ^ " << s2 << ")";
+            break;
         
-        CPHVB_INVERT:		    // Compute bit-wise inversion, or bit-wise NOT, element-wise.
-        ~*op2;
-        return ss.str();        
-        break;
+        case CPHVB_INVERT:		    // Compute bit-wise inversion, or bit-wise NOT, element-wise.
+            ss << "( ~" << s1 << ")";                        
+            break;
         
-        CPHVB_LEFT_SHIFT:		// Shift the bits of an integer to the left.
-        (*op2) << (*op3);
-        return ss.str();
-        break;
+        case CPHVB_LEFT_SHIFT:		// Shift the bits of an integer to the left.
+            ss << "(" << s1 << " << " << s2 << ")";
+            break;
         
-        CPHVB_RIGHT_SHIFT:		// Shift the bits of an integer to the right.
-        (*op2) >> (*op3);
-        return ss.str();
-        break;
+        case CPHVB_RIGHT_SHIFT:		// Shift the bits of an integer to the right.
+            ss << "(" << s1 << " >> " << s2 << ")";            
+            break;
         
-        CPHVB_COS:		        // Cosine elementwise.
-        cos( *op2 );
-        return ss.str();
-        break;
+        case CPHVB_COS:		        // Cosine elementwise.
+            ss << " cos(" << s1 << ")";            
+            break;
         
-        CPHVB_SIN:		        // Trigonometric sine, element-wise.
-        sin( *op2 );
-        return ss.str();
-        break;
+        case CPHVB_SIN:		        // Trigonometric sine, element-wise.            
+            ss << " sin(" << s1 << ")";            
+            break;
         
-        CPHVB_TAN:		        // Compute tangent element-wise.
-        tan( *op2 );
-        return ss.str();
-        break;
+        case CPHVB_TAN:		        // Compute tangent element-wise.            
+            ss << " tan(" << s1 << ")";             
+            break;
         
-        CPHVB_COSH:		        // Hyperbolic cosine, element-wise.
-        cosh( *op2 );
-        return ss.str();
-        break;
+        case CPHVB_COSH:		        // Hyperbolic cosine, element-wise.        
+            ss << " cosh(" << s1 << ")";             
+            break;
         
-        CPHVB_SINH:		        // Hyperbolic sine, element-wise.
-        sinh( *op2 );
-        return ss.str();
-        break;
+        case CPHVB_SINH:		        // Hyperbolic sine, element-wise.        
+            ss << " sinh(" << s1 << ")";                     
+            break;
         
-        CPHVB_TANH:		        // Compute hyperbolic tangent element-wise.
-        tanh( *op2 );
-        return ss.str();
-        break;
+        case CPHVB_TANH:		        // Compute hyperbolic tangent element-wise.            
+            ss << " tanh(" << s1 << ")";                         
+            break;
         
-        CPHVB_ARCSIN:		    // Inverse sine, element-wise.
-        asin( *op2 );
-        return ss.str();
-        break;
-        CPHVB_ARCCOS:		    // Trigonometric inverse cosine, element-wise.
-        acos( *op2 );
-        return ss.str();
-        break;
-        CPHVB_ARCTAN:		    // Trigonometric inverse tangent, element-wise.
-        atan( *op2 );
-        return ss.str();
-        break;
-        CPHVB_ARCSINH:		    // Inverse hyperbolic sine elementwise.
-        asinh( *op2 );
-        return ss.str();
-        break;
-        CPHVB_ARCCOSH:		    // Inverse hyperbolic cosine, elementwise.
-        acosh( *op2 );
-        return ss.str();
-        break;
-        CPHVB_ARCTANH:		    // Inverse hyperbolic tangent elementwise.
-        atanh( *op2 );
-        return ss.str();
-        break;
-        CPHVB_ARCTAN2:		    // Element-wise arc tangent of ``x1/x2`` choosing the quadrant correctly.
-        atan2( *op2, *op3 );
-        return ss.str();
-        break;
-        CPHVB_EXP:		        // Calculate the exponential of all elements in the input array.
-        exp( *op2 );
-        return ss.str();
-        break;
-        CPHVB_EXP2:		        // Calculate `2**p` for all `p` in the input array.
-        pow( 2, *op2 );
-        return ss.str();
-        break;
-        CPHVB_EXPM1:		    // Calculate ``exp(x) - 1`` for all elements in the array.
-        expm1( *op2 );
-        return ss.str();
-        break;
-        CPHVB_LOG:		        // Natural logarithm: element-wise.
-        log( *op2 );
-        return ss.str();
-        break;
-        CPHVB_LOG2:		        // Base-2 logarithm of `x`.
-        log2( *op2 );
-        return ss.str();
-        break;
-        CPHVB_LOG10:		    // Return the base 10 logarithm of the input array, element-wise.
-        log10( *op2 );
-        return ss.str();
-        break;
-        CPHVB_LOG1P:		    // Return the natural logarithm of one plus the input array, element-wise.
-        log1p( *op2 );
-        return ss.str();
-        break;
-        CPHVB_SQRT:		        // Return the positive square-root of an array, element-wise.
-        sqrt( *op2 );
-        return ss.str();
-        break;
-        CPHVB_CEIL:		        // Return the ceiling of the input, element-wise.
-        ceil( *op2 );
-        return ss.str();
-        break;
-        CPHVB_TRUNC:		    // Return the truncated value of the input, element-wise.
-        trunc( *op2 );
-        return ss.str();
-        break;
-        CPHVB_FLOOR:		    // Return the floor of the input, element-wise.
-        floor( *op2 );
-        return ss.str();
-        break;
-        CPHVB_RINT:		        // Round elements of the array to the nearest integer.
-        (*op2 > 0.0) ? floor(*op2 + 0.5) : ceil(*op2 - 0.5);
-        return ss.str();
-        break;
-        CPHVB_MOD:		        // Return the element-wise remainder of division.
-        *op1 = *op2 - floor(*op2 / *op3) * *op3;
-        return ss.str();
-        break;
-        CPHVB_ISNAN:		    // Test for NaN values.
-        *op1 = cphvb_isnan(*op2);
-        return ss.str();
-        break;
-        CPHVB_ISINF:		    // Test for infinity values.
-        *op1 = cphvb_isinf(*op2);
-        return ss.str();
-        break;
+        case CPHVB_ARCSIN:		    // Inverse sine, element-wise.
+            ss << " asin(" << s1 << ")";                                     
+            break;
+            
+        case CPHVB_ARCCOS:		    // Trigonometric inverse cosine, element-wise.            
+            ss << " acas(" << s1 << ")";                                     
+            break;
+            
+        case CPHVB_ARCTAN:		    // Trigonometric inverse tangent, element-wise.
+            ss << " atan(" << s1 << ")";                                                         
+            break;
+            
+        case CPHVB_ARCSINH:		    // Inverse hyperbolic sine elementwise.
+            //asinh( *op2 );
+            ss << " asinh(" << s1 << ")";                                     
+            break;
+            
+        case CPHVB_ARCCOSH:		    // Inverse hyperbolic cosine, elementwise.        
+            //acosh( *op2 );
+            ss << " acosh(" << s1 << ")";                                     
+            break;
+            
+        case CPHVB_ARCTANH:		    // Inverse hyperbolic tangent elementwise.            
+            ss << " atanh(" << s1 << ")";              
+            break;
+            
+        case CPHVB_ARCTAN2:		    // Element-wise arc tangent of ``x1/x2`` choosing the quadrant correctly.            
+            ss << " atan2(" << s1 << "," << s2 << ")";                  
+            break;
         
+        case CPHVB_EXP:		        // Calculate the exponential of all elements in the input array.            
+            ss << " exp(" << s1 << ")";                  
+            break;
+            
+        case CPHVB_EXP2:		        // Calculate `2**p` for all `p` in the input array.
+            //pow( 2, *op2 );
+            ss << " pow( 2, " << s1 << ")";              
+            break;
+        
+        case CPHVB_EXPM1:		    // Calculate ``exp(x) - 1`` for all elements in the array.        
+            ss << " expm1(" << s1 << ")";              
+            break;
+
+        case CPHVB_LOG:		        // Natural logarithm: element-wise.            
+            ss << " log(" << s1 << ")";                  
+            break;
+            
+        case CPHVB_LOG2:		        // Base-2 logarithm of `x`.
+            ss << " log2(" << s1 << ")";                  
+            break;
+
+        case CPHVB_LOG10:		    // Return the base 10 logarithm of the input array, element-wise.            
+            ss << " log10(" << s1 << ")";                  
+            break;
+            
+        case CPHVB_LOG1P:		    // Return the natural logarithm of one plus the input array, element-wise.        
+            ss << " log1p(" << s1 << ")";      
+            break;
+
+        case CPHVB_SQRT:		        // Return the positive square-root of an array, element-wise.        
+            ss << " sqrt(" << s1 << ")";      
+            break;
+        
+        case CPHVB_CEIL:		        // Return the ceiling of the input, element-wise.            
+            ss << " ceil(" << s1 << ")";      
+            break;
+        
+        case CPHVB_TRUNC:		    // Return the truncated value of the input, element-wise.            
+            ss << " trunc(" << s1 << ")";        
+            break;
+        
+        case CPHVB_FLOOR:		    // Return the floor of the input, element-wise.            
+            ss << " floor(" << s1 << ")";              
+            break;
+        
+        case CPHVB_RINT:		        // Round elements of the array to the nearest integer.
+            //(*op2 > 0.0) ? floor(*op2 + 0.5) : ceil(*op2 - 0.5);
+            ss << "(" << s1 << " > 0.0) ? floor(" << s1 << "+0.5) : ceil(" << s1 << " - 0.5)";          
+            break;
+        
+        case CPHVB_MOD:		        // Return the element-wise remainder of division.
+            //*op1 = *op2 - floor(*op2 / *op3) * *op3;
+            ss << "(" << s1 << " - floor(" << s1 << " / " <<  s2 << " ) * " << s2 << ")";
+            break;
+            
+        case CPHVB_ISNAN:		    // Test for NaN values.
+            //*op1 = cphvb_isnan(*op2);
+            ss << " cphvb_isnan(" << s1 << ")";
+            break;
+            
+        case CPHVB_ISINF:		    // Test for infinity values.
+            //*op1 = cphvb_isinf(*op2);
+            ss << " cphvb_isinf(" << s1 << ")";        
+            break;
+        /*
         CPHVB_IDENTITY:		    // The identity function that returns the input value converted to the output data type.        
         return s2;
         break;
@@ -744,73 +678,150 @@ void compute_func_test(cphvb_array* oa, cphvb_array** as, cphvb_constant** cs, c
 }
 
 
+string _build_array_compute_component_array(cphvb_array* array, cphvb_index index) {
+    stringstream ss;
+    ss << "*(offs[" << index << "]+((" << cphvb_type_typetext(array->type) << "*) ds[" << index << "]->data))";
+    return ss.str();
+}
+
+string _build_array_compute_component_var_nocast(cphvb_index index) {
+    stringstream ss;
+    ss << "*(" << jitcg_nameing_array_offset("",index) << " + " << jitcg_nameing_array_datapointer("",index) << ")";
+    return ss.str();
+}
+
+string jitcg_build_array_compute_component(cphvb_index index) {
+    //return _build_array_compute_component_array(array,index);
+    return _build_array_compute_component_var_nocast(index);
+}
+
+string _build_constant_compute_component(cphvb_constant* constant, cphvb_index index){
+    stringstream ss;
+    ss << " *((" << cphvb_type_typetext(constant->type)  << "*)" << " &cs[" << index << "]->value) ";
+    return ss.str();
+}
+
+string _build_constant_compute_component_var_nocast(cphvb_index index) {
+    stringstream ss;
+    ss << "*" << jitcg_nameing_constant_datapointer(index) << "";    
+    return ss.str();
+}
+
+string jitcg_build_constant_compute_component(cphvb_index index) {    
+    //return _build_array_compute_component_constant;
+    return _build_constant_compute_component_var_nocast(index);
+}
 
 
-
-
-/**
- **/
-string create_kernel_function_travers_static(string name,string computation_string,int num_arrays, int num_constants, int num_outarray_dimension) {
-    logDebug("create_kernel_function_travers(%s,comp)",name.c_str());
     
-    stringstream ss;    
-    ss << "#include <cmath>\n";
-    ss << "#include <cstdlib>\n";
-    ss << "#include <cphvb_win_math.hpp>\n";
+string create_array_datapointers(map<cphvb_array*,cphvb_intp>* arrays, cphvb_index offset) {
+    // name is 'D<prefix>#' where # is a incrementing number        
+    stringstream ss;
+    //printf("offset = %ld\n",offset);
+    map<cphvb_array*,cphvb_intp>::iterator it;
+    int i=0;
+    for(it=arrays->begin(); it!=arrays->end();it++,i++) {
+        ss << cphvb_type_typetext(it->first->type) << "* " << jitcg_nameing_array_datapointer("",i+offset) << " = (" << cphvb_type_typetext(it->first->type) << "*) cphvb_base_array( as[" << i+offset << "])->data;\n";
+        ss << "cphvb_index " << jitcg_nameing_array_offset("",i+offset) << ";\n";
+    }   
+    return ss.str();  
+}
+
+
+string create_constant_datapointers(map<cphvb_constant*,cphvb_intp>* constants) {
+    stringstream ss;
+    map<cphvb_constant*,cphvb_intp>::iterator it;
+    int i=0;
+    for(it=constants->begin(); it!=constants->end();it++,i++) {
+        ss << cphvb_type_typetext(it->first->type) << "* " << jitcg_nameing_constant_datapointer(i) << " = (" << cphvb_type_typetext(it->first->type) << "*) &cs[" << i << "]->value;\n";        
+    }
+    
+    return ss.str();
+}
+
+
+
+
+string create_kernel_function_travers_nocast(string name,
+                    string computation_string,                
+                    map<cphvb_array*,cphvb_intp>* outputarrays,
+                    map<cphvb_array*,cphvb_intp>* arrays,
+                    map<cphvb_constant*,cphvb_intp>* constants) {
+
+    cphvb_index num_outarray_dimension = arrays->begin()->first->ndim;
+    cphvb_index num_arrays = arrays->size();
+    cphvb_index num_constants = constants->size();
+
+
+    
+                        
+    //printf("create_kernel_function_travers_nocast(%s). oa-size = %ld\n",name.c_str(),outputarrays->size());
+    
+    stringstream ss;
+    //    ss << "#include <cphvb_win_math.hpp>\n";
+    ss << "#include \"math.h\"\n";
+    ss << "#include \"stdlib.h\"\n";
     ss << "#include \"cphvb_array.h\"\n";
     ss << "#include \"cphvb_type.h\"\n";
-    ss << "#include \"cphvb.h\"\n";
-    ss << "\n";
-    ss << "#define _NARRAYS " << num_arrays << "\n";
-    ss << "#define _NCONSTANTS " << num_constants << "\n";
-    ss << "#define _OUT_NDIM " << num_outarray_dimension << "\n";    
+    ss << "#include \"cphvb.h\"\n\n";
+    
+    ss << "#define K_NARRAYS " << num_arrays << "\n";
+    ss << "#define K_NCONSTANTS " << num_constants << "\n";
+    ss << "#define K_OUT_NDIM " << num_outarray_dimension << "\n";    
     ss << kernel_define_header();
     ss <<"\n";    
-    ss << "void " << name.c_str() << "(cphvb_array* oa, cphvb_array** as, cphvb_index notused,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {\n"
-"        cphvb_index last_dim = oa->ndim-1;\n"
-"        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( oa->ndim, oa->shape );\n"
+    ss << "void " << name.c_str() << "(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {\n"
+"        cphvb_index last_dim = as[0]->ndim-1;\n"
+"        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );\n"
 "        cphvb_index ec = 0;\n"
-"        cphvb_index off_oa = 0;\n"
-"        cphvb_index* coord[_OUT_NDIM];\n"
-"        cphvb_index* offs[_NARRAYS];\n"
-"        int j=0, i=0;\n"
-"        cphvb_array* ds[_NARRAYS];\n"
-"        cphvb_array doa = cphvb_base_array(oa);\n"
-"        for(i=0;i<_NARRAYS;i++) {\n"
-"           ds[i] = cphvb_base_array(as[i]);\n"
-"        }\n"
+"        cphvb_index coord[K_OUT_NDIM];\n"
+"       memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));\n";    
+    ss << create_array_datapointers(arrays,0);    
+    ss << create_constant_datapointers(constants);
+
+//"        K_TOUT * doa = (K_TOUT *) cphvb_base_array(oa)->data;\n"
+//"        cphvb_array* ds[K_NARRAYS];\n"
+
+    ss <<"        int j=0, i=0;\n"        
 "        if (skip>0) {                                // Create coord based on skip\n"
 "            while(ec<skip) {\n"
-"                ec += oa->shape[last_dim];\n"
+"                ec += as[0]->shape[last_dim];\n"
 "                for(j = (last_dim-1); j >= 0; --j) {\n"
 "                    coord[j]++;\n"
 "                }\n"
 "            }\n"
 "        }\n"
-"        while( ec < nelements ) {\n"
-"            for(i=0;i<_NARRAYS;i++) {\n"
-"                offs[i] = as[i]->start;\n"
-"                off_oa = oa->start;\n"
-"            }\n"
-"            // Compute offset based on coord\n"
-"            for(j=0; j<last_dim; ++j) {\n"
-"                for(i=0;i<_NARRAYS;i++) {\n"
-"                    offs[i] += coord[j] * as[i]->stride[j];\n"
-"                    off_oa += coord[j] * oa->stride[j];\n"
-"                }\n"
-"            }\n"  
-"            for(j=0; j < oa->shape[last_dim]; j++ ) {\n"
+"        while( ec < nelements ) {\n";
+
+        
+        
+        for(int i=0;i< (arrays->size());i++) {
+            ss << "\t" << jitcg_nameing_array_offset("",i) << " = as[" << i << "]->start;\n";            
+        }
+        
+    
+ss << "            // Compute offset based on coord\n"
+"            for(j=0; j<last_dim; ++j) {\n";
+
+        for(int i=0;i< (arrays->size());i++) {
+            ss << "\t\t" <<jitcg_nameing_array_offset("",i) << " += as[" << i << "]->stride[j] * coord[j];\n";            
+        }
+
+ss << "            }\n"  
+"            for(j=0; j < as[0]->shape[last_dim]; j++ ) {\n"
 "                // computation code\n";
     ss << "                " << computation_string << ";\n";
-    ss << "                for(i=0;i<_NARRAYS;i++) {\n"
-"                   offs[i] += as[i]->stride[last_dim];\n"
-"                }\n"
-"                off_oa += oa->stride[last_dim];\n"
-"            }\n"
-"            ec += oa->shape[last_dim];\n"
+
+
+        for(int i=0;i< (arrays->size());i++) {
+            ss << "\t\t" <<jitcg_nameing_array_offset("",i) << " += as[" << i << "]->stride[last_dim];\n";            
+        }
+    
+ss << "            }\n"
+"            ec += as[0]->shape[last_dim];\n"
 "            for(j = last_dim-1; j >= 0; --j) {\n"
 "                coord[j]++;\n"
-"                if (coord[j] < oa->shape[j]) {\n"
+"                if (coord[j] < as[0]->shape[j]) {\n"
 "                    break;\n"
 "                } else {\n"
 "                    coord[j] = 0;\n"
@@ -819,12 +830,22 @@ string create_kernel_function_travers_static(string name,string computation_stri
 "        }\n"
 "    }\n";
     return ss.str();
-}
+}    
+
+
 
 /**
  **/
-string create_kernel_function_travers(string name,string computation_string) {
+string create_kernel_function_travers(string name,
+                    string computation_string,                
+                    map<cphvb_array*,cphvb_intp>* outputarrays,
+                    map<cphvb_array*,cphvb_intp>* arrays,
+                    map<cphvb_constant*,cphvb_intp>* constants) {    
     logDebug("create_kernel_function_travers(%s,comp)",name.c_str());
+
+    cphvb_index num_outarray_dimension = outputarrays->begin()->first->ndim;
+    cphvb_index num_arrays = arrays->size();
+    cphvb_index num_constants = constants->size();
     
     stringstream ss;
     ss << "#include \"math.h\"\n";
@@ -833,57 +854,53 @@ string create_kernel_function_travers(string name,string computation_string) {
     ss << "#include \"cphvb_array.h\"\n";
     ss << "#include \"cphvb_type.h\"\n";
     ss << "#include \"cphvb.h\"\n";
+    ss << "#define K_NARRAYS " << num_arrays << "\n";    
     ss << kernel_define_header();
     ss <<"\n";
-    ss << "void " << name.c_str() << "(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {\n"
-"        cphvb_index last_dim = oa->ndim-1;\n"
-"        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( oa->ndim, oa->shape );\n"
+    ss << "void " << name.c_str() << "(cphvb_array** as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {\n"
+"        cphvb_index last_dim = as[0]->ndim-1;\n"
+"        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );\n"
 "        cphvb_index ec = 0;\n"
-"        cphvb_index off_oa = 0;\n"
-"        cphvb_index* coord;\n"
-"        coord = (cphvb_index*) malloc(oa->ndim * sizeof(cphvb_index));\n"
-"        memset(coord, 0, oa->ndim * sizeof(cphvb_index));\n"  
-"        cphvb_index* offs;\n"
-"        offs = (cphvb_index*) malloc(num_as * sizeof(cphvb_index));\n"
 "        int j=0, i=0;\n"
+"        cphvb_index* coord;\n"
+"        coord = (cphvb_index*) malloc(as[0]->ndim * sizeof(cphvb_index));\n"
+"        memset(coord, 0, as[0]->ndim * sizeof(cphvb_index));\n"  
+"        cphvb_index* offs;\n"
+"        offs = (cphvb_index*) malloc(K_NARRAYS * sizeof(cphvb_index));\n"
 "        cphvb_array** ds;\n"
-"        ds = (cphvb_array**) malloc(num_as * sizeof(cphvb_array*));\n"
-"        cphvb_array* doa = cphvb_base_array(oa);\n"
-"        for(i=0;i<num_as;i++) {\n"
+"        ds = (cphvb_array**) malloc(K_NARRAYS * sizeof(cphvb_array*));\n"
+"        for(i=0;i<K_NARRAYS;i++) {\n"
 "           ds[i] = cphvb_base_array(as[i]);\n"
 "        }\n"
 "        if (skip>0) {                                // Create coord based on skip\n"
 "            while(ec<skip) {\n"
-"                ec += oa->shape[last_dim];\n"
+"                ec += as[0]->shape[last_dim];\n"
 "                for(j = (last_dim-1); j >= 0; --j) {\n"
 "                    coord[j]++;\n"
 "                }\n"
 "            }\n"
 "        }\n"
 "        while( ec < nelements ) {\n"
-"            for(i=0;i<num_as;i++) {\n"
+"            for(i=0;i<K_NARRAYS;i++) {\n"
 "                offs[i] = as[i]->start;\n"               
 "            }\n"
-"            off_oa = oa->start;\n"
 "            // Compute offset based on coord\n"
 "            for(j=0; j<last_dim; ++j) {\n"
-"                for(i=0;i<num_as;i++) {\n"
+"                for(i=0;i<K_NARRAYS;i++) {\n"
 "                    offs[i] += coord[j] * as[i]->stride[j];\n"
 "                }\n"
-"                off_oa += coord[j] * oa->stride[j];\n"
 "            }\n"  
-"            for(j=0; j < oa->shape[last_dim]; j++ ) {\n"
+"            for(j=0; j < as[0]->shape[last_dim]; j++ ) {\n"
 "                // computation code\n";
     ss << "                " << computation_string << ";\n";
-    ss << "                for(i=0;i<num_as;i++) {\n"
+    ss << "                for(i=0;i<K_NARRAYS;i++) {\n"
 "                   offs[i] += as[i]->stride[last_dim];\n"
 "                }\n"
-"                off_oa += oa->stride[last_dim];\n"
 "            }\n"
-"            ec += oa->shape[last_dim];\n"
+"            ec += as[0]->shape[last_dim];\n"
 "            for(j = last_dim-1; j >= 0; --j) {\n"
 "                coord[j]++;\n"
-"                if (coord[j] < oa->shape[j]) {\n"
+"                if (coord[j] < as[0]->shape[j]) {\n"
 "                    break;\n"
 "                } else {\n"
 "                    coord[j] = 0;\n"
@@ -898,75 +915,75 @@ string create_kernel_function_travers(string name,string computation_string) {
 
 void traverse_kernel_str(cphvb_array* oa, cphvb_array* as[],cphvb_index num_as, cphvb_constant* cs[], cphvb_index skip, cphvb_index limit);
 
-void test_computation(cphvb_array* output_array, jit_expr* expr,jit_ssa_map* ssamap,jit_name_table* nametable) {
-    logInfo("s test_computation()\n");
-    // create maps and stringstream
-    stringstream comp_ss;    
-    std::map<cphvb_intp,cphvb_intp>* as = new std::map<cphvb_intp,cphvb_intp>();
-    std::map<cphvb_constant*,cphvb_intp>* cs = new std::map<cphvb_constant*,cphvb_intp>();
-        
-    comp_ss << "*(((" << cphvb_type_typetext(output_array->type) << "*) oa->data) + off_oa) = ";
-    
-    // traverse the expr, creating array and constant vectors and computation code        
-    //jitcg_expr_travers_a(expr, ssamap, as, cs, &comp_ss);
-    
-    jitcg_expr_traverse(expr, ssamap, as, cs, &comp_ss);
-    
-    // convert maps into vectors with key==index
-    vector<cphvb_array*>* vas = new vector<cphvb_array*>(as->size());
-    vector<cphvb_constant*>* vcs = new vector<cphvb_constant*>(cs->size());
-    
-    cphvb_array* vasa[as->size()];
-    cphvb_constant* vcsa[cs->size()];    
-    
-    
-    std::map<cphvb_intp,cphvb_intp>::iterator ita;    
-    for(ita = as->begin();ita != as->end();ita++) {        
-        //vas->at((*ita).second) =  cphvb_base_array(jita_nametable_lookup(nametable,(*ita).first)->arrayp);
-        
-        vasa[(*ita).second] = cphvb_base_array(jita_nametable_lookup(nametable,(*ita).first)->arrayp);
-    }
-    std::map<cphvb_constant*,cphvb_intp>::iterator itc;    
-    for(itc = cs->begin();itc != cs->end();itc++) {
-        //vcs->at((*itc).second) = (*itc).first;
-        
-        vcsa[(*itc).second] = (*itc).first;
-    }
-    
-    size_t hash = string_hasher(comp_ss.str());
-    char buff[30];
-    sprintf(buff,"kernel_func_%d",hash);
-    string kernel_name = buff;
-    // create the text function    
-    //string func_text = compute_func_text(comp_ss.str());
-    //string func_text = create_kernel_function(comp_ss.str());
-    string func_text = create_kernel_function_travers(kernel_name,comp_ss.str());    
-        
-    // compile the computation function
-    jit_comp_kernel* kernel = jitc_compile_computefunction(kernel_name,func_text);
-    if (kernel == NULL) {
-        logInfo("kernel == null\n");
-        return;
-    } 
-        logInfo("kernel->function == %p\n",kernel->function);
-            
-    // compile the comp_ss.str() into a compute function    
-    //void (*compute_fun) () = 
-        
-    
-    kernel->function(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
-    //traverse_kernel_str(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
-    
- 
-    
-    stringstream s;
-    s << hash;
-    
-    printf(" === hash %s ===",s.str().c_str());
-    
-    //traverse_kernel(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0, kernel->function);
-    logInfo("e test_computation()\n");
-}
+//~ void test_computation(cphvb_array* output_array, jit_expr* expr,jit_ssa_map* ssamap,jit_name_table* nametable) {
+    //~ logInfo("s test_computation()\n");
+    //~ // create maps and stringstream
+    //~ stringstream comp_ss;    
+    //~ std::map<cphvb_intp,cphvb_intp>* as = new std::map<cphvb_intp,cphvb_intp>();
+    //~ std::map<cphvb_constant*,cphvb_intp>* cs = new std::map<cphvb_constant*,cphvb_intp>();
+        //~ 
+    //~ comp_ss << "*(((" << cphvb_type_typetext(output_array->type) << "*) oa->data) + off_oa) = ";
+    //~ 
+    //~ // traverse the expr, creating array and constant vectors and computation code        
+    //~ //jitcg_expr_travers_a(expr, ssamap, as, cs, &comp_ss);
+    //~ 
+    //~ jitcg_expr_traverse(expr, ssamap, as, cs, &comp_ss);
+    //~ 
+    //~ // convert maps into vectors with key==index
+    //~ vector<cphvb_array*>* vas = new vector<cphvb_array*>(as->size());
+    //~ vector<cphvb_constant*>* vcs = new vector<cphvb_constant*>(cs->size());
+    //~ 
+    //~ cphvb_array* vasa[as->size()];
+    //~ cphvb_constant* vcsa[cs->size()];    
+    //~ 
+    //~ 
+    //~ std::map<cphvb_intp,cphvb_intp>::iterator ita;    
+    //~ for(ita = as->begin();ita != as->end();ita++) {        
+        //~ //vas->at((*ita).second) =  cphvb_base_array(jita_nametable_lookup(nametable,(*ita).first)->arrayp);
+        //~ 
+        //~ vasa[(*ita).second] = cphvb_base_array(jita_nametable_lookup(nametable,(*ita).first)->arrayp);
+    //~ }
+    //~ std::map<cphvb_constant*,cphvb_intp>::iterator itc;    
+    //~ for(itc = cs->begin();itc != cs->end();itc++) {
+        //~ //vcs->at((*itc).second) = (*itc).first;
+        //~ 
+        //~ vcsa[(*itc).second] = (*itc).first;
+    //~ }
+    //~ 
+    //~ size_t hash = string_hasher(comp_ss.str());
+    //~ char buff[30];
+    //~ sprintf(buff,"kernel_func_%d",hash);
+    //~ string kernel_name = buff;
+    //~ // create the text function    
+    //~ //string func_text = compute_func_text(comp_ss.str());
+    //~ //string func_text = create_kernel_function(comp_ss.str());
+    //~ string func_text = create_kernel_function_travers(kernel_name,comp_ss.str());    
+        //~ 
+    //~ // compile the computation function
+    //~ jit_comp_kernel* kernel = jitc_compile_computefunction(kernel_name,func_text);
+    //~ if (kernel == NULL) {
+        //~ logInfo("kernel == null\n");
+        //~ return;
+    //~ } 
+        //~ logInfo("kernel->function == %p\n",kernel->function);
+            //~ 
+    //~ // compile the comp_ss.str() into a compute function    
+    //~ //void (*compute_fun) () = 
+        //~ 
+    //~ 
+    //~ // a change in kernel function to 3. kernel->function(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
+    //~ //traverse_kernel_str(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0);
+    //~ 
+ //~ 
+    //~ 
+    //~ stringstream s;
+    //~ s << hash;
+    //~ 
+    //~ printf(" === hash %s ===",s.str().c_str());
+    //~ 
+    //~ //traverse_kernel(cphvb_base_array(output_array), vasa, as->size() ,vcsa, 0, 0, kernel->function);
+    //~ logInfo("e test_computation()\n");
+//~ }
 
 
 void traverse_kernel_str(cphvb_array* oa, cphvb_array* as[],cphvb_index num_as, cphvb_constant* cs[], cphvb_index skip, cphvb_index limit) {
@@ -1082,7 +1099,7 @@ void kernel_func_321436602_3(cphvb_array* oa, cphvb_array** as, cphvb_index num_
 
 
 
-void kernel_func_4265622974_0(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+void kernel_func_4265622974_01(cphvb_array* oa, cphvb_array** as, cphvb_index num_as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
         cphvb_index last_dim = oa->ndim-1;
         cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( oa->ndim, oa->shape );
         cphvb_index ec = 0;
@@ -1128,6 +1145,7 @@ void kernel_func_4265622974_0(cphvb_array* oa, cphvb_array** as, cphvb_index num
                 // computation code
                 printf("Os: %ld %ld %ld %ld, nelements: %ld\n",off_oa,offs[0],offs[1],offs[2],nelements);
                 *(off_oa+((cphvb_float32*) doa->data)) = ((*(offs[0]+((cphvb_float32*) ds[0]->data)) + *(offs[1]+((cphvb_float32*) ds[1]->data))) + *(offs[2]+((cphvb_float32*) ds[2]->data)));
+
                 for(i=0;i<num_as;i++) {
                    offs[i] += as[i]->stride[last_dim];
                 }
@@ -1145,4 +1163,435 @@ void kernel_func_4265622974_0(cphvb_array* oa, cphvb_array** as, cphvb_index num
         }
         free(coord);
         free(offs);
+    }
+
+
+#include "stdlib.h"
+#include "cphvb_array.h"
+#include "cphvb_type.h"
+#include "cphvb.h"
+
+#define K_NARRAYS 3
+#define K_NCONSTANTS 0
+#define K_OUT_NDIM 2
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#if _WIN32
+#include <float.h>
+#define cphvb_isnan(x) (_isnan(x))
+#define cphvb_isinf(x) (!_isnan(x) || !_finite(x))
+#else
+#define cphvb_isnan(x) (std::isnan(x))
+#define cphvb_isinf(x) (std::isinf(x))
+#endif
+#define DEG_CIR 360.0
+#define DEG_RAD (M_PI / (DEG_CIR / 2.0))
+#define RAD_DEG ((DEG_CIR / 2.0) / M_PI)
+
+
+
+void kernel_func_888379450_1(cphvb_array** as, cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = as[0]->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+        cphvb_index ec = 0;
+        int j=0, i=0;
+        cphvb_index* coord;
+        coord = (cphvb_index*) malloc(as[0]->ndim * sizeof(cphvb_index));
+        memset(coord, 0, as[0]->ndim * sizeof(cphvb_index));
+        cphvb_index* offs;
+        offs = (cphvb_index*) malloc(K_NARRAYS * sizeof(cphvb_index));
+        cphvb_array** ds;
+        ds = (cphvb_array**) malloc(K_NARRAYS * sizeof(cphvb_array*));
+        for(i=0;i<K_NARRAYS;i++) {
+           ds[i] = cphvb_base_array(as[i]);
+        }
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += as[0]->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        while( ec < nelements ) {
+            for(i=0;i<K_NARRAYS;i++) {
+                offs[i] = as[i]->start;
+            }
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+                for(i=0;i<K_NARRAYS;i++) {
+                    offs[i] += coord[j] * as[i]->stride[j];
+                }
+            }
+            for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+                // computation code
+                *(((cphvb_float64*) ds[0]->data) + offs[0]) = (((((*(offs[0]+((cphvb_float64*) ds[0]->data)) + *(offs[1]+((cphvb_float64*) ds[1]->data))) + *(offs[2]+((cphvb_float64*) ds[2]->data))) + *(offs[3]+((cphvb_float64*) ds[3]->data))) + *(offs[4]+((cphvb_float64*) ds[4]->data))) *  *((cphvb_float64*) &cs[0]->value) );
+                for(i=0;i<K_NARRAYS;i++) {
+                   offs[i] += as[i]->stride[last_dim];
+                }
+            }
+            ec += as[0]->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < as[0]->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+        free(coord);
+        free(offs);
+    }
+
+
+void kernel_func_3859029243_3(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = as[0]->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+        cphvb_index ec = 0;
+        cphvb_index coord[K_OUT_NDIM];
+       memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));
+cphvb_float64* DA0 = (cphvb_float64*) cphvb_base_array( as[0])->data;
+cphvb_index OffA0;
+cphvb_float64* DA1 = (cphvb_float64*) cphvb_base_array( as[1])->data;
+cphvb_index OffA1;
+cphvb_float64* DA2 = (cphvb_float64*) cphvb_base_array( as[2])->data;
+cphvb_index OffA2;
+        int j=0, i=0;
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += as[0]->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        while( ec < nelements ) {
+	OffA0 = as[0]->start;
+	OffA1 = as[1]->start;
+	OffA2 = as[2]->start;
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+		OffA0 += as[0]->stride[j] * coord[j];
+		OffA1 += as[1]->stride[j] * coord[j];
+		OffA2 += as[2]->stride[j] * coord[j];
+            }
+            for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+                // computation code
+                *(OffA0+DA0) = ((*(OffA1 + DA1) - *(OffA2 + DA2)) < 0.0 ? -(*(OffA1 + DA1) - *(OffA2 + DA2)) : (*(OffA1 + DA1) - *(OffA2 + DA2)));
+		OffA0 += as[0]->stride[last_dim];
+		OffA1 += as[1]->stride[last_dim];
+		OffA2 += as[2]->stride[last_dim];
+            }
+            ec += as[0]->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < as[0]->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+    }
+
+
+void kernel_func_888379450_2(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = as[0]->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+        cphvb_index ec = 0;
+        cphvb_index coord[K_OUT_NDIM];
+       memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));
+cphvb_float64* DA0 = (cphvb_float64*) cphvb_base_array( as[0])->data;
+cphvb_index OffA0;
+cphvb_float64* DA1 = (cphvb_float64*) cphvb_base_array( as[1])->data;
+cphvb_index OffA1;
+cphvb_float64* DA2 = (cphvb_float64*) cphvb_base_array( as[2])->data;
+cphvb_index OffA2;
+cphvb_float64* DA3 = (cphvb_float64*) cphvb_base_array( as[3])->data;
+cphvb_index OffA3;
+cphvb_float64* DA4 = (cphvb_float64*) cphvb_base_array( as[4])->data;
+cphvb_index OffA4;
+cphvb_float64* DA5 = (cphvb_float64*) cphvb_base_array( as[5])->data;
+cphvb_index OffA5;
+        int j=0, i=0;
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += as[0]->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        while( ec < nelements ) {
+            OffA0 = as[0]->start;
+            OffA1 = as[1]->start;
+            OffA2 = as[2]->start;
+            OffA3 = as[3]->start;
+            OffA4 = as[4]->start;
+            OffA5 = as[5]->start;
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+                OffA0 += as[0]->stride[j] * coord[j];
+                OffA1 += as[1]->stride[j] * coord[j];
+                OffA2 += as[2]->stride[j] * coord[j];
+                OffA3 += as[3]->stride[j] * coord[j];
+                OffA4 += as[4]->stride[j] * coord[j];
+                OffA5 += as[5]->stride[j] * coord[j];
+            }
+            for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+                // computation code
+                *(OffA0+DA0) = (((((*(OffA1 + DA1) + *(OffA2 + DA2)) + *(OffA3 + DA3)) + *(OffA4 + DA4)) + *(OffA5 + DA5)) *  *((cphvb_float64*) &cs[0]->value) );
+                OffA0 += as[0]->stride[last_dim];
+                OffA1 += as[1]->stride[last_dim];
+                OffA2 += as[2]->stride[last_dim];
+                OffA3 += as[3]->stride[last_dim];
+                OffA4 += as[4]->stride[last_dim];
+                OffA5 += as[5]->stride[last_dim];
+            }
+            ec += as[0]->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < as[0]->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+    }
+
+// A+B
+void kernel_func_1899990464_0(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = as[0]->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+        cphvb_index ec = 0;
+        cphvb_index coord[K_OUT_NDIM];
+       memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));
+cphvb_float32* DA0 = (cphvb_float32*) cphvb_base_array( as[0])->data;
+cphvb_index OffA0;
+cphvb_float32* DA1 = (cphvb_float32*) cphvb_base_array( as[1])->data;
+cphvb_index OffA1;
+cphvb_float32* DA2 = (cphvb_float32*) cphvb_base_array( as[2])->data;
+cphvb_index OffA2;
+        int j=0, i=0;
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += as[0]->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        while( ec < nelements ) {
+	OffA0 = as[0]->start;
+	OffA1 = as[1]->start;
+	OffA2 = as[2]->start;
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+		OffA0 += as[0]->stride[j] * coord[j];
+		OffA1 += as[1]->stride[j] * coord[j];
+		OffA2 += as[2]->stride[j] * coord[j];
+            }
+            for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+                // computation code
+                *(OffA0 + DA0) = (*(OffA1 + DA1) + *(OffA2 + DA2));
+		OffA0 += as[0]->stride[last_dim];
+		OffA1 += as[1]->stride[last_dim];
+		OffA2 += as[2]->stride[last_dim];
+            }
+            ec += as[0]->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < as[0]->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+    }
+
+// C
+void kernel_func_4265622974_0(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = as[0]->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+        cphvb_index ec = 0;
+        cphvb_index coord[K_OUT_NDIM];
+       memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));
+cphvb_float32* DA0 = (cphvb_float32*) cphvb_base_array( as[0])->data;
+cphvb_index OffA0;
+cphvb_float32* DA1 = (cphvb_float32*) cphvb_base_array( as[1])->data;
+cphvb_index OffA1;
+cphvb_float32* DA2 = (cphvb_float32*) cphvb_base_array( as[2])->data;
+cphvb_index OffA2;
+cphvb_float32* DA3 = (cphvb_float32*) cphvb_base_array( as[3])->data;
+cphvb_index OffA3;
+        int j=0, i=0;
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += as[0]->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        while( ec < nelements ) {
+	OffA0 = as[0]->start;
+	OffA1 = as[1]->start;
+	OffA2 = as[2]->start;
+	OffA3 = as[3]->start;
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+		OffA0 += as[0]->stride[j] * coord[j];
+		OffA1 += as[1]->stride[j] * coord[j];
+		OffA2 += as[2]->stride[j] * coord[j];
+		OffA3 += as[3]->stride[j] * coord[j];
+            }
+            for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+                // computation code
+                *(OffA0 + DA0) = ((*(OffA1 + DA1) + *(OffA2 + DA2)) + *(OffA3 + DA3));
+		OffA0 += as[0]->stride[last_dim];
+		OffA1 += as[1]->stride[last_dim];
+		OffA2 += as[2]->stride[last_dim];
+		OffA3 += as[3]->stride[last_dim];
+            }
+            ec += as[0]->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < as[0]->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+    }
+
+// D
+void kernel_func_1625152366_0(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = as[0]->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+        cphvb_index ec = 0;
+        cphvb_index coord[K_OUT_NDIM];
+       memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));
+cphvb_float32* DA0 = (cphvb_float32*) cphvb_base_array( as[0])->data;
+cphvb_index OffA0;
+cphvb_float32* DA1 = (cphvb_float32*) cphvb_base_array( as[1])->data;
+cphvb_index OffA1;
+cphvb_float32* DA2 = (cphvb_float32*) cphvb_base_array( as[2])->data;
+cphvb_index OffA2;
+cphvb_float32* DA3 = (cphvb_float32*) cphvb_base_array( as[3])->data;
+cphvb_index OffA3;
+cphvb_float32* DA4 = (cphvb_float32*) cphvb_base_array( as[4])->data;
+cphvb_index OffA4;
+        int j=0, i=0;
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += as[0]->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        while( ec < nelements ) {
+	OffA0 = as[0]->start;
+	OffA1 = as[1]->start;
+	OffA2 = as[2]->start;
+	OffA3 = as[3]->start;
+	OffA4 = as[4]->start;
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+		OffA0 += as[0]->stride[j] * coord[j];
+		OffA1 += as[1]->stride[j] * coord[j];
+		OffA2 += as[2]->stride[j] * coord[j];
+		OffA3 += as[3]->stride[j] * coord[j];
+		OffA4 += as[4]->stride[j] * coord[j];
+            }
+            for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+                // computation code
+                *(OffA0 + DA0) = (((*(OffA1 + DA1) + *(OffA2 + DA2)) + *(OffA3 + DA3)) + *(OffA4 + DA4));
+		OffA0 += as[0]->stride[last_dim];
+		OffA1 += as[1]->stride[last_dim];
+		OffA2 += as[2]->stride[last_dim];
+		OffA3 += as[3]->stride[last_dim];
+		OffA4 += as[4]->stride[last_dim];
+            }
+            ec += as[0]->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < as[0]->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
+    }
+
+#define K_OUT_NDIM 2
+void kernel_func_3286243741_0(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+        cphvb_index last_dim = as[0]->ndim-1;
+        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+        cphvb_index ec = 0;
+        cphvb_index coord[K_OUT_NDIM];
+       memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));
+cphvb_float32* DA0 = (cphvb_float32*) cphvb_base_array( as[0])->data;
+cphvb_index OffA0;
+cphvb_float32* DA1 = (cphvb_float32*) cphvb_base_array( as[1])->data;
+cphvb_index OffA1;
+cphvb_float32* DA2 = (cphvb_float32*) cphvb_base_array( as[2])->data;
+cphvb_index OffA2;
+cphvb_float32* DA3 = (cphvb_float32*) cphvb_base_array( as[3])->data;
+cphvb_index OffA3;
+cphvb_float32* DA4 = (cphvb_float32*) cphvb_base_array( as[4])->data;
+cphvb_index OffA4;
+cphvb_float32* DA5 = (cphvb_float32*) cphvb_base_array( as[5])->data;
+cphvb_index OffA5;
+        int j=0, i=0;
+        if (skip>0) {                                // Create coord based on skip
+            while(ec<skip) {
+                ec += as[0]->shape[last_dim];
+                for(j = (last_dim-1); j >= 0; --j) {
+                    coord[j]++;
+                }
+            }
+        }
+        while( ec < nelements ) {
+	OffA0 = as[0]->start;
+	OffA1 = as[1]->start;
+	OffA2 = as[2]->start;
+	OffA3 = as[3]->start;
+	OffA4 = as[4]->start;
+	OffA5 = as[5]->start;
+            // Compute offset based on coord
+            for(j=0; j<last_dim; ++j) {
+		OffA0 += as[0]->stride[j] * coord[j];
+		OffA1 += as[1]->stride[j] * coord[j];
+		OffA2 += as[2]->stride[j] * coord[j];
+		OffA3 += as[3]->stride[j] * coord[j];
+		OffA4 += as[4]->stride[j] * coord[j];
+		OffA5 += as[5]->stride[j] * coord[j];
+            }
+            for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+                // computation code
+                *(OffA0 + DA0) = ((((*(OffA1 + DA1) + *(OffA2 + DA2)) + *(OffA3 + DA3)) + *(OffA4 + DA4)) + *(OffA5 + DA5));
+		OffA0 += as[0]->stride[last_dim];
+		OffA1 += as[1]->stride[last_dim];
+		OffA2 += as[2]->stride[last_dim];
+		OffA3 += as[3]->stride[last_dim];
+		OffA4 += as[4]->stride[last_dim];
+		OffA5 += as[5]->stride[last_dim];
+            }
+            ec += as[0]->shape[last_dim];
+            for(j = last_dim-1; j >= 0; --j) {
+                coord[j]++;
+                if (coord[j] < as[0]->shape[j]) {
+                    break;
+                } else {
+                    coord[j] = 0;
+                }
+            }
+        }
     }

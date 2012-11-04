@@ -34,16 +34,16 @@ def test_pattern_001(H,W):
     
     A = np.ones((H,W),dtype=type)    
     B = np.ones((H,W),dtype=type)    
-    C = np.ones((H,W), dtype=type)    
+    #C = np.ones((H,W), dtype=type)    
     A = A * 3;
     B = B * 2
     
-    cphvbbridge.handle_array(C)    
+    #cphvbbridge.handle_array(C)    
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)   
     
     C = A + B
-    print C
+    print C[0,0]
     
     
 
@@ -99,7 +99,7 @@ def test_pattern_004(H,W):
     cphvbbridge.handle_array(C)    
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)   
-    
+        
     A = A + B + C
     
     A[0,1]
@@ -373,7 +373,7 @@ def test_pattern_014(H,W):
 def test_pattern_015(H,W):
     cphvbbridge.flush()
     print ''
-    print "- test_pattern_103()";
+    print "- test_pattern_015()";
     
     A = np.ones((H,W),dtype=type)    
     B = np.ones((H,W),dtype=type)
@@ -389,6 +389,28 @@ def test_pattern_015(H,W):
     B += 10 + A    
     K = B + 2         
     print K
+
+
+def test_pattern_016(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_016()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type)
+    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    #B = 5 + A
+    B = A + 5
+    B[0,1]
+    print B
 # ================================================
 
 def test_pattern_101(H,W):
@@ -585,6 +607,35 @@ def test_pattern_300(H,W):
     print A
 
 
+def test_pattern_401(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_401()";    
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)
+    #~ D = np.ones((H,W),dtype=type)
+    #~ E = np.ones((H,W),dtype=type)
+    #~ F = np.ones((H,W),dtype=type)    
+    #~ A = A * 3;
+    #~ B = B * 2
+
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+    #~ cphvbbridge.handle_array(D)
+    #~ cphvbbridge.handle_array(E)
+    #cphvbbridge.handle_array(F)
+    cphvbbridge.flush()
+    
+    start = time.time()
+    
+    T = A + B + C #+ D #+ E
+    T[0,0]    
+    cphvbbridge.flush()
+    
+    print "execution. Time: {0}".format(time.time()-start)
     
 
 
@@ -598,9 +649,12 @@ if __name__ == "__main__":
 
 
     # A + B
-    #test_pattern_001(1,5)
-    #test_pattern_004(10,40)
+     
+    test_pattern_401(7000,7000)
+   
+    #test_pattern_004(2,5)
 
+    #test_pattern_016(2,5)
     # PROBLEM WITH THIS TEST!
     #test_pattern_015(1,5)
 
@@ -608,7 +662,7 @@ if __name__ == "__main__":
      
     #test_pattern_102(1,5)
 
-    #test_pattern_103(30,50)
+    #test_pattern_103(2,5)
 
     # testing double dto epxression
     #test_pattern_101(1,5)
@@ -619,7 +673,7 @@ if __name__ == "__main__":
 
     # testing double inline update to boundedArray
     # [3,4,6,9,13,14,]
-    #test_pattern_103(1,5)
+    #test_pattern_103(2,5)
 
     
     #test_pattern_104(1,5)
@@ -653,7 +707,7 @@ if __name__ == "__main__":
     #~ 
 
 
-    test_pattern_300(1,5)
+    #test_pattern_300(1,5)
     #~ doing test_pattern 14 (10,10)
     #~ simple    
     #~ -0.000265121459961

@@ -14,8 +14,10 @@
 
 
 typedef struct {
-    cphvb_intp instruction;
-    cphvb_intp operand;    
+    cphvb_intp  instruction;    
+    cphvb_intp  operand;
+    
+            
 } jit_instruction_list_coord2;
 
 typedef pair<cphvb_intp,cphvb_intp> jit_instruction_list_coord; // <instruction_num, operand>
@@ -31,7 +33,6 @@ typedef struct {
     jit_instruction_list_coord2* output_array_map;
 
 } jit_io_instruction_list_map;
-
 
 
 typedef struct {
@@ -78,12 +79,12 @@ typedef struct {
     jit_kernel*         kernel;
         
     // output arrays, supporting custom function would require no restrictions on output arrays aswell as input arrays.
-    cphvb_array**       outputarrays;
-    cphvb_index         outputarrays_length;
+    cphvb_array**       outputarrays;           // not used. The first outputarray_length elements of arrays is output arrays
+    cphvb_index         outputarrays_length;    // used to know the number of output elements to allocate.
     
     // distinct array input count
-    cphvb_array**       inputarrays;
-    cphvb_index         inputarrays_length;
+    cphvb_array**       arrays;
+    cphvb_index         arrays_length;
         
     // constant input count
     cphvb_constant**    inputconstants;

@@ -39,7 +39,8 @@ void jit_pprint_il_map2(jit_io_instruction_list_map_lists* il_map);
 
 void jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit);
 void jit_pprint_cphvb_array_stream(cphvb_array* a0, cphvb_intp limit, stringstream* ss);
-
+string jit_pprint_true_false(bool stm);
 cphvb_intp expr_hash(jit_expr* expr);
-
+timespec diff(timespec start, timespec end);
+int timeval_subtract (timeval* result, timeval* x, timeval* y);
 #endif

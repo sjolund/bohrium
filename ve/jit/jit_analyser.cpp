@@ -532,8 +532,8 @@ void jita_handle_discard_instruction(jit_analyse_state* s,cphvb_instruction* ins
  **/ 
 //cphvb_intp jita_handle_arithmetic_instruction2(jit_name_table* nametable, jit_ssa_map* ssamap, jit_base_dependency_table* basedep_table, cphvb_instruction* instr) {
 cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instruction* instr, cphvb_intp instr_num) {
-    logDebug("s jita_handle_arithmetic_instruction()\n");
     bool cloglevel[] = {0,0,0};
+    logcustom(cloglevel,0,"s jita_handle_arithmetic_instruction()\n");    
     logDebug("opcode: %s\n", cphvb_opcode_text(instr->opcode));
     // get the first and second operands. Look them up, to see if they 
     // are already registered. If not register them, else reference the 
@@ -574,7 +574,8 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
             e->instr_num = instr_num;
             e->operand_num = 1;           
             e->tdto = new set<cphvb_intp>();
-            e->tdon = new set<cphvb_intp>();      
+            e->tdon = new set<cphvb_intp>();
+            e->is_userfunction = false;      
             if (instr->operand[1]->base != NULL || instr->operand[1]->data != NULL ) {                
                 // add only usage if the basearray had not been added before!                                  
                 if (jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(instr->operand[1])) == NULL) {
@@ -613,7 +614,8 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
                 e->instr_num = instr_num;
                 e->operand_num = 2;
                 e->tdto = new set<cphvb_intp>();
-                e->tdon = new set<cphvb_intp>();                  
+                e->tdon = new set<cphvb_intp>();
+                e->is_userfunction = false;                  
                 if (instr->operand[2]->base != NULL || instr->operand[2]->data != NULL ) {
                     if (jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(instr->operand[2])) == NULL) {
                         logcustom(cloglevel,2,"JHAI R Adding %ld to base_usage %p\n",name_second,cphvb_base_array(instr->operand[2]));
