@@ -1435,8 +1435,8 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             
             logcustom(cloglevel,0,"== Compund kernel created. res: %ld  P: %p, \n", buildresult, compound_kernel);
             //printf("===================================\n");
-            //printf("executionlist");jit_pprint_set(execution_list);
-            //jit_pprint_nametable(jitanalysestate->nametable);
+            printf("executionlist");jit_pprint_set(execution_list);
+            jit_pprint_nametable(jitanalysestate->nametable);
             //jit_pprint_nametable_dependencies(jitanalysestate->nametable);
             // increment the compound_kernel_id.
             jitcompound_kernel_count++;

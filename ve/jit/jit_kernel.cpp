@@ -13,7 +13,7 @@
 #include "jit_codegenerated_kernel_functions.h"
 
 #define K_TIMEING 1 // 1 all, 2 compiled only
-#define K_PRINT_COMPUTESTRING 1
+#define K_PRINT_COMPUTESTRING 0
 //void update_expr_from_kernel_state()
 using namespace std;
 
@@ -751,7 +751,7 @@ void instruction_copy_to(cphvb_instruction* from, cphvb_instruction* to) {
     } else {
         to->userfunc = NULL;
     }
-    logcustom(cloglevel,1,"FrTo: %d %d, %d %d\n",from->userfunc->nin,to->userfunc->nin,from->userfunc->nout,to->userfunc->nout);
+    //logcustom(cloglevel,1,"FrTo: %d %d, %d %d\n",from->userfunc->nin,to->userfunc->nin,from->userfunc->nout,to->userfunc->nout);
 }
 
 
@@ -910,15 +910,41 @@ cphvb_intp build_compile_kernel(jit_analyse_state* s, jit_name_entry* entr, cphv
  *
  * @return correct depth of the expr.
  **/
-cphvb_index jit_update_expr_depth(jit_expr* expr) {
+cphvb_index jit_update_expr_depth(jit_analyse_state* s, jit_expr* expr) {
+    bool cloglevel[] = {0,0};    
+    logcustom(cloglevel,0,"jit_update_expr_depth()\n");
     
+    if(is_constant(expr) || is_array(expr)) {
+        return 0;
+    }
+
+    jit_name_entry* entr = jita_nametable_lookup(s->nametable, expr->name);
+    if (entr->is_executed) {
+        expr->depth = 0;        
+        return 0;
+    }
+
+    cphvb_index ld, rd;
+
+    if(is_un_op(expr)) {
+        ld = jit_update_expr_depth(s,expr->op.expression.left);
+        expr->depth = ld+1;
+    }
+    
+    if(is_bin_op(expr)) {
+        ld = jit_update_expr_depth(s,expr->op.expression.left);
+        rd = jit_update_expr_depth(s,expr->op.expression.right);
+        expr->depth  = max(ld,rd)+1;        
+    }
+        
+    return expr->depth;    
 }
 
 /**
  * 
  **/
 cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* execution_list, cphvb_index compound_id, jit_compound_kernel* compoundk_out) {
-    bool cloglevel[] = {0,0};
+    bool cloglevel[] = {1,1};
     logcustom(cloglevel,0,"BCK build_compound_kernel( executionlist length: %d,compound ID: %ld)\n",execution_list->size(),compound_id);
         
     // set id of the compund kernel.        
@@ -937,16 +963,18 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
         
         jit_execute_kernel* execute_kernel = (jit_execute_kernel*) malloc(sizeof(jit_execute_kernel));
 
+        jit_update_expr_depth(s,entr->expr);
+    
         if(entr->is_userfunction) {
-            logcustom(cloglevel,1,"BCK %d build_expr_kernel \n",*it);
+            logcustom(cloglevel,1,"BCK %d build_userfunc_kernel \n",*it);
             build_expr_kernel(s,entr,exprhash,kernel_count,execute_kernel);
             entr->is_executed = true;
         } else         
-        if (entr->expr->depth == -1) {
+        if (entr->expr->depth == 1) {
             // a single instruction as and expression.
             logcustom(cloglevel,1,"BCK %d build_expr_kernel \n",*it);
             build_expr_kernel(s,entr,exprhash,kernel_count,execute_kernel);
-            //exekernel->kernel->id = 
+            entr->is_executed = true;            
             
         } else {
             // handle as kernel

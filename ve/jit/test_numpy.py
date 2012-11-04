@@ -650,7 +650,7 @@ if __name__ == "__main__":
 
     # A + B
      
-    test_pattern_401(7000,7000)
+    #test_pattern_401(7000,7000)
    
     #test_pattern_004(2,5)
 
@@ -707,7 +707,7 @@ if __name__ == "__main__":
     #~ 
 
 
-    #test_pattern_300(1,5)
+    test_pattern_300(1,5)
     #~ doing test_pattern 14 (10,10)
     #~ simple    
     #~ -0.000265121459961
