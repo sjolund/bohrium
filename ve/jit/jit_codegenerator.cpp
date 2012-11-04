@@ -476,7 +476,6 @@ string etrav(jit_expr* e) {
     printf("etrav %p %p\n",&array_count,&constant_count);
     return _etrav(e,&array_count,&constant_count);
 }
-
 string _build_computestring_etrav(jit_expr* e, map<cphvb_array*,cphvb_index>* as, map<cphvb_constant*,cphvb_index>* cs) {
     stringstream ss;
     if(is_array(e)) {
@@ -534,120 +533,6 @@ string build_computestring_etrav(jit_expr* e) {
     //free(as);
     //free(cs);
     return computation_as_text;
-}
-
-
-
-void jitcg_codetext_opcode_stream(cphvb_opcode opcode, stringstream* oss) { 
-    //printf("jitcg_codetext_opcode_stream()\n");   
-    //printf("opdoce = %s\n",cphvb_opcode_text(opcode));
-    
-    switch(opcode) {
-        case CPHVB_ADD:      *oss << " + "; break;
-        case CPHVB_SUBTRACT: *oss << " - "; break;
-        case CPHVB_MULTIPLY: *oss << " * "; break;
-        case CPHVB_DIVIDE:   *oss << " / "; break;
-
-        default: break;
-        
-    }   
-}
-
-
-
-
-void jitcg_expr_traverse2(jit_expr* expr, jit_analyse_state* s, std::map<cphvb_intp,cphvb_intp>* as, std::map<cphvb_constant*,cphvb_intp>* cs, stringstream* comp_ss ) {
-    logInfo("s jitcg_expr_travers_array2()\n");
-    
-    jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-    
-    if (is_array(expr) || entr->is_executed) {       
-        cphvb_intp ia = -1;        
-        // if not added yet        
-        if(as->find(expr->name) == as->end()) {                    
-            ia = as->size();
-            //printf("---------- %ld  %ld\n",expr->name,ia);
-            as->insert(pair<cphvb_intp,cphvb_intp>(expr->name,ia));             
-        } else {
-           ia = as->find(expr->name)->second;
-        }        
-        if (ia > -1) {;
-            if (is_array(expr)) {
-                *comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(expr->op.array->type) << "*) as[" << ia << "]->data))";
-            } else {                
-                *comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(entr->arrayp->type) << "*) as[" << ia << "]->data))";
-            }
-        }       
-        
-    } else if(is_bin_op(expr)) {    
-        *comp_ss << "(";
-        jitcg_expr_traverse2(expr->op.expression.left,s,as,cs,comp_ss);
-        jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);                                     
-        jitcg_expr_traverse2(expr->op.expression.right,s,as,cs,comp_ss);
-        *comp_ss << ")";
-        
-    } else if (is_un_op(expr)) {        
-        *comp_ss << "(";
-        jitcg_expr_traverse2(expr->op.expression.left,s,as,cs,comp_ss);        
-        jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);  
-        *comp_ss << ")";
-        
-    } else  if (is_constant(expr)) {     
-        cphvb_intp ic = -1;
-        // if not added yet
-        if(cs->find(expr->op.constant) == cs->end()) {            
-            ic = cs->size();
-            cs->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,ic));                                
-        } else {
-            ic = cs->find(expr->op.constant)->second;
-        }                        
-        *comp_ss << "*((" << cphvb_type_typetext(expr->op.constant->type)  << "*)" << " &cs[" << ic << "]->value)";         
-    }        
-    logInfo("e jitcg_expr_travers_array()\n");
-}
-
-
-void jitcg_expr_traverse(jit_expr* expr, jit_ssa_map* ssamap, std::map<cphvb_intp,cphvb_intp>* as, std::map<cphvb_constant*,cphvb_intp>* cs, stringstream* comp_ss ) {
-    logInfo("s jitcg_expr_travers_array()\n");
-    if(is_bin_op(expr)) {    
-        *comp_ss << "(";
-        jitcg_expr_traverse(expr->op.expression.left,ssamap,as,cs,comp_ss);
-        jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);                                     
-        jitcg_expr_traverse(expr->op.expression.right,ssamap,as,cs,comp_ss);
-        *comp_ss << ")";
-        
-    } else if (is_un_op(expr)) {        
-        *comp_ss << "(";
-        jitcg_expr_traverse(expr->op.expression.left,ssamap,as,cs,comp_ss);        
-        jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);  
-        *comp_ss << ")";
-        
-    } else if (is_array(expr)) {       
-        cphvb_intp ia = -1;        
-        // if not added yet        
-        if(as->find(expr->name) == as->end()) {                    
-            ia = as->size();
-            as->insert(pair<cphvb_intp,cphvb_intp>(expr->name,ia));             
-        } else {
-           ia = as->find(expr->name)->second;
-        }        
-        if (ia > -1) {;
-            *comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(expr->op.array->type) << "*) as[" << ia << "]->data))";
-        }       
-        
-    } else if (is_constant(expr)) {     
-        cphvb_intp ic = -1;
-        // if not added yet
-        if(cs->find(expr->op.constant) == cs->end()) {            
-            ic = cs->size();
-            cs->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,ic));                                
-        } else {
-            ic = cs->find(expr->op.constant)->second;
-        }                
-        
-        *comp_ss << "*((" << cphvb_type_typetext(expr->op.constant->type)  << "*)" << " &cs[" << ic << "]->value)";         
-    }        
-    logInfo("e jitcg_expr_travers_array()\n");
 }
 
 

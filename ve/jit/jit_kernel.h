@@ -111,7 +111,7 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
 cphvb_intp bind_compound_kernel(jit_compound_kernel* ckernel, cphvb_instruction* instruction_list, cphvb_intp id);
 cphvb_intp execute_compound_kernel(jit_compute_functions* compute_functions, jit_compound_kernel* ckernel, cphvb_instruction* list);
 
-const char* executekernel_type(jit_execute_kernel* exekernel);
+const char* executekernel_type_to_string(jit_execute_kernel* exekernel);
 
 bool is_expr_kernel(jit_kernel* kernel);
 bool is_compile_kernel(jit_kernel* kernel);

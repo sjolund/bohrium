@@ -1,6 +1,8 @@
 // jit_kernel.cpp
 
 
+#include <time.h>
+
 #include "cphvb.h"
 #include "jit_kernel.h"
 #include "jit_kernel_cache.h"
@@ -8,7 +10,7 @@
 #include "jit_expr.h"
 #include "jit_common.h"
 #include "jit_computing.h"
-#include <time.h>
+#include "jit_codegenerated_kernel_functions.h"
 
 #define K_TIMEING 1 // 1 all, 2 compiled only
 #define K_PRINT_COMPUTESTRING 1
@@ -19,7 +21,6 @@ cphvb_index oldtv_sec = 0;
 cphvb_index oldtv_nsec = 0;
 
 
-
 bool is_expr_kernel(jit_kernel* kernel) {
     return kernel->type == JIT_EXPR_KERNEL;
 }
@@ -27,8 +28,7 @@ bool is_compile_kernel(jit_kernel* kernel) {
     return kernel->type == JIT_COMPILE_KERNEL;
 }
 
-
-const char* executekernel_type(jit_execute_kernel* exekernel) {
+const char* executekernel_type_to_string(jit_execute_kernel* exekernel) {
     switch(exekernel->kernel->type) {
         case JIT_EXPR_KERNEL:
             return "expr-kernel";
@@ -38,6 +38,7 @@ const char* executekernel_type(jit_execute_kernel* exekernel) {
             return "NONE";        
     }
 }
+
 
 void expr_count_operands(jit_expr* expr, cphvb_intp* arrays_out, cphvb_intp* constants_out) {
     if(is_array(expr)) {        
@@ -99,7 +100,6 @@ cphvb_intp bind_execution_kernel(jit_execute_kernel* exekernel, cphvb_instructio
         exekernel->inputconstants[i] = &instructionlist[instr].constant;
         logcustom(cloglevel,1,"BEK inC: %p\n",exekernel->inputconstants[i]);
     }
-
 
     return 0;
 
@@ -173,8 +173,6 @@ cphvb_intp execute_instruction(jit_compute_functions* compute_functions,cphvb_in
         logcustom(cloglevel,1," compute_apply == SUCCESS\n", instr->operand[0]);
         return 0;
     }    
-
-    
     
     logcustom(cloglevel,1," compute_apply == ERROR\n", instr->operand[0]);
     return 1;
@@ -242,10 +240,10 @@ cphvb_intp execute_kernel_compiled(jit_execute_kernel* exekernel) {
     bool cloglevel[] = {0,0,0};
     logcustom(cloglevel,0,"EKC executing compiled kernel!\n");
     
-    //computefunc func = exekernel->kernel->compute_kernel->function;    
-    //computefunc3 func = exekernel->kernel->compute_kernel->function;        
+    
+    computefunc3 func = exekernel->kernel->compute_kernel->function;        
     //computefunc3 func = kernel_func_1899990464_0; //b
-    computefunc3 func = kernel_func_4265622974_0; //c
+    //computefunc3 func = kernel_func_4265622974_0; //c
     //computefunc3 func = kernel_func_1625152366_0; //d
     //computefunc3 func = kernel_func_3286243741_0; //e 
 
@@ -408,10 +406,8 @@ void build_expr_il_map_userfunc(jit_analyse_state* s,jit_name_entry* entr,
             //logcustom(cloglevel,1,"BEIMU %d out: (%d %d) %p (%p)\n",i,entr->instr_num,i,entr->instr,entr->instr->userfunc->operand[i]);
             il_map->output_array_map->push_back(new jit_instruction_list_coord(entr->instr_num,i));
             il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,i));
-            //il_map->array_map[0].instruction = entr->instr_num;
-            //il_map->array_map[0].operand = entr->operand_num;"
-            logcustom(cloglevel,1,"BEIMU O (%d %d) \n",entr->instr_num,i);
-            
+                        
+            logcustom(cloglevel,1,"BEIMU O (%d %d) \n",entr->instr_num,i);            
         }
         
         for(i=0;i<entr->expr->userfunction_inputs->size();i++) {
@@ -421,10 +417,7 @@ void build_expr_il_map_userfunc(jit_analyse_state* s,jit_name_entry* entr,
             //logcustom(cloglevel,1,"BEIMU in: (%d %d) %p (%p)\n",tentr->instr_num,tentr->operand_num,entr->instr,entr->instr->userfunc->operand[tentr->operand_num]);
             
             il_map->array_map->push_back(new jit_instruction_list_coord(tentr->instr_num,tentr->operand_num));
-        
-            //il_map->output_array_map[0].instruction = entr->instr_num;
-            //il_map->output_array_map[0].operand = entr->operand_num;
-            //;
+                               
             logcustom(cloglevel,1,"BEIMU I (%d %d) \n",tentr->instr_num,tentr->operand_num);
         }
         if(cloglevel[2]) {
@@ -432,6 +425,7 @@ void build_expr_il_map_userfunc(jit_analyse_state* s,jit_name_entry* entr,
         }                 
         is->push_back(entr->instr);        
 }
+
 
 void build_expr_il_map(jit_analyse_state* s,jit_name_entry* entr,
                         jit_io_instruction_list_map_lists* il_map,
@@ -466,6 +460,7 @@ void build_expr_il_map(jit_analyse_state* s,jit_name_entry* entr,
         }
         is->push_back(entr->instr);        
 }
+
                                     
 void build_execution_kernel(jit_kernel* kernel,
                                 cphvb_index oas_length,
@@ -492,6 +487,7 @@ void build_execution_kernel(jit_kernel* kernel,
     }
 }
 
+
 /**
  * Does not set the outputs for the IL map, or fill in the output map.
  **/
@@ -513,7 +509,6 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
     logcustom(cloglevel,2,"+++ %ld .. executed= %s\n",entr->expr->name, entr->is_executed?"True":"False");
     if (is_array(expr) || entr->is_executed) {        
         cphvb_intp ia = -1;        
-
         cphvb_array* arr = is_array(expr)? expr->op.array : entr->arrayp;
 
         // find or add to array list    
@@ -536,7 +531,6 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
         
     } else if (is_constant(expr)) {
         cphvb_intp ic = -1;
-
         //printf("=========== %s - %p - ",cs->find(expr->op.constant) == cs->end()?"NoTIn":"In",expr->op.constant);
         //constant_value_text_s(expr->op.constant);
         //printf("\n");
@@ -560,7 +554,6 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
             //ss << " *((" << cphvb_type_typetext(expr->op.constant->type)  << "*)" << " &cs[" << ic << "]->value) ";
             ss << jitcg_build_constant_compute_component(ic);
         }
-        
         
     } else if(is_bin_op(expr)) {
         if (create_instruction_list) {
@@ -587,6 +580,8 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
     logcustom(cloglevel,0,"e jitcg_expr_travers_array() -- %s\n",ss.str().c_str());
     return ss.str();  
 }
+
+
 /**
  * 
  **/
@@ -616,6 +611,7 @@ string expr_extract_traverser_nocast(jit_analyse_state* s,jit_expr* expr,
     entr->is_executed = true;
     return ss.str();
 }
+
 
 /**
  * Does not set the outputs for the IL map, or fill in the output map.
@@ -738,161 +734,16 @@ string expr_extract_traverser(jit_analyse_state* s,jit_expr* expr,
 }
 
 
-/**
- * Does not set the outputs for the IL map, or fill in the output map.
- **/
-void _expr_extract_traverser2(jit_analyse_state* s,jit_expr* expr,
-                                        map<cphvb_array*,cphvb_intp>* as,
-                                        map<cphvb_constant*,cphvb_intp>* cs,                                                                                
-                                        jit_io_instruction_list_map_lists* il_map,
-                                        vector<cphvb_instruction*>* is,
-                                        stringstream* comp_ss,                                        
-                                        bool create_computation_string,
-                                        bool create_instruction_list,
-                                        bool create_il_map,
-                                        bool create_operand_map) {
-    //printf("s _expr_operand_extract_traverser2()\n");
-    
-    jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-    printf("+++ %ld .. executed= %s\n",entr->expr->name, entr->is_executed?"True":"False");
-    if (is_array(expr) || entr->is_executed) {        
-        cphvb_intp ia = -1;
-        cphvb_array* arr = is_array(expr)? expr->op.array : entr->arrayp;       
-        // if not added yet        
-        if(as->find(arr) == as->end()) {                    
-            ia = as->size();
-            
-            if (create_operand_map) {
-                as->insert(pair<cphvb_array*,cphvb_intp>(arr,ia));
-            }
-
-            if (create_il_map) {                
-                il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,entr->operand_num));    
-                //il_map->array_map[ia].instruction = entr->instr_num;
-                //il_map->array_map[ia].operand = entr->operand_num;
-            }
-        } else {
-            if (create_operand_map) {
-                ia = as->find(arr)->second;
-            }
-        }
-        
-        //printf("---------- %ld  %ld\n",expr->name,ia);
-        
-        // create computation expression
-        if (create_computation_string) {
-            if (is_array(expr)) {
-                //*comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(expr->op.array->type) << "*) as[" << ia << "]->data))";
-                *comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(expr->op.array->type) << "*) ds[" << ia << "]->data))";
-            } else {
-                // if it is a executed entr                
-                //*comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(entr->arrayp->type) << "*) as[" << ia << "]->data))";
-                *comp_ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(entr->arrayp->type) << "*) ds[" << ia << "]->data))";
-            }
-        }       
-        
-    } else if (is_constant(expr)) {
-        cphvb_intp ic = -1;
-        // if not added yet
-        //printf("=========== %s - %p - ",cs->find(expr->op.constant) == cs->end()?"NoTIn":"In",expr->op.constant);
-        //constant_value_text_s(expr->op.constant);
-        //printf("\n");
-        
-        if(cs->find(expr->op.constant) == cs->end()) {            
-            ic = cs->size();        
-            //printf("insert into CS: %d - %p\n",cs->size(), expr->op.constant);
-            cs->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,ic));
-                    
-            //printf("%p - %ld / %ld %d\n",entr,entr->instr_num,entr->operand_num,cs->size());
-            jit_name_entry* tentr = jita_nametable_lookup(s->nametable,expr->parent->name);
-            if (tentr->instr->operand[1] == NULL) {
-                 il_map->constant_map->push_back(new jit_instruction_list_coord(tentr->instr_num,1));
-            } else { //tentr->instr->operand[2] == NULL
-                il_map->constant_map->push_back(new jit_instruction_list_coord(tentr->instr_num,2));
-            }        
-            
-        } else {            
-            ic = cs->find(expr->op.constant)->second;            
-        }                
-        *comp_ss << " *((" << cphvb_type_typetext(expr->op.constant->type)  << "*)" << " &cs[" << ic << "]->value) ";
-        
-        
-    } else if(is_bin_op(expr)) {
-        if (create_computation_string) {
-            *comp_ss << "(";
-            _expr_extract_traverser2(s,expr->op.expression.left,as,cs,il_map,is,comp_ss,create_computation_string,create_instruction_list,create_il_map,create_operand_map);
-            jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);                                     
-            _expr_extract_traverser2(s,expr->op.expression.right,as,cs,il_map,is,comp_ss,create_computation_string,create_instruction_list,create_il_map,create_operand_map);
-            *comp_ss << ")";
-        } else {
-            _expr_extract_traverser2(s,expr->op.expression.left,as,cs,il_map,is,comp_ss,create_computation_string,create_instruction_list,create_il_map,create_operand_map);
-            _expr_extract_traverser2(s,expr->op.expression.right,as,cs,il_map,is,comp_ss,create_computation_string,create_instruction_list,create_il_map,create_operand_map);
-        }
-        
-        if (create_instruction_list) {
-            is->push_back(entr->instr);
-        }
-    } else if (is_un_op(expr)) {
-        if (create_computation_string) {
-            jitcg_codetext_opcode_stream(expr->op.expression.opcode,comp_ss);  
-            *comp_ss << "(";        
-            _expr_extract_traverser2(s,expr->op.expression.left,as,cs,il_map,is,comp_ss,create_computation_string,create_instruction_list,create_il_map,create_operand_map);                
-            *comp_ss << ")";
-        } else {
-            _expr_extract_traverser2(s,expr->op.expression.left,as,cs,il_map,is,comp_ss,create_computation_string,create_instruction_list,create_il_map,create_operand_map);                
-        }
-        if (create_instruction_list) {
-            is->push_back(entr->instr);
-        }
-        
-    }        
-    logInfo("e jitcg_expr_travers_array()\n");
-}
-
-
-/**
- * 
- **/
-void expr_extract_traverser2(jit_analyse_state* s,jit_expr* expr,
-                                map<cphvb_array*,cphvb_intp>* oas,
-                                map<cphvb_array*,cphvb_intp>* as,
-                                map<cphvb_constant*,cphvb_intp>* cs,                                                                                
-                                jit_io_instruction_list_map_lists* il_map,
-                                vector<cphvb_instruction*>* is,
-                                stringstream* comp_ss,                                        
-                                bool create_computation_string,
-                                bool create_instruction_list,
-                                bool create_il_map,
-                                bool create_operand_map) {
-
-    // expression outputs.
-    //   add to oas.
-    //   add to il_map
-    jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-
-    
-    if (create_il_map) {
-        il_map->output_array_map->push_back(new jit_instruction_list_coord(entr->instr_num,entr->operand_num));    
-    }
-    if (create_operand_map) {            
-        oas->insert(pair<cphvb_array*,cphvb_intp>(entr->arrayp,0));
-    }
-
-    *comp_ss << "*(((" << cphvb_type_typetext(entr->arrayp->type) << "*) doa->data) + off_oa) = ";
-    _expr_extract_traverser2(s,expr,as,cs,il_map,is,comp_ss,create_computation_string,create_instruction_list,create_il_map,create_operand_map);
-    entr->is_executed = true;
-}
-
-
-
-
 void instruction_copy_to(cphvb_instruction* from, cphvb_instruction* to) {
+    bool cloglevel[] = {0,0,0};
+    logcustom(cloglevel,0,"isntruction_copy_to()\n");
+    
     to->opcode = from->opcode;
     to->status = from->status;    
     to->constant = from->constant;    
     //to->operand cphvb_array* = operand[CPHVB_MAX_NO_OPERANDS];
         
-    //printf("%ld %ld %p %p\n",to->status,to->opcode,&to->constant,from->userfunc);
+    logcustom(cloglevel,1,"%ld %ld %p %p\n",to->status,to->opcode,&to->constant,from->userfunc);
 
     if (from->opcode == CPHVB_USERFUNC) {        
         to->userfunc = (cphvb_userfunc*) malloc(from->userfunc->struct_size);
@@ -900,13 +751,14 @@ void instruction_copy_to(cphvb_instruction* from, cphvb_instruction* to) {
     } else {
         to->userfunc = NULL;
     }
-    //printf("FrTo: %d %d, %d %d\n",from->userfunc->nin,to->userfunc->nin,from->userfunc->nout,to->userfunc->nout);
-    
+    logcustom(cloglevel,1,"FrTo: %d %d, %d %d\n",from->userfunc->nin,to->userfunc->nin,from->userfunc->nout,to->userfunc->nout);
 }
-   
+
+
+
 /**
- * TODO: Handle multi node expressions. Can only handle "instruction" type expressions.
- * 
+ * Future funcitonality: Handle multi node expressions.
+ * Can only handle "instruction" type expressions. 
  **/
 cphvb_intp build_expr_kernel(jit_analyse_state* s, jit_name_entry* entr, cphvb_intp hash, cphvb_index id,jit_execute_kernel* execute_kernel_out) {
     bool cloglevel[] = {0,0,0};    
@@ -1091,7 +943,7 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
             build_compile_kernel(s,entr,exprhash,kernel_count,execute_kernel);
         }
 
-        //printf("execution kernel for NT: %d - %s\n",*it,executekernel_type(execute_kernel));
+        //printf("execution kernel for NT: %d - %s\n",*it,executekernel_type_to_string(execute_kernel));
         //jit_pprint_il_map(execute_kernel->kernel->il_map);
         //jit_pprint_execute_kernel(execute_kernel);
         
@@ -1104,10 +956,6 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
     return 0;
 }
 
-
-
-
- 
 
 
 

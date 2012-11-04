@@ -606,7 +606,7 @@ void jit_pprint_execute_kernel(jit_execute_kernel* exekernel) {
     //~ cphvb_constant**    inputconstants;
     //~ cphvb_index         inputconstants_length;
     
-    ss << "\n+Kernel:" << exekernel->kernel << "  " << executekernel_type(exekernel) << "  ";
+    ss << "\n+Kernel:" << exekernel->kernel << "  " << executekernel_type_to_string(exekernel) << "  ";
     if (exekernel->kernel->type == JIT_COMPILE_KERNEL) {
         ss << "computekernel pointer:" << exekernel->kernel->compute_kernel << "\n";; 
     } else {    
