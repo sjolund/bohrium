@@ -744,25 +744,25 @@ void expr_dependecy_travers2(jit_analyse_state* s,jit_expr* expr,set<cphvb_intp>
     
 }
 
-cphvb_instruction* copy_instruction(cphvb_instruction* instr) {
-    logDebug("copy_instruction()\n");
-    cphvb_instruction* ninstr = (cphvb_instruction*)malloc(sizeof(cphvb_instruction));
-    
-    ninstr->status = instr->status;
-    logDebug("status: %ld\n",ninstr->status);
-    
-    ninstr->opcode = instr->opcode;
-    logDebug("opcode: %ld\n",ninstr->opcode);
-    
-    *ninstr->operand = *instr->operand;
-    
-    ninstr->constant = instr->constant;
-    logDebug("constant: %ld\n",ninstr->constant);
-    
-    ninstr->userfunc = instr->userfunc;
-
-    return ninstr;
-}
+//~ cphvb_instruction* copy_instruction(cphvb_instruction* instr) {
+    //~ logDebug("copy_instruction()\n");
+    //~ cphvb_instruction* ninstr = (cphvb_instruction*)malloc(sizeof(cphvb_instruction));
+    //~ 
+    //~ ninstr->status = instr->status;
+    //~ logDebug("status: %ld\n",ninstr->status);
+    //~ 
+    //~ ninstr->opcode = instr->opcode;
+    //~ logDebug("opcode: %ld\n",ninstr->opcode);
+    //~ 
+    //~ *ninstr->operand = *instr->operand;
+    //~ 
+    //~ ninstr->constant = instr->constant;
+    //~ logDebug("constant: %ld\n",ninstr->constant);
+    //~ 
+    //~ ninstr->userfunc = instr->userfunc;
+//~ 
+    //~ return ninstr;
+//~ }
 
 /// depth of expr is 1
 cphvb_intp execute_instruction_simple(cphvb_instruction* instr) {
@@ -785,24 +785,24 @@ cphvb_intp execute_instruction_simple(cphvb_instruction* instr) {
 
 
 
-/// depth of expr is 2, and top is IDENTITY
-cphvb_instruction* convert_identity_op(jit_analyse_state* s,jit_name_entry* entr) {
-    printf("convert_identity_op()\n");
-    if (entr->expr->op.expression.opcode != CPHVB_IDENTITY) {
-        printf("convert_identity == input not identity!\n");
-        return NULL;
-    }
-    printf("1\n");
-    cphvb_array* target_array = entr->arrayp;
-    printf("2\n");
-    cphvb_instruction* instr = jita_nametable_lookup(s->nametable,entr->expr->op.expression.left->name)->instr;
-
-    cphvb_instruction* newInstr = copy_instruction(instr);
-    printf("3 %p\n",newInstr->operand[0]);
-    newInstr->operand[0] = target_array;
-    printf("1\n");
-    return newInstr;    
-}
+//~ /// depth of expr is 2, and top is IDENTITY
+//~ cphvb_instruction* convert_identity_op(jit_analyse_state* s,jit_name_entry* entr) {
+    //~ printf("convert_identity_op()\n");
+    //~ if (entr->expr->op.expression.opcode != CPHVB_IDENTITY) {
+        //~ printf("convert_identity == input not identity!\n");
+        //~ return NULL;
+    //~ }
+    //~ printf("1\n");
+    //~ cphvb_array* target_array = entr->arrayp;
+    //~ printf("2\n");
+    //~ cphvb_instruction* instr = jita_nametable_lookup(s->nametable,entr->expr->op.expression.left->name)->instr;
+//~ 
+    //~ cphvb_instruction* newInstr = copy_instruction(instr);
+    //~ printf("3 %p\n",newInstr->operand[0]);
+    //~ newInstr->operand[0] = target_array;
+    //~ printf("1\n");
+    //~ return newInstr;    
+//~ }
 
 
 
@@ -1300,15 +1300,9 @@ set<cphvb_intp>* generate_execution_list(jit_analyse_state* s) {
 }
 
 
-       
-//~ 
-//~ cphvb_error jit_analyse_instruction_list(
-        //~ jit_ssa_map* jitssamap, 
-        //~ jit_name_table* jitnametable, 
-        //~ jit_base_dependency_table* bd_table,        
-        //~ cphvb_intp instruction_count,
-        //~ cphvb_instruction* instruction_list) {
-            
+/**
+ * 
+ **/            
 cphvb_error jit_analyse_instruction_list(
         jit_analyse_state* s,        
         cphvb_instruction* instruction_list,
@@ -1435,8 +1429,8 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             
             logcustom(cloglevel,0,"== Compund kernel created. res: %ld  P: %p, \n", buildresult, compound_kernel);
             //printf("===================================\n");
-            printf("executionlist");jit_pprint_set(execution_list);
-            jit_pprint_nametable(jitanalysestate->nametable);
+            //printf("executionlist");jit_pprint_set(execution_list);
+            //jit_pprint_nametable(jitanalysestate->nametable);
             //jit_pprint_nametable_dependencies(jitanalysestate->nametable);
             // increment the compound_kernel_id.
             jitcompound_kernel_count++;
@@ -1525,58 +1519,6 @@ cphvb_error cphvb_ve_jit_reg_func(char *fun, cphvb_intp *id) {
         }
         return CPHVB_ERROR;
     }
-        
-    //~ if(strcmp("cphvb_reduce", fun) == 0)
-    //~ {
-    	//~ if (reduce_impl == NULL)
-    	//~ {
-			//~ cphvb_component_get_func(myself, fun, &reduce_impl);
-			//~ if (reduce_impl == NULL)
-				//~ return CPHVB_USERFUNC_NOT_SUPPORTED;
-//~ 
-			//~ reduce_impl_id = *id;
-			//~ return CPHVB_SUCCESS;			
-        //~ }
-        //~ else
-        //~ {
-        	//~ *id = reduce_impl_id;
-        	//~ return CPHVB_SUCCESS;
-        //~ }
-    //~ }
-    //~ else if(strcmp("cphvb_random", fun) == 0)
-    //~ {
-    	//~ if (random_impl == NULL)
-    	//~ {
-			//~ cphvb_component_get_func(myself, fun, &random_impl);
-			//~ if (random_impl == NULL)
-				//~ return CPHVB_USERFUNC_NOT_SUPPORTED;
-//~ 
-			//~ random_impl_id = *id;
-			//~ return CPHVB_SUCCESS;			
-        //~ }
-        //~ else
-        //~ {
-        	//~ *id = random_impl_id;
-        	//~ return CPHVB_SUCCESS;
-        //~ }
-    //~ }
-    //~ else if(strcmp("cphvb_matmul", fun) == 0)
-    //~ {
-    	//~ if (matmul_impl == NULL)
-    	//~ {
-            //~ cphvb_component_get_func(myself, fun, &matmul_impl);
-            //~ if (matmul_impl == NULL)
-                //~ return CPHVB_USERFUNC_NOT_SUPPORTED;
-            //~ 
-            //~ matmul_impl_id = *id;
-            //~ return CPHVB_SUCCESS;			
-        //~ }
-        //~ else
-        //~ {
-        	//~ *id = matmul_impl_id;
-        	//~ return CPHVB_SUCCESS;
-        //~ }
-    //~ }
     
     return CPHVB_USERFUNC_NOT_SUPPORTED;
 }

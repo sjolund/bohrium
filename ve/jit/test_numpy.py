@@ -652,7 +652,7 @@ if __name__ == "__main__":
      
     #test_pattern_401(7000,7000)
    
-    #test_pattern_004(2,5)
+    test_pattern_004(2,5)
 
     #test_pattern_016(2,5)
     # PROBLEM WITH THIS TEST!
