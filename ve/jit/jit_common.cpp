@@ -258,6 +258,31 @@ void jit_pprint_cg_state(jitcg_state* cgs) {
 void jit_pprint_epxr_childs_names(){
 }
 
+string jit_pprint_functiontext_creator(jitcg_functiontext_creator functext) {    
+    switch(functext) {
+        case JITCGFT_NoCast:
+            return string("NoCast");
+        case JITCGFT_Vanilla:
+            return string("Vanilla");
+        default:
+            return string("none");
+    }
+}
+
+string jit_pprint_compile_method(jit_compile_method method) {
+    switch(method) {
+        case COMPILE_METHOD_TCC:
+            return string("TCC");
+        case COMPILE_METHOD_GCC:
+            return string("GCC");
+        case COMPILE_METHOD_LLVM:
+            return string("LLVM");
+        default:
+            return string("none");
+    }
+    
+}
+
 void cphvb_pprint_instr_list_small( cphvb_instruction* instruction_list, cphvb_intp instruction_count, const char* txt )
 {
     cphvb_intp count;

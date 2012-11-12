@@ -11,9 +11,20 @@
 #include "jit_common.h"
 #include "jit_computing.h"
 #include "jit_codegenerated_kernel_functions.h"
+#include "jit_compile.h"
 
-#define K_TIMEING 1 // 1 all, 2 compiled only
+#define K_TIMEING 0 // 1 all, 2 compiled only
 #define K_PRINT_COMPUTESTRING 0
+
+#ifndef JITCG_FUNCTEXT
+//#define JITCG_FUNCTEXT JITCGFT_NoCast 
+#define JITCG_FUNCTEXT JITCGFT_Vanilla
+#endif
+
+#ifndef JITC_COMPILE_METHOD
+//#define JITC_COMPILE_METHOD COMPILE_METHOD_TCC
+#define JITC_COMPILE_METHOD COMPILE_METHOD_GCC
+#endif
 //void update_expr_from_kernel_state()
 using namespace std;
 
@@ -156,12 +167,13 @@ cphvb_intp execute_instruction(jit_compute_functions* compute_functions,cphvb_in
         logcustom(cloglevel,1," allocating array for %p\n", instr->operand[0]);
         cphvb_data_malloc(instr->operand[0]);
     }
-
+    //cphvb_pprint_instr(instr);
+    logcustom(cloglevel,0,"instr 0 = %s, [0] %p, [1] %p\n", cphvb_opcode_text(instr->opcode),instr->operand[0],instr->operand[1]);
     timespec time1, time2;
     if (K_TIMEING == 1) {        
         clock_gettime(CLOCK_REALTIME, &time1);    
     }
-
+    
     cphvb_error res = compute_functions->instr_compute(instr);
 
     if (K_TIMEING == 1) {     
@@ -396,7 +408,7 @@ void build_expr_il_map_userfunc(jit_analyse_state* s,jit_name_entry* entr,
                                 jit_io_instruction_list_map_lists* il_map,
                                 vector<cphvb_instruction*>* is) {
                                     
-        bool cloglevel[] = {1,1,1};
+        bool cloglevel[] = {0,0,0};
         logcustom(cloglevel,0,"BEIMU build_expr_il_map_userfunc() \n");
         jit_name_entry* tentr;
         int i = 0;
@@ -837,8 +849,10 @@ cphvb_intp build_expr_kernel(jit_analyse_state* s, jit_name_entry* entr, cphvb_i
  * 
  **/
 cphvb_intp build_compile_kernel(jit_analyse_state* s, jit_name_entry* entr, cphvb_intp hash, cphvb_index id,jit_execute_kernel* execute_kernel_out) {
-    bool cloglevel[] = {0,0};    
+    bool cloglevel[] = {0,0,0};
     logcustom(cloglevel,0,"build_compile_kernel()\n");
+    logcustom(cloglevel,2,"FunctionTextType = %s, compiler = %s \n", jit_pprint_functiontext_creator(JITCG_FUNCTEXT).c_str(), jit_pprint_compile_method(JITC_COMPILE_METHOD).c_str());
+    
     
     // check that the expr is not a value.
     if ((is_array(entr->expr) || is_constant(entr->expr))) {
@@ -871,20 +885,41 @@ cphvb_intp build_compile_kernel(jit_analyse_state* s, jit_name_entry* entr, cphv
     sprintf(buff,"kernel_func_%ld_%ld",hash,id);
     string kernel_name = buff;
 
+    logcustom(cloglevel,1,"test\n");
+
+    // how it could be
+    //      
+    // expr_map* data_map = build_datamap(jit_analyse_state* s, jit_expr* expr);
+    // string func_text   = jitcg_create_kernelfunctionstring(jit_analyse_state* s,jitcg_settings* cgsettings,jit_expr* expr); // create the complete functiontext.
+    
     // Create compute-string and fill instruction-list map.
     // create kernel function string.
+    string computestring;
+    string func_text;
+
+    switch(JITCG_FUNCTEXT) {         
+        case JITCGFT_NoCast:
+            logcustom(cloglevel,1,"nocast\n");
+            computestring = expr_extract_traverser_nocast(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);
+            func_text = create_kernel_function_travers_nocast(kernel_name.c_str(),computestring,oas,as,cs);
+            break;
+        default: // JITCGFT_Vanilla
+            computestring = expr_extract_traverser(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);
+            func_text = create_kernel_function_travers(kernel_name.c_str(),computestring,oas,as,cs);
+            break;
+    }
 
     
+    //string computestring = expr_extract_traverser_nocast(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);
+    //string func_text = create_kernel_function_travers_nocast(kernel_name.c_str(),computestring,oas,as,cs);    
     //~ string computestring = expr_extract_traverser(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);    
     //~ string func_text = create_kernel_function_travers(kernel_name.c_str(),computestring,oas,as,cs);
-    
-    string computestring = expr_extract_traverser_nocast(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);
-    string func_text = create_kernel_function_travers_nocast(kernel_name.c_str(),computestring,oas,as,cs);           
 
     if(K_PRINT_COMPUTESTRING) {
         printf("computation string: %s\n",func_text.c_str());
     }
-    kernel->compute_kernel = jitc_compile_computefunction(kernel_name,func_text);
+    
+    kernel->compute_kernel = jitc_compile_computefunction(kernel_name, func_text, JITC_COMPILE_METHOD );
     
     execute_kernel_out->kernel = kernel;
     build_execution_kernel(kernel,
@@ -944,7 +979,7 @@ cphvb_index jit_update_expr_depth(jit_analyse_state* s, jit_expr* expr) {
  * 
  **/
 cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* execution_list, cphvb_index compound_id, jit_compound_kernel* compoundk_out) {
-    bool cloglevel[] = {1,1};
+    bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"BCK build_compound_kernel( executionlist length: %d,compound ID: %ld)\n",execution_list->size(),compound_id);
         
     // set id of the compund kernel.        

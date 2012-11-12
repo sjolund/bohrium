@@ -411,6 +411,30 @@ def test_pattern_016(H,W):
     B = A + 5
     B[0,1]
     print B
+
+def test_pattern_017(H,W):
+    cphvbbridge.flush()
+    print ''
+    print "- test_pattern_017()";
+    
+    A = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = np.ones((H,W),dtype=type)
+    B = B * 2
+    C = np.ones((H,W),dtype=type)
+            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)
+
+    A = A + 10
+    D = A + B
+    D[0,1]
+    E = A + 2
+    print E
+
+
+
 # ================================================
 
 def test_pattern_101(H,W):
@@ -607,37 +631,139 @@ def test_pattern_300(H,W):
     print A
 
 
-def test_pattern_401(H,W):
+def test_pattern_400(H,W):
+    cphvbbridge.flush()    
+    #print "- test_pattern_400()";    
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+    
     cphvbbridge.flush()
-    print ''
-    print "- test_pattern_401()";    
+    
+    start = time.time()    
+    T = A + B
+    T[0,0]    
+    #cphvbbridge.flush()    
+    print "execution. Time: {0}".format(time.time()-start)
+
+def test_pattern_401(H,W):
+    cphvbbridge.flush()    
+    #print "- test_pattern_401()";    
     
     A = np.ones((H,W),dtype=type)    
     B = np.ones((H,W),dtype=type)    
     C = np.ones((H,W),dtype=type)
-    #~ D = np.ones((H,W),dtype=type)
-    #~ E = np.ones((H,W),dtype=type)
-    #~ F = np.ones((H,W),dtype=type)    
-    #~ A = A * 3;
-    #~ B = B * 2
+   
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+  
+    cphvbbridge.flush()
+    
+    start = time.time()    
+    T = A + B + C
+    T[0,0]    
+    #cphvbbridge.flush()    
+    print "execution. Time: {0}".format(time.time()-start)
+
+def test_pattern_402(H,W):
+    cphvbbridge.flush()    
+    #print "- test_pattern_402()";    
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)
+    D = np.ones((H,W),dtype=type)
+    
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+    cphvbbridge.handle_array(D)    
+    cphvbbridge.flush()
+    
+    start = time.time()    
+    T = A + B + C + D 
+    T[0,0]    
+    #cphvbbridge.flush()    
+    print "execution. Time: {0}".format(time.time()-start)
+
+def test_pattern_403(H,W):
+    cphvbbridge.flush()
+   
+    #print "- test_pattern_403()";    
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)
+    D = np.ones((H,W),dtype=type)
+    E = np.ones((H,W),dtype=type)    
+    
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+    cphvbbridge.handle_array(D)
+    cphvbbridge.handle_array(E)    
+    cphvbbridge.flush()
+    
+    start = time.time()    
+    T = A + B + C + D + E
+    T[0,0]    
+    #cphvbbridge.flush()    
+    print "execution. Time: {0}".format(time.time()-start)
+    
+def test_pattern_404(H,W):
+    cphvbbridge.flush()    
+    #print "- test_pattern_404()";    
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)
+    D = np.ones((H,W),dtype=type)
+    E = np.ones((H,W),dtype=type)
+    F = np.ones((H,W),dtype=type)        
 
     cphvbbridge.handle_array(A)                
     cphvbbridge.handle_array(B)
     cphvbbridge.handle_array(C)
-    #~ cphvbbridge.handle_array(D)
-    #~ cphvbbridge.handle_array(E)
-    #cphvbbridge.handle_array(F)
+    cphvbbridge.handle_array(D)
+    cphvbbridge.handle_array(E)
+    cphvbbridge.handle_array(F)
     cphvbbridge.flush()
     
-    start = time.time()
-    
-    T = A + B + C #+ D #+ E
+    start = time.time()    
+    T = A + B + C + D + E + F
     T[0,0]    
-    cphvbbridge.flush()
-    
+    #cphvbbridge.flush()    
     print "execution. Time: {0}".format(time.time()-start)
     
+def test_pattern_405(H,W):
+    cphvbbridge.flush()    
+    #print "- test_pattern_404()";    
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)
+    D = np.ones((H,W),dtype=type)
+    E = np.ones((H,W),dtype=type)
+    F = np.ones((H,W),dtype=type)
+    G = np.ones((H,W),dtype=type)    
 
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+    cphvbbridge.handle_array(D)
+    cphvbbridge.handle_array(E)
+    cphvbbridge.handle_array(F)
+    cphvbbridge.handle_array(G)
+    cphvbbridge.flush()
+    
+    start = time.time()    
+    T = A + B + C + D + E + F + G
+    T[0,0]    
+    #cphvbbridge.flush()    
+    print "execution. Time: {0}".format(time.time()-start)
 
 #delta = np.add.reduce(diff)
 #delta = np.add.reduce(delta)
@@ -650,11 +776,20 @@ if __name__ == "__main__":
 
     # A + B
      
+    #test_pattern_400(7000,7000)
     #test_pattern_401(7000,7000)
-   
-    test_pattern_004(2,5)
+    #test_pattern_402(7000,7000)
+    #test_pattern_403(7000,7000)
+    #test_pattern_404(7000,7000)
 
-    #test_pattern_016(2,5)
+    # uses a lot of memory!! Segfaults in JIT version.
+    #test_pattern_405(7000,7000)
+   
+    #test_pattern_004(2,5)
+
+    #test_pattern_016(2,5)  
+    test_pattern_017(2,5)
+    
     # PROBLEM WITH THIS TEST!
     #test_pattern_015(1,5)
 
@@ -707,7 +842,7 @@ if __name__ == "__main__":
     #~ 
 
 
-    test_pattern_300(1,5)
+    #test_pattern_300(1,5)
     #~ doing test_pattern 14 (10,10)
     #~ simple    
     #~ -0.000265121459961

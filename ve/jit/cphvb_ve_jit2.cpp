@@ -164,41 +164,41 @@ cphvb_error execute_simple(cphvb_intp instruction_count, cphvb_instruction* inst
     }
 }
 
-void get_expr_base_dependencies(std::vector<cphvb_intp>* list, std::vector<cphvb_intp>* dep_list, cphvb_intp name) {     
-    int i, list_size = (int) list->size();
-    for(i=0; i<list_size; i++) {
-        printf("%d  , n: %ld \n",i,name);
+//~ void get_expr_base_dependencies(std::vector<cphvb_intp>* list, std::vector<cphvb_intp>* dep_list, cphvb_intp name) {     
+    //~ int i, list_size = (int) list->size();
+    //~ for(i=0; i<list_size; i++) {
+        //~ printf("%d  , n: %ld \n",i,name);
+//~ 
+        //~ // when element i is greater the Name, the rest will not be required by Name.
+        //~ if (list->at(i) < name) {
+            //~ dep_list->push_back(list->at(i));
+            //~ //std::vector<cphvb_intp>* expr_dependencies = new std::vector<cphvb_intp>();
+            //~ //expr_dependencies->insert(expr_dependencies->begin(),list->begin(),list->begin()+(i-1));        
+            //~ //return expr_dependencies;
+        //~ } else {
+            //~ return;
+        //~ }       
+    //~ }
+    //~ // if Name is greator then all usages, return the whole list.    
+    //~ return;
+//~ }
 
-        // when element i is greater the Name, the rest will not be required by Name.
-        if (list->at(i) < name) {
-            dep_list->push_back(list->at(i));
-            //std::vector<cphvb_intp>* expr_dependencies = new std::vector<cphvb_intp>();
-            //expr_dependencies->insert(expr_dependencies->begin(),list->begin(),list->begin()+(i-1));        
-            //return expr_dependencies;
-        } else {
-            return;
-        }       
-    }
-    // if Name is greator then all usages, return the whole list.    
-    return;
-}
-
-std::vector<cphvb_intp>* get_expr_dependencies(jit_base_dependency_table* bd_table, std::vector<cphvb_intp>* dep_list, jit_expr* expr) {
-    printf("get_expr_dependencies()");
-    if (expr->tag == array_val) {
-        if (expr->op.array->base != NULL) {
-            std::vector<cphvb_intp>* list = jita_base_usage_table_get_usage(bd_table,expr->op.array->base); 
-            get_expr_base_dependencies(list,dep_list, expr->name);                    
-        }
-    } else if(expr->tag == bin_op) {
-        get_expr_dependencies(bd_table,dep_list,expr->op.expression.left);
-        get_expr_dependencies(bd_table,dep_list,expr->op.expression.right);
-        
-    } else if(expr->tag == un_op) {
-        get_expr_dependencies(bd_table,dep_list,expr->op.expression.left);
-    }
-    return NULL;
-}
+//~ std::vector<cphvb_intp>* get_expr_dependencies(jit_base_dependency_table* bd_table, std::vector<cphvb_intp>* dep_list, jit_expr* expr) {
+    //~ printf("get_expr_dependencies()");
+    //~ if (expr->tag == array_val) {
+        //~ if (expr->op.array->base != NULL) {
+            //~ std::vector<cphvb_intp>* list = jita_base_usage_table_get_usage(bd_table,expr->op.array->base); 
+            //~ get_expr_base_dependencies(list,dep_list, expr->name);                    
+        //~ }
+    //~ } else if(expr->tag == bin_op) {
+        //~ get_expr_dependencies(bd_table,dep_list,expr->op.expression.left);
+        //~ get_expr_dependencies(bd_table,dep_list,expr->op.expression.right);
+        //~ 
+    //~ } else if(expr->tag == un_op) {
+        //~ get_expr_dependencies(bd_table,dep_list,expr->op.expression.left);
+    //~ }
+    //~ return NULL;
+//~ }
 
 
 
@@ -521,6 +521,10 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
         return;
     }
 
+    if (entr->discarded_at = -1) {
+        logcustom(cloglevel,1,"EDT3 is not discarded in this batch. returning.\n");
+        return;
+    }
     
     if (is_un_op(expr) || is_bin_op(expr)) {
         int children_num = is_bin_op(expr) ? 2 : 1;    
@@ -863,7 +867,7 @@ cphvb_intp execute_expression_multi(jit_analyse_state* s, jit_name_entry* entr) 
     //printf("\\\\\\\\\\\\ %s\n",cgs->kernel_name.c_str());
     //jitcg_create_kernel_code(cgs,s, entr->expr);
   
-    jit_comp_kernel* kernel = jitc_compile_computefunction(cgs->kernel_name, cgs->source_function);
+    jit_comp_kernel* kernel = jitc_compile_computefunction(cgs->kernel_name, cgs->source_function,COMPILE_METHOD_GCC);
     cgs->kernel = kernel;
 
 
@@ -1354,10 +1358,10 @@ cphvb_error jit_analyse_instruction_list(
 
 cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list )
 {
+    
+    cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
 
-    //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
-
-    bool cloglevel[] = {0,0};
+    bool cloglevel[] = {1,1};
     bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
     bool put_in_cache = false;
     
@@ -1494,8 +1498,8 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 
     // De-allocate state
 
-    printf("Instruction list computed: %ld\n", jitinstr_list_count );
-    printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);    
+    //printf("Instruction list computed: %ld\n", jitinstr_list_count );
+    //printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);    
     
     
     return CPHVB_SUCCESS;

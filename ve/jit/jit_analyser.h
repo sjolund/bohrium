@@ -28,8 +28,8 @@ typedef struct {
     std::set<cphvb_intp>*       tdon;
     std::set<cphvb_intp>*       tdto;
 
-    cphvb_index                 freed_at;
-    cphvb_index                 discarded_at;
+    cphvb_intp                  freed_at;
+    cphvb_intp                  discarded_at;
 
     // userfunc hack handling!
     // userfunctions are registered in multiple NT entries. One fo each output of the userdefined function.

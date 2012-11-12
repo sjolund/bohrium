@@ -242,8 +242,7 @@ cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* paren
  * element. If offset is set it is used as the starting entry for the
  * analysis.
  **/
-void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
-    //bool cloglevel[2] = {1,1};
+void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {    
     bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"JPDA jita_perform_dependecy_analysis()\n");
     
@@ -646,6 +645,8 @@ cphvb_intp jita_handle_arithmetic_instruction2(jit_analyse_state* s, cphvb_instr
     e->tdto = new set<cphvb_intp>();
     e->tdon = new set<cphvb_intp>();
     e->is_userfunction = false;
+    e->freed_at = -1;
+    e->discarded_at = -1;
     logDebug("expr inserted as %ld:\n",name);     
 
     // add operand0 assignment to the base_array_usages_list.

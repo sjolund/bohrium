@@ -357,11 +357,7 @@ string build_expression_string(cphvb_opcode c, string s1, string s2) {
             //*op1 = cphvb_isinf(*op2);
             ss << " cphvb_isinf(" << s1 << ")";        
             break;
-        /*
-        CPHVB_IDENTITY:		    // The identity function that returns the input value converted to the output data type.        
-        return s2;
-        break;
-            
+        /*                
         CPHVB_DISCARD:		    // System instruction that informs the child component to forget the array and release any metadata allocated.
         return ss.str();
         break;
@@ -610,6 +606,15 @@ void compute_func_test(cphvb_array* oa, cphvb_array** as, cphvb_constant** cs, c
     
     *(off_oa+(cphvb_float32*) oa->data) = (*(offs[0]+((cphvb_float32*) as[0]->data)) + *(offs[1]+((cphvb_float32*) as[1]->data)));
 }
+
+/*== ========================== ==*/
+/*== Kernel creations framework ==*/
+/*== ========================== ==*/
+
+
+
+
+
 
 
 /*== ========================== ==*/

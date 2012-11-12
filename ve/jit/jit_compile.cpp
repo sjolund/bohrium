@@ -21,6 +21,7 @@
 #include "cphvb.h"
 #include "jit_logging.h"
 #include "jit_compile.h"
+#include "jit_common.h"
 
 
 #ifndef JIT_KERNEL_DIR
@@ -144,7 +145,7 @@ cphvb_intp jit_write_function_to_file(string func_name, string func_text) {
  * Remove the kernel file for the function name.
  **/
 cphvb_intp remove_kernel_files(string func_name) {
-    bool cloglevel[] = {1};
+    bool cloglevel[] = {0};
     string filepath = string(JIT_KERNEL_DIR)+"/"+func_name;
     logcustom(cloglevel,0,"CGCC Removing kernelfile %s\n", filepath.c_str());    
     remove( (filepath + ".so").c_str() );
@@ -160,9 +161,9 @@ cphvb_intp remove_kernel_files(string func_name) {
  * No c-file version not working. needed to? Must create a valid string for the console for gcc to load.
  **/
 cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kernel* kernel, bool reset_kernel_dir) {
-    bool cloglevel[] = {1,1,1};
+    bool cloglevel[] = {0,0,0};
     bool create_c_file = true;
-    logcustom(cloglevel,0,"CGCC compile_gcc(%s)\n",func_name.c_str());
+    logcustom(cloglevel,0,"CGCC compile_gcc(%s, removekernel=%s\n",func_name.c_str(),jit_pprint_true_false(reset_kernel_dir).c_str());
     
     
     string jitkernels_dir       = string(JIT_KERNEL_DIR);
@@ -175,7 +176,7 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
     string escaped = escape_text_quotes(compute_func_text);
     logcustom(cloglevel,2,"CGGC initial dlopen: %s\n",funclibpath.c_str());            
     void* lib_handler = dlopen( funclibpath.c_str(),RTLD_LAZY);
-    printf("dlopen error: %s\n",dlerror());
+    logcustom(cloglevel,2,"dlopen error: %s\n",dlerror());
     
     if (lib_handler == NULL) {        
         logcustom(cloglevel,1,"CGCC creating new %s\n",funclibname.c_str());
@@ -213,10 +214,10 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
         logcustom(cloglevel,2,"CGGC created. dlopen: %s\n",funclibpath.c_str());
         fstream getfile (funclibpath.c_str());        
         getfile.close();        
-        printf(" %s \n",getfile.is_open()?"open":"closed");
+        logcustom(cloglevel,1," %s \n",getfile.is_open()?"open":"closed");
         
         lib_handler = dlopen( funclibpath.c_str(),RTLD_LAZY);
-        printf("dlopen error: %s\n",dlerror());
+        logcustom(cloglevel,1,"dlopen error: %s\n",dlerror());
     }
     
 	
@@ -232,7 +233,6 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
 	}
 
     kernel->function = func;
-
 
     if (reset_kernel_dir) {    
         return remove_kernel_files(funcname);
@@ -250,17 +250,22 @@ jit_comp_kernel* compile(string kernel_func_name,string codetext, jit_compile_me
             //printf("compile result: %d\n", res);        
             return kernel;            
         case COMPILE_METHOD_GCC:
-            res = compile_gcc(kernel_func_name,codetext,kernel,false);
+            res = compile_gcc(kernel_func_name,codetext,kernel,true);
             return kernel;
+        case COMPILE_METHOD_LLVM:
+            //res = compile_gcc(kernel_func_name,codetext,kernel,false);
+            //return kernel;
+            printf("LLVM Compiler option not implemented.\n");
+            return NULL;          
         default:
             return NULL;
     }
 }
 
-jit_comp_kernel* jitc_compile_computefunction(string kernel_func_name, string compute_func_text) {
+jit_comp_kernel* jitc_compile_computefunction(string kernel_func_name, string compute_func_text,jit_compile_method method) {
     //printf("........... %s\n",kernel_func_name.c_str());
     //return compile(kernel_func_name,compute_func_text,COMPILE_METHOD_TCC);
-    return compile(kernel_func_name,compute_func_text,COMPILE_METHOD_GCC);
+    return compile(kernel_func_name,compute_func_text,method);
 }
 
 

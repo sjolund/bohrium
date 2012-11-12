@@ -18,6 +18,18 @@
 
 using namespace std;
 
+// JIT CodeGenerationOptimization
+enum jitcg_optimizations { JITCGO_InputReduce };
+
+// JIT CodeGenerationFunction
+typedef enum JITCG_FUNCTIONTEXT_CREATOR { JITCGFT_NoCast, JITCGFT_Vanilla } jitcg_functiontext_creator;
+
+typedef struct {
+    jitcg_functiontext_creator      functiontext_creator;
+    vector<jitcg_optimizations>*    optimizations;
+} jitcg_settings;
+
+
 // required state for code generation of a expression
 typedef struct {
     cphvb_intp                  sync_expr_name;
