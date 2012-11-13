@@ -388,7 +388,7 @@ def test_pattern_015(H,W):
     
     B += 10 + A    
     K = B + 2         
-    print K
+    K[0,1]
 
 
 def test_pattern_016(H,W):
@@ -699,7 +699,11 @@ def test_pattern_403(H,W):
     C = np.ones((H,W),dtype=type)
     D = np.ones((H,W),dtype=type)
     E = np.ones((H,W),dtype=type)    
-    
+    A+=1
+    B+=2
+    C+=3
+    D+=4
+    E+=5    
     cphvbbridge.handle_array(A)                
     cphvbbridge.handle_array(B)
     cphvbbridge.handle_array(C)
@@ -723,7 +727,12 @@ def test_pattern_404(H,W):
     D = np.ones((H,W),dtype=type)
     E = np.ones((H,W),dtype=type)
     F = np.ones((H,W),dtype=type)        
-
+    A+=1
+    B+=2
+    C+=3
+    D+=4
+    E+=5
+    F+=6
     cphvbbridge.handle_array(A)                
     cphvbbridge.handle_array(B)
     cphvbbridge.handle_array(C)
@@ -740,7 +749,7 @@ def test_pattern_404(H,W):
     
 def test_pattern_405(H,W):
     cphvbbridge.flush()    
-    #print "- test_pattern_404()";    
+    #print "- test_pattern_405()";    
     
     A = np.ones((H,W),dtype=type)    
     B = np.ones((H,W),dtype=type)    
@@ -749,7 +758,13 @@ def test_pattern_405(H,W):
     E = np.ones((H,W),dtype=type)
     F = np.ones((H,W),dtype=type)
     G = np.ones((H,W),dtype=type)    
-
+    A+=1
+    B+=2
+    C+=3
+    D+=4
+    E+=5
+    F+=6
+    G+=7
     cphvbbridge.handle_array(A)                
     cphvbbridge.handle_array(B)
     cphvbbridge.handle_array(C)
@@ -775,23 +790,22 @@ if __name__ == "__main__":
 
 
     # A + B
-     
-    #test_pattern_400(7000,7000)
-    #test_pattern_401(7000,7000)
-    #test_pattern_402(7000,7000)
-    #test_pattern_403(7000,7000)
-    #test_pattern_404(7000,7000)
-
-    # uses a lot of memory!! Segfaults in JIT version.
-    #test_pattern_405(7000,7000)
+    H = 6000
+    W = 6000
+    #test_pattern_400(H,W)
+    #test_pattern_401(H,W)
+    #test_pattern_402(H,W)
+    #test_pattern_403(H,W)    
+    #test_pattern_404(H,W)    
+    #test_pattern_405(H,W)
    
     #test_pattern_004(2,5)
 
     #test_pattern_016(2,5)  
-    test_pattern_017(2,5)
+    #test_pattern_017(2,5)
     
     # PROBLEM WITH THIS TEST!
-    #test_pattern_015(1,5)
+    test_pattern_015(1,5)
 
     #test_pattern_101(1,5)
      

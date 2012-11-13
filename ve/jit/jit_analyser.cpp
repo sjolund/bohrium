@@ -886,13 +886,14 @@ cphvb_intp jita_depgraph_node_add_dto(jit_dependency_graph_node* n,jit_name_entr
 
 // jit_base_dependency_table() methods
 // ===================================
-
+/**
+ * Get a list of usages of a basearray. the list contains the nametable names where the basearray have been writen to.
+ **/
 vector<cphvb_intp>* jita_base_usage_table_get_usage(jit_base_dependency_table* dep_table, cphvb_array* base_array) {
     logDebug("jita_base_usage_table_get_usage(%p,%p)\n",dep_table,base_array);
     jit_base_dependency_table::iterator it = dep_table->find(base_array);    
-    //jit_pprint_base_dependency_table(dep_table);
-    
-    it = dep_table->find(base_array);
+    //jit_pprint_base_dependency_table(dep_table);    
+    //it = dep_table->find(base_array);
     if (it==dep_table->end()) { 
         logDebug("Deptable does not contain basearray\n");
         return NULL;         

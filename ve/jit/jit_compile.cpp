@@ -184,12 +184,12 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
                 
         if (create_c_file) {
             if (jit_write_function_to_file(func_name,compute_func_text) == 0) {
-                ss << "gcc -xc -fPIC -O2 " << jitkernels_dir << "/" << funcname  << ".c -I" << cphvb_include_dir << " -L" << cphvb_core_dir;
+                ss << "gcc -march=native -xc -fPIC -O2 " << jitkernels_dir << "/" << funcname  << ".c -I" << cphvb_include_dir << " -L" << cphvb_core_dir;
                 ss << " -lcphvb -lrt -ldl -shared -o " << funclibpath;
             }            
             
         } else {
-            ss << "gcc -g -xc -fPIC -O2 -I" << cphvb_include_dir << " -L" << cphvb_core_dir;
+            ss << "gcc -march=native -xc -fPIC -O2 -I" << cphvb_include_dir << " -L" << cphvb_core_dir;
             ss << " -lrt -lcphvb -ldl -shared -o " << funclibpath << " -";    
         }
               

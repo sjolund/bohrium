@@ -339,7 +339,7 @@ cphvb_error allocate_for_exekernel(jit_execute_kernel* ekernel) {
  * 
  **/
 cphvb_intp execute_compound_kernel(jit_compute_functions* compute_functions, jit_compound_kernel* ckernel, cphvb_instruction* instructionlist) {
-    bool cloglevel[] = {1};
+    bool cloglevel[] = {0};
     cphvb_error res;
     for(int i=0;i<ckernel->kernels_length;i++) {        
         res = allocate_for_exekernel(ckernel->exekernels[i]);
