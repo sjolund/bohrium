@@ -387,8 +387,9 @@ def test_pattern_015(H,W):
     cphvbbridge.handle_array(C)
     
     B += 10 + A    
-    K = B + 2         
-    K[0,1]
+    K = B + 2
+    print K
+    
 
 
 def test_pattern_016(H,W):
@@ -563,6 +564,26 @@ def test_pattern_104(H,W):
     A[0,1]
 
         
+def test_pattern_105(H,W):
+    cphvbbridge.flush()
+    print 'long distance dependency'
+    print "- test_pattern_104()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    
+    A = A * 3;
+    B = B * 2
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    
+    T = A + B
+    T[1,:] = 7
+    T = T + 2
+    print T
+    
+
 
 
 def test_pattern_200(H,W):
@@ -823,7 +844,7 @@ if __name__ == "__main__":
     # testing double inline update to boundedArray
     # [3,4,6,9,13,14,]
     #test_pattern_103(2,5)
-
+    #test_pattern_105(2,5)
     
     #test_pattern_104(1,5)
     

@@ -70,15 +70,15 @@ cphvb_index cache_hit = 0;
 cphvb_index cache_miss = 0;
 
 
+
 using namespace std;
-
-
 
 /**
  * count the number of operations (binary / unary)
  * ignores executed expression (and following subexpression)
  * ignores identity
  */
+ 
 cphvb_intp expr_opcount(jit_analyse_state* s, jit_expr* expr) {
     cphvb_intp opcount = 0;
     if(is_bin_op(expr)) {
@@ -97,18 +97,6 @@ cphvb_intp expr_opcount(jit_analyse_state* s, jit_expr* expr) {
         }
     }    
     return opcount;
-}
-
-
-/**
- * ensure that free'd arrays are freed.
- **/
-void cleanup_free(cphvb_instruction* list, cphvb_index instr_count) {
-    for(int i=0;i<instr_count;i++) {
-        if(list[i].opcode == CPHVB_FREE) {            
-            jit_mcache_free(list[i].operand[0]);
-        }
-    }    
 }
 
 /**
@@ -131,12 +119,14 @@ cphvb_intp expr_computational_complexity(jit_analyse_state* s, jit_expr* expr) {
     return accessed_elements * opcount;    
 }
 
-// function which finds dependency violations in and expr, and splits it into a list sub expr
+/**
+ * function which finds dependency violations in and expr, and splits it into a list sub expr
+ **/
 void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_intp>* execute_list, set<cphvb_intp>* grand_parent_DON) {
     bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"expr_dependecy_travers3(%ld)\n",expr->name);
     if (is_array(expr)) {
-        //printf("expr_dependecy_travers3(Array:%ld)\n",expr->name);
+        logcustom(cloglevel,1,"expr_dependecy_travers3(Array:%ld)\n",expr->name);
          return;
     }
     
@@ -174,8 +164,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
     } else if (entr->discarded_at == -1 && cphvb_base_array(entr->arrayp)->data != NULL) {
         // if a bounded array is the last one written to, and not discarded it must be executed.
         cphvb_intp lastusage = jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(entr->arrayp))->back();            
-        
-        
+                
         if (lastusage == entr->expr->name) {
             logcustom(cloglevel,1,"EDT3 is not discarded in this batch, is bounded and last use (%d) lastusage %d. returning.\n",entr->expr->name,lastusage);
             execute_list->insert(expr->name);            
@@ -200,14 +189,11 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                 if (entr_child->tdto->size() > 1) {                
                     // if child is depended on by more then one.
                     execute_list->insert(echild->name);            
-                    /// TODO: determin how to travers the echild from here.
-                    /// DONE
                     logcustom(cloglevel,1,"Adding to execute:1: %ld\n",echild->name);
                     expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);
                     return;                
                         
-                } else {
-                    
+                } else {                    
                     //vector<cphvb_intp>* dep_table = jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(entr_child->arrayp));
                     //printf("%p %ld\n",dep_table, echild->name);
                      
@@ -249,8 +235,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
                                         // cutting closest to expression dependency conflict
                                         execute_list->insert(echild->name);
                                         logcustom(cloglevel,1,"Adding to execute:3: %ld\n",echild->name);
-                                        grand_parent_DON->erase(*itp);
-                                                                                        
+                                        grand_parent_DON->erase(*itp);                                                                                    
                                     }                            
                                 }
                             }
@@ -291,7 +276,6 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
         } // end for loop        
     } // if array or constant the traveresal stops.
 }
-
 
 
 
@@ -352,9 +336,21 @@ void jit_analyse_instruction_list(
                 jita_handle_userfunc_instruction(s,&instruction_list[count],count);                
                 break;                
             default:                
-                jita_handle_arithmetic_instruction2(s,&instruction_list[count],count);                
+                jita_handle_arithmetic_instruction3(s,&instruction_list[count],count);                
                 break;
         }        
+    }    
+}
+
+
+/**
+ * ensure that free'd arrays are freed.
+ **/
+void cleanup_free(cphvb_instruction* list, cphvb_index instr_count) {
+    for(int i=0;i<instr_count;i++) {
+        if(list[i].opcode == CPHVB_FREE) {            
+            jit_mcache_free(list[i].operand[0]);
+        }
     }    
 }
 
@@ -390,12 +386,10 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
 /**
  * Function called to exectue this VE. 
  **/
-cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list )
-{
-    
+cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {    
     //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
 
-    bool cloglevel[] = {0,0};
+    bool cloglevel[] = {0,0,0};
     //bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
     //bool put_in_cache = false;
     
@@ -440,7 +434,7 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
         logcustom(cloglevel,0,"== Dependency analysis done\n");
 
         if (cloglevel[1]) {
-            //jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);            
+            jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);            
             jit_pprint_nametable_dependencies(jitanalysestate->nametable);
             jit_pprint_nametable(jitanalysestate->nametable); printf("\n");
 
@@ -463,10 +457,13 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             cphvb_intp buildresult = build_compound_kernel(jitanalysestate, execution_list, jitcompound_kernel_count, compound_kernel);
             
             logcustom(cloglevel,0,"== Compund kernel created. res: %ld  P: %p, \n", buildresult, compound_kernel);
-            //printf("===================================\n");
-            //printf("executionlist");jit_pprint_set(execution_list);
-            //jit_pprint_nametable(jitanalysestate->nametable);
-            //jit_pprint_nametable_dependencies(jitanalysestate->nametable);
+            if(cloglevel[2]) {
+                printf("===================================\n");
+                printf("executionlist");jit_pprint_set(execution_list);
+                jit_pprint_nametable(jitanalysestate->nametable);
+                jit_pprint_nametable_dependencies(jitanalysestate->nametable);
+                jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);                        
+            }
             // increment the compound_kernel_id.
             jitcompound_kernel_count++;
         }
@@ -520,7 +517,8 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
     return CPHVB_SUCCESS;    
 }
 
-
+/**
+ **/
 cphvb_error cphvb_ve_jit_shutdown( void )
 {
     // De-allocate the malloc-cache
@@ -536,6 +534,8 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 }
 
 
+/**
+ **/
 cphvb_error cphvb_ve_jit_reg_func(char *fun, cphvb_intp *id) {
     
     map<cphvb_intp,cphvb_userfunc_impl>::iterator it;

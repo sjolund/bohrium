@@ -21,10 +21,10 @@ typedef struct Exp {
     cphvb_intp                                      id; 
     cphvb_intp                                      name; 
     cphvb_intp                                      depth;
-    jit_expr_status                                 status;    
+    jit_expr_status                                 status;
     
-    struct Exp*                                     parent;
-                                         
+    
+    struct Exp*                                     parent;                                    
     union { cphvb_constant*                         constant;
             cphvb_array*                            array;
             cphvb_userfunc*                         userfunc;

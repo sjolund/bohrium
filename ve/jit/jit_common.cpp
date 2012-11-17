@@ -151,7 +151,7 @@ cphvb_intp expr_hash(jit_expr* expr) {
     expr_travers_for_hashing(expr,&hashinputvector);
     cphvb_intp hashinput[hashinputvector.size()];
     
-    for(int i=0;i<hashinputvector.size();i++) {
+    for(uint i=0;i<hashinputvector.size();i++) {
         hashinput[i] = hashinputvector[i];              
     }
     uint32_t result = 0;
@@ -168,10 +168,9 @@ cphvb_intp instructionlist_hash(cphvb_instruction* instruction_list, cphvb_intp 
     cphvb_intp hash_val = 0;
 
     // lookup length in a bit map. no entry with length, it is resonable to skip.
-    cphvb_intp opcodes[instruction_count];
-    cphvb_intp runninghash = 0;
+    cphvb_intp opcodes[instruction_count];    
     
-    for(int i=0;i<instruction_count;i++) {
+    for(cphvb_index i=0;i<instruction_count;i++) {
         opcodes[i] = ((cphvb_intp)instruction_list[i].opcode);              
     }
 
@@ -244,15 +243,6 @@ void cphvb_pprint_instr_small( cphvb_instruction *instr ) {
     puts( buf );
 }
 
-void jit_pprint_cg_state(jitcg_state* cgs) {
-    stringstream ss;    
-    ss << "CGS : " << cgs->sync_expr_name << "\n";
-    ss << "  as: " << cgs->array_inputs_len << "\n";
-    ss << "  cs: " << cgs->constant_inputs_len << "\n";
-    ss << "Kernel *   : " << cgs->kernel << "\n";    
-    ss << "Math       : " << cgs->source_math << "\n";
-    printf(ss.str().c_str());
-}
     
 
 void jit_pprint_epxr_childs_names(){
@@ -356,7 +346,7 @@ void jit_pprint_nametable_entry(jit_name_entry* entry) {
     jit_pprint_expr_short_ss(entry->expr,&ss);
     ss << "\n";
     
-    printf(ss.str().c_str());
+    printf("%s",ss.str().c_str());
 }
 
 void nametable_entry_text(jit_name_entry* ne, stringstream* ss) {        
@@ -366,7 +356,7 @@ void nametable_entry_text(jit_name_entry* ne, stringstream* ss) {
 void jit_pprint_ssamap(jit_ssa_map* ssamap) {    
     stringstream ss;
     jit_ssa_map::iterator it;
-    int i;
+    uint i;
     for(it=ssamap->begin();it!=ssamap->end();it++) {
         ss << (*it).first << " v's: [";
         for(i=0; i<(*it).second->size();i++) {
@@ -374,7 +364,7 @@ void jit_pprint_ssamap(jit_ssa_map* ssamap) {
         } 
         ss << "]\n";
     }
-    printf(ss.str().c_str())    ;
+    printf("%s",ss.str().c_str())    ;
 }
 
 void jit_pprint_dependency_entry_values(jit_name_table* table) {
@@ -409,37 +399,15 @@ void jit_pprint_dependency_entry_values(jit_name_table* table) {
                 
     }    
     ss << "]";
-    printf(ss.str().c_str());            
+    printf("%s",ss.str().c_str());            
 }
 
-void jit_pprint_dependency_graph(jit_dependency_graph* graph) {
-    stringstream ss; 
-    jit_dependency_graph::iterator it;
-    vector<jit_name_entry*>::iterator nit;
-    vector<jit_name_entry*>* nte; 
-    for(it=graph->begin(); it != graph->end();it++) {
-        ss << (*it).first << ": N " << (*it).second << "  E " << (*it).second->name_table_entry->arrayp->base << "\nDON [";
-        nte = (*it).second->dep_ons;
-        for(nit=nte->begin();nit!=nte->end();nit++) {
-            ss << (*nit)->expr->name << ",";
-        }
-        
-        nte = (*it).second->dep_tos;
-        ss << "]\nDTO [";
-        for(nit=nte->begin();nit!=nte->end();nit++) {
-            ss << (*nit)->expr->name << ",";
-        }        
-        ss << "]\n\n";
-    }
-    printf(ss.str().c_str());
-}
 
 void jit_pprint_name_expr(jit_expr* expr) {
     stringstream ss;
     print_ast_name_recursive_stream(0,expr,&ss);
     printf(ss.str().c_str());
 }
-
 
 void jit_pprint_expr(jit_expr* expr) {
     stringstream ss;

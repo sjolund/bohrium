@@ -436,7 +436,6 @@ string jitcg_build_constant_compute_component(cphvb_index index) {
 }
 
 
-/**/
 string _etrav(jit_expr* e, int* ai, int* ci) {
     stringstream ss;
     if(is_array(e)) {

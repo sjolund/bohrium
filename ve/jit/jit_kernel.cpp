@@ -356,11 +356,8 @@ cphvb_intp execute_compound_kernel(jit_compute_functions* compute_functions, jit
         } else {
             logcustom(cloglevel,0,"execute_compound_kernel: NONE - exekernel: %d\n",i);            
         }
-      
-        
     } 
 
-    
     return 0;
 }
 
