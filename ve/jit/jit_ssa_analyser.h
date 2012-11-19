@@ -37,8 +37,8 @@ ast* ssa_lookup(std::map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array,cphvb
 ast* ssa_lookup_latest(std::map<cphvb_array*,ssavt*>* ssalist, cphvb_array* array) ;
 bool ssa_add(std::map<cphvb_array*,ssavt*>* ssalist,cphvb_array* array, ast* expr);
 
-void ast_handle_instruction_ssa(std::list<ast*>* expression_list, std::map<cphvb_array*,ssavt*>* nametable, cphvb_instruction* instr);
-void ast_handle_instruction_ssa_ua(ssa_used_at_t ssauaTable, std::list<ast*>* expression_list, std::map<cphvb_array*,ssavt*>* nametable, cphvb_instruction* instr);
+//void ast_handle_instruction_ssa(std::list<ast*>* expression_list, std::map<cphvb_array*,ssavt*>* nametable, cphvb_instruction* instr);
+//void ast_handle_instruction_ssa_ua(ssa_used_at_t ssauaTable, std::list<ast*>* expression_list, std::map<cphvb_array*,ssavt*>* nametable, cphvb_instruction* instr);
 
 void print_ssavt(ssavt* version_table); 
 

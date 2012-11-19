@@ -13,9 +13,10 @@
 #include "jit_codegenerated_kernel_functions.h"
 #include "jit_compile.h"
 
-#define K_TIMEING 0 // 1 all, 2 compiled only
+#define K_TIMEING 0 // 0 none, 1 all, 2 compiled only
 #define K_PRINT_COMPUTESTRING 0
 
+// Settings for comparison
 #ifndef JITCG_FUNCTEXT
 //#define JITCG_FUNCTEXT JITCGFT_NoCast 
 #define JITCG_FUNCTEXT JITCGFT_Vanilla
@@ -25,11 +26,30 @@
 //#define JITC_COMPILE_METHOD COMPILE_METHOD_TCC
 #define JITC_COMPILE_METHOD COMPILE_METHOD_GCC
 #endif
-//void update_expr_from_kernel_state()
+
+
 using namespace std;
 
-cphvb_index oldtv_sec = 0;
-cphvb_index oldtv_nsec = 0;
+//cphvb_index oldtv_sec = 0;
+//cphvb_index oldtv_nsec = 0;
+
+
+void expr_count_operands(jit_expr* expr, cphvb_intp* arrays_out, cphvb_intp* constants_out) {
+    if(is_array(expr)) {        
+        *arrays_out += 1;
+    }
+    if (is_constant(expr)){
+        *constants_out += 1;
+    }
+    if (is_un_op(expr)){
+        expr_count_operands(expr->op.expression.left,arrays_out,constants_out);
+            
+    }
+    if (is_bin_op(expr)) {
+        expr_count_operands(expr->op.expression.left,arrays_out,constants_out);
+        expr_count_operands(expr->op.expression.right,arrays_out,constants_out);
+    }    
+} 
 
 
 bool is_expr_kernel(jit_kernel* kernel) {
@@ -50,24 +70,91 @@ const char* executekernel_type_to_string(jit_execute_kernel* exekernel) {
     }
 }
 
+void instruction_copy_to(cphvb_instruction* from, cphvb_instruction* to) {
+    bool cloglevel[] = {0,0,0};
+    logcustom(cloglevel,0,"isntruction_copy_to()\n");
+    
+    to->opcode = from->opcode;
+    to->status = from->status;    
+    to->constant = from->constant;    
+    //to->operand cphvb_array* = operand[CPHVB_MAX_NO_OPERANDS];
+        
+    logcustom(cloglevel,1,"%ld %ld %p %p\n",to->status,to->opcode,&to->constant,from->userfunc);
 
-void expr_count_operands(jit_expr* expr, cphvb_intp* arrays_out, cphvb_intp* constants_out) {
-    if(is_array(expr)) {        
-        *arrays_out += 1;
+    if (from->opcode == CPHVB_USERFUNC) {        
+        to->userfunc = (cphvb_userfunc*) malloc(from->userfunc->struct_size);
+        memcpy(to->userfunc,from->userfunc,from->userfunc->struct_size);        
+    } else {
+        to->userfunc = NULL;
     }
-    if (is_constant(expr)){
-        *constants_out += 1;
-    }
-    if (is_un_op(expr)){
-        expr_count_operands(expr->op.expression.left,arrays_out,constants_out);
-            
-    }
-    if (is_bin_op(expr)) {
-        expr_count_operands(expr->op.expression.left,arrays_out,constants_out);
-        expr_count_operands(expr->op.expression.right,arrays_out,constants_out);
-    }    
-}   
+    //logcustom(cloglevel,1,"FrTo: %d %d, %d %d\n",from->userfunc->nin,to->userfunc->nin,from->userfunc->nout,to->userfunc->nout);
+}
 
+/**
+ * Update the depth indicator for and expression to reflect if children
+ * have been added to the executionlist. (dependency-cut-offs).
+ *
+ * Could be moved into the dependency analysis part. 
+ * @return correct depth of the expr.
+ **/
+cphvb_index jit_update_expr_depth(jit_analyse_state* s, jit_expr* expr) {
+    bool cloglevel[] = {0,0};    
+    logcustom(cloglevel,0,"jit_update_expr_depth()\n");
+    
+    if(is_constant(expr) || is_array(expr)) {
+        return 0;
+    }
+
+    jit_name_entry* entr = jita_nametable_lookup(s->nametable, expr->name);
+    if (entr->is_executed) {
+        expr->depth = 0;        
+        return 0;
+    }
+
+    cphvb_index ld, rd;
+
+    if(is_un_op(expr)) {
+        ld = jit_update_expr_depth(s,expr->op.expression.left);
+        expr->depth = ld+1;
+    }
+    
+    if(is_bin_op(expr)) {
+        ld = jit_update_expr_depth(s,expr->op.expression.left);
+        rd = jit_update_expr_depth(s,expr->op.expression.right);
+        expr->depth  = max(ld,rd)+1;        
+    }
+        
+    return expr->depth;    
+}
+
+/**
+ * Allocate result arrays for an execute kernel. 
+ **/
+cphvb_error allocate_for_exekernel(jit_execute_kernel* ekernel) {
+    bool cloglevel[] = {0,0};
+    logcustom(cloglevel,0,"AFE allocate_for_exekernel(%ld)\n",ekernel->kernel->id);
+    cphvb_array* tarray = NULL;
+    cphvb_error res;
+    logcustom(cloglevel,1,"AFE %ld \n",ekernel->outputarrays_length);
+    // this will be 1. Could be extended to more if more complex kernels where to be created.
+    for(int i=0;i<ekernel->outputarrays_length;i++) {
+        logcustom(cloglevel,0,"outputarray* = %p\n",ekernel->arrays[i]);
+        if (cphvb_base_array(ekernel->arrays[i])->data == NULL) {
+            res = jit_mcache_malloc(ekernel->arrays[i]);
+            if (res != CPHVB_SUCCESS) {
+                logcustom(cloglevel,1,"AFE Failed! allocation [%d]\n",i);                
+                return res;
+            }
+            logcustom(cloglevel,1,"AFE Allocated output array[%d]\n",i);
+        }
+        logcustom(cloglevel,1,"AFE Array is bounded: %p\n",cphvb_base_array(ekernel->arrays[i])->data);
+    }
+    return CPHVB_SUCCESS;    
+}
+
+// ==============================
+// IL Map related functions
+// ==============================
 
 /**
  * 
@@ -116,20 +203,105 @@ cphvb_intp bind_execution_kernel(jit_execute_kernel* exekernel, cphvb_instructio
 
 }
 
+/**
+ * 
+ **/
+cphvb_intp bind_compound_kernel(jit_compound_kernel* ckernel, cphvb_instruction* instruction_list, cphvb_intp id) {
+    bool cloglevel[] = {0};
+    for(int i=0;i<ckernel->kernels_length;i++) {
+        logcustom(cloglevel,0,"BCK Bind_compound_kernel's exekernel: %d\n",i);   
+        bind_execution_kernel(ckernel->exekernels[i],instruction_list);
+        //jit_pprint_execute_kernel(ckernel->exekernels[i]);
+    }
+}
+
+/**
+ * 
+ **/
+void build_expr_il_map_userfunc(jit_analyse_state* s,jit_name_entry* entr,
+                                jit_io_instruction_list_map_lists* il_map,
+                                vector<cphvb_instruction*>* is) {
+                                    
+        bool cloglevel[] = {0,0,0};
+        logcustom(cloglevel,0,"BEIMU build_expr_il_map_userfunc() \n");
+        jit_name_entry* tentr;
+        int i = 0;
+
+        for(i=0;i<entr->span;i++) {
+            //logcustom(cloglevel,1,"BEIMU --- %d %p %p ",entr->expr->name,entr->instr->userfunc->operand[0],entr->instr->userfunc->operand[1]);
+            //logcustom(cloglevel,1,"BEIMU %d out: (%d %d) %p (%p)\n",i,entr->instr_num,i,entr->instr,entr->instr->userfunc->operand[i]);
+            il_map->output_array_map->push_back(new jit_instruction_list_coord(entr->instr_num,i));
+            il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,i));
+                        
+            logcustom(cloglevel,1,"BEIMU O (%d %d) \n",entr->instr_num,i);            
+        }
+        
+        for(i=0;i<entr->expr->userfunction_inputs->size();i++) {
+            //logcustom(cloglevel,1,"BEIMU +++ %d %p %p ",entr->expr->name,entr->instr->userfunc->operand[0],entr->instr->userfunc->operand[1]);
+                                                    
+            tentr = jita_nametable_lookup(s->nametable,entr->expr->userfunction_inputs->at(i)->name);            
+            //logcustom(cloglevel,1,"BEIMU in: (%d %d) %p (%p)\n",tentr->instr_num,tentr->operand_num,entr->instr,entr->instr->userfunc->operand[tentr->operand_num]);
+            
+            il_map->array_map->push_back(new jit_instruction_list_coord(tentr->instr_num,tentr->operand_num));
+                               
+            logcustom(cloglevel,1,"BEIMU I (%d %d) \n",tentr->instr_num,tentr->operand_num);
+        }
+        if(cloglevel[2]) {
+            jit_pprint_il_map2(il_map);
+        }                 
+        is->push_back(entr->instr);        
+}
+
+/**
+ * 
+ **/
+void build_expr_il_map(jit_analyse_state* s,jit_name_entry* entr,
+                        jit_io_instruction_list_map_lists* il_map,
+                        vector<cphvb_instruction*>* is) {
+                                    
+        bool cloglevel[] = {0,0,0};
+        logcustom(cloglevel,0,"BEIMU build_expr_il_map_userfunc() \n");
+        jit_name_entry* tentr;
+        int i = 0;
+
+        // result array
+        il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,0));
+
+        if(is_un_op(entr->expr)) {
+            il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,1));
+        } else {
+            if (is_constant(entr->expr->op.expression.left)) {
+                il_map->constant_map->push_back(new jit_instruction_list_coord(entr->instr_num,1));
+                il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,2));
+            } else {
+                il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,1));
+                
+                if (is_constant(entr->expr->op.expression.right)) {
+                    il_map->constant_map->push_back(new jit_instruction_list_coord(entr->instr_num,2));
+                } else {
+                    il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,2));
+                }
+            }
+        }
+        if(cloglevel[2]) {
+            jit_pprint_il_map2(il_map);
+        }
+        is->push_back(entr->instr);        
+}
+
+// ==============================
+// 
+// ==============================
+
+
+
+/**
+ * 
+ **/
 cphvb_intp execute_userfunction(jit_compute_functions* compute_functions,cphvb_instruction* instr) {
     bool cloglevel[] = {0,0,0};
     logcustom(cloglevel,0,"EXU \n");
-
-    // Allocation of target arrays
-    //~ for(int i=0;i<instr->userfunc->nout ;i++) {
-        //~ if (cphvb_base_array(instr->userfunc->operand[i])->data == NULL) {
-            //~ logcustom(cloglevel,1,"EXU Allocate array for %p\n", instr->userfunc->operand[i]);
-            //~ cphvb_data_malloc(instr->userfunc->operand[i]);
-        //~ }
-        //~ logcustom(cloglevel,2,"OA %p (%ld)\n",instr->userfunc->operand[i],i);
-    //~ }    
-
-
+    
     if (cloglevel[2]) {
         for(int i=0;i<instr->userfunc->nout ;i++) {
             logcustom(cloglevel,2,"IO %p (%ld) \n",instr->userfunc->operand[i],i);
@@ -159,6 +331,10 @@ cphvb_intp execute_userfunction(jit_compute_functions* compute_functions,cphvb_i
     return 1;
 }
 
+
+/**
+ * 
+ **/
 cphvb_intp execute_instruction(jit_compute_functions* compute_functions,cphvb_instruction* instr) {
     bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"EXE \n");
@@ -189,6 +365,7 @@ cphvb_intp execute_instruction(jit_compute_functions* compute_functions,cphvb_in
     logcustom(cloglevel,1," compute_apply == ERROR\n", instr->operand[0]);
     return 1;
 }
+
 
 /**
  * 
@@ -251,13 +428,8 @@ cphvb_intp execute_kernel_expr(jit_compute_functions* compute_functions,jit_exec
 cphvb_intp execute_kernel_compiled(jit_execute_kernel* exekernel) {
     bool cloglevel[] = {0,0,0};
     logcustom(cloglevel,0,"EKC executing compiled kernel!\n");
-    
-    
+        
     computefunc3 func = exekernel->kernel->compute_kernel->function;        
-    //computefunc3 func = kernel_func_1899990464_0; //b
-    //computefunc3 func = kernel_func_4265622974_0; //c
-    //computefunc3 func = kernel_func_1625152366_0; //d
-    //computefunc3 func = kernel_func_3286243741_0; //e 
 
     if (cloglevel[2]) {jit_pprint_execute_kernel(exekernel);}
     //logcustom(cloglevel,1,"O:%p \n",exekernel->outputarrays[0]);    
@@ -301,40 +473,6 @@ cphvb_intp execute_kernel_compiled(jit_execute_kernel* exekernel) {
 }
 
 
-cphvb_intp bind_compound_kernel(jit_compound_kernel* ckernel, cphvb_instruction* instruction_list, cphvb_intp id) {
-    bool cloglevel[] = {0};
-    for(int i=0;i<ckernel->kernels_length;i++) {
-        logcustom(cloglevel,0,"BCK Bind_compound_kernel's exekernel: %d\n",i);   
-        bind_execution_kernel(ckernel->exekernels[i],instruction_list);
-        //jit_pprint_execute_kernel(ckernel->exekernels[i]);
-    }
-}
-
-/**
- * Allocate result arrays for an execute kernel. 
- **/
-cphvb_error allocate_for_exekernel(jit_execute_kernel* ekernel) {
-    bool cloglevel[] = {0,0};
-    logcustom(cloglevel,0,"AFE allocate_for_exekernel(%ld)\n",ekernel->kernel->id);
-    cphvb_array* tarray = NULL;
-    cphvb_error res;
-    logcustom(cloglevel,1,"AFE %ld \n",ekernel->outputarrays_length);
-    // this will be 1. Could be extended to more if more complex kernels where to be created.
-    for(int i=0;i<ekernel->outputarrays_length;i++) {
-        logcustom(cloglevel,0,"outputarray* = %p\n",ekernel->arrays[i]);
-        if (cphvb_base_array(ekernel->arrays[i])->data == NULL) {
-            res = jit_mcache_malloc(ekernel->arrays[i]);
-            if (res != CPHVB_SUCCESS) {
-                logcustom(cloglevel,1,"AFE Failed! allocation [%d]\n",i);                
-                return res;
-            }
-            logcustom(cloglevel,1,"AFE Allocated output array[%d]\n",i);
-        }
-        logcustom(cloglevel,1,"AFE Array is bounded: %p\n",cphvb_base_array(ekernel->arrays[i])->data);
-    }
-    return CPHVB_SUCCESS;    
-}
-
 /**
  * 
  **/
@@ -357,144 +495,13 @@ cphvb_intp execute_compound_kernel(jit_compute_functions* compute_functions, jit
             logcustom(cloglevel,0,"execute_compound_kernel: NONE - exekernel: %d\n",i);            
         }
     } 
-
     return 0;
 }
 
 
-/**
- * reads arrays and constants from left to right expression leafs. Must be placed in this order when filled!  
- **/
-void extract_expr_IL_map_data(jit_analyse_state* s, jit_expr* expr,jit_io_instruction_list_map* map,cphvb_intp* acount,cphvb_intp* ccount) {
-    printf("extract_expr_IL_map_data()\n");
-    
-    if(is_array(expr)) {                    
-        jit_name_entry* e = jita_nametable_lookup(s->nametable,expr->name);
-        printf("%ld (%ld,%ld)\n",*acount,e->instr_num,e->operand_num);
-        
-        //~ jit_instruction_list_coord2* coord = (jit_instruction_list_coord2*) malloc(sizeof(jit_instruction_list_coord2));
-        //~ coord->instruction = e->instr_num;
-        //~ coord->operand =e->operand_num;        
-        //~ map->array_map[*acount] = *coord;
-
-        map->array_map[*acount].instruction = e->instr_num;
-        map->array_map[*acount].operand = e->operand_num;    
-
-        //map->constant_map[*acount] = jit_instruction_list_coord2(e->instr_num,e->operand_num);    
-        *acount += 1;
-    }
-    if (is_constant(expr)){                
-        jit_name_entry* e = jita_nametable_lookup(s->nametable,expr->name);
-        printf("%ld (%ld,%ld)\n",*acount,e->instr_num,e->operand_num);
-        map->constant_map[*ccount].instruction = e->instr_num;
-        map->constant_map[*ccount].operand = e->operand_num;    
-        
-        //map->constant_map[*ccount] = jit_instruction_list_coord2(e->instr_num,e->operand_num);    
-        *ccount += 1;          
-    }
-    if (is_un_op(expr)){
-        extract_expr_IL_map_data(s,expr->op.expression.left,map,acount,ccount);
-    }
-    if (is_bin_op(expr)) {
-        extract_expr_IL_map_data(s,expr->op.expression.left,map,acount,ccount);
-        extract_expr_IL_map_data(s,expr->op.expression.right,map,acount,ccount);
-    }    
-}
-
-void build_expr_il_map_userfunc(jit_analyse_state* s,jit_name_entry* entr,
-                                jit_io_instruction_list_map_lists* il_map,
-                                vector<cphvb_instruction*>* is) {
-                                    
-        bool cloglevel[] = {0,0,0};
-        logcustom(cloglevel,0,"BEIMU build_expr_il_map_userfunc() \n");
-        jit_name_entry* tentr;
-        int i = 0;
-
-        for(i=0;i<entr->span;i++) {
-            //logcustom(cloglevel,1,"BEIMU --- %d %p %p ",entr->expr->name,entr->instr->userfunc->operand[0],entr->instr->userfunc->operand[1]);
-            //logcustom(cloglevel,1,"BEIMU %d out: (%d %d) %p (%p)\n",i,entr->instr_num,i,entr->instr,entr->instr->userfunc->operand[i]);
-            il_map->output_array_map->push_back(new jit_instruction_list_coord(entr->instr_num,i));
-            il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,i));
-                        
-            logcustom(cloglevel,1,"BEIMU O (%d %d) \n",entr->instr_num,i);            
-        }
-        
-        for(i=0;i<entr->expr->userfunction_inputs->size();i++) {
-            //logcustom(cloglevel,1,"BEIMU +++ %d %p %p ",entr->expr->name,entr->instr->userfunc->operand[0],entr->instr->userfunc->operand[1]);
-                                                    
-            tentr = jita_nametable_lookup(s->nametable,entr->expr->userfunction_inputs->at(i)->name);            
-            //logcustom(cloglevel,1,"BEIMU in: (%d %d) %p (%p)\n",tentr->instr_num,tentr->operand_num,entr->instr,entr->instr->userfunc->operand[tentr->operand_num]);
-            
-            il_map->array_map->push_back(new jit_instruction_list_coord(tentr->instr_num,tentr->operand_num));
-                               
-            logcustom(cloglevel,1,"BEIMU I (%d %d) \n",tentr->instr_num,tentr->operand_num);
-        }
-        if(cloglevel[2]) {
-            jit_pprint_il_map2(il_map);
-        }                 
-        is->push_back(entr->instr);        
-}
-
-
-void build_expr_il_map(jit_analyse_state* s,jit_name_entry* entr,
-                        jit_io_instruction_list_map_lists* il_map,
-                        vector<cphvb_instruction*>* is) {
-                                    
-        bool cloglevel[] = {0,0,0};
-        logcustom(cloglevel,0,"BEIMU build_expr_il_map_userfunc() \n");
-        jit_name_entry* tentr;
-        int i = 0;
-
-        // result array
-        il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,0));
-
-        if(is_un_op(entr->expr)) {
-            il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,1));
-        } else {
-            if (is_constant(entr->expr->op.expression.left)) {
-                il_map->constant_map->push_back(new jit_instruction_list_coord(entr->instr_num,1));
-                il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,2));
-            } else {
-                il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,1));
-                
-                if (is_constant(entr->expr->op.expression.right)) {
-                    il_map->constant_map->push_back(new jit_instruction_list_coord(entr->instr_num,2));
-                } else {
-                    il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,2));
-                }
-            }
-        }
-        if(cloglevel[2]) {
-            jit_pprint_il_map2(il_map);
-        }
-        is->push_back(entr->instr);        
-}
 
                                     
-void build_execution_kernel(jit_kernel* kernel,
-                                cphvb_index oas_length,
-                                cphvb_index as_length,
-                                cphvb_index cs_length,
-                                jit_execute_kernel* execute_kernel_out) {
-    
-    execute_kernel_out->kernel = kernel;
-    
-    // create array output-array
-    execute_kernel_out->outputarrays = ((cphvb_array**) malloc(sizeof(cphvb_array*)*oas_length));
-    execute_kernel_out->outputarrays_length = oas_length;
 
-    // create array input-array
-    execute_kernel_out->arrays = ((cphvb_array**) malloc(sizeof(cphvb_array*)*(as_length)));
-    execute_kernel_out->arrays_length = as_length;
-
-    // create constants input-array
-    execute_kernel_out->inputconstants_length = cs_length;
-    if (cs_length > 0) {        
-        execute_kernel_out->inputconstants = (cphvb_constant**) malloc(sizeof(cphvb_constant*)*cs_length);
-    } else {
-        execute_kernel_out->inputconstants = NULL;
-    }
-}
 
 
 /**
@@ -622,6 +629,7 @@ string expr_extract_traverser_nocast(jit_analyse_state* s,jit_expr* expr,
 }
 
 
+
 /**
  * Does not set the outputs for the IL map, or fill in the output map.
  **/
@@ -742,28 +750,30 @@ string expr_extract_traverser(jit_analyse_state* s,jit_expr* expr,
     return ss.str();
 }
 
-
-void instruction_copy_to(cphvb_instruction* from, cphvb_instruction* to) {
-    bool cloglevel[] = {0,0,0};
-    logcustom(cloglevel,0,"isntruction_copy_to()\n");
+void build_execution_kernel(jit_kernel* kernel,
+                                cphvb_index oas_length,
+                                cphvb_index as_length,
+                                cphvb_index cs_length,
+                                jit_execute_kernel* execute_kernel_out) {
     
-    to->opcode = from->opcode;
-    to->status = from->status;    
-    to->constant = from->constant;    
-    //to->operand cphvb_array* = operand[CPHVB_MAX_NO_OPERANDS];
-        
-    logcustom(cloglevel,1,"%ld %ld %p %p\n",to->status,to->opcode,&to->constant,from->userfunc);
+    execute_kernel_out->kernel = kernel;
+    
+    // create array output-array
+    execute_kernel_out->outputarrays = ((cphvb_array**) malloc(sizeof(cphvb_array*)*oas_length));
+    execute_kernel_out->outputarrays_length = oas_length;
 
-    if (from->opcode == CPHVB_USERFUNC) {        
-        to->userfunc = (cphvb_userfunc*) malloc(from->userfunc->struct_size);
-        memcpy(to->userfunc,from->userfunc,from->userfunc->struct_size);        
+    // create array input-array
+    execute_kernel_out->arrays = ((cphvb_array**) malloc(sizeof(cphvb_array*)*(as_length)));
+    execute_kernel_out->arrays_length = as_length;
+
+    // create constants input-array
+    execute_kernel_out->inputconstants_length = cs_length;
+    if (cs_length > 0) {        
+        execute_kernel_out->inputconstants = (cphvb_constant**) malloc(sizeof(cphvb_constant*)*cs_length);
     } else {
-        to->userfunc = NULL;
+        execute_kernel_out->inputconstants = NULL;
     }
-    //logcustom(cloglevel,1,"FrTo: %d %d, %d %d\n",from->userfunc->nin,to->userfunc->nin,from->userfunc->nout,to->userfunc->nout);
 }
-
-
 
 /**
  * Future funcitonality: Handle multi node expressions.
@@ -935,42 +945,6 @@ cphvb_intp build_compile_kernel(jit_analyse_state* s, jit_name_entry* entr, cphv
     return 0;
 }
 
-
-/**
- * Update the depth indicator for and expression to reflect if children
- * have been added to the executionlist. (dependency-cut-offs).
- *
- * @return correct depth of the expr.
- **/
-cphvb_index jit_update_expr_depth(jit_analyse_state* s, jit_expr* expr) {
-    bool cloglevel[] = {0,0};    
-    logcustom(cloglevel,0,"jit_update_expr_depth()\n");
-    
-    if(is_constant(expr) || is_array(expr)) {
-        return 0;
-    }
-
-    jit_name_entry* entr = jita_nametable_lookup(s->nametable, expr->name);
-    if (entr->is_executed) {
-        expr->depth = 0;        
-        return 0;
-    }
-
-    cphvb_index ld, rd;
-
-    if(is_un_op(expr)) {
-        ld = jit_update_expr_depth(s,expr->op.expression.left);
-        expr->depth = ld+1;
-    }
-    
-    if(is_bin_op(expr)) {
-        ld = jit_update_expr_depth(s,expr->op.expression.left);
-        rd = jit_update_expr_depth(s,expr->op.expression.right);
-        expr->depth  = max(ld,rd)+1;        
-    }
-        
-    return expr->depth;    
-}
 
 /**
  * 

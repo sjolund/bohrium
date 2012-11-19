@@ -32,8 +32,9 @@ void jit_pprint_set(std::set<cphvb_intp>* set);
 void jit_pprint_nametable_dependencies(jit_name_table* nt);
 void jit_pprint_nametable_entry(jit_name_entry* entry);
 
-void jit_pprint_cg_state(jitcg_state* cgs);
-void jit_pprint_il_map(jit_io_instruction_list_map* il_map);
+//~ void jit_pprint_cg_state(jitcg_state* cgs);
+//~ void jit_pprint_il_map(jit_io_instruction_list_map* il_map);
+
 void jit_pprint_execute_kernel(jit_execute_kernel* exekernel);
 void jit_pprint_il_map2(jit_io_instruction_list_map_lists* il_map);
 

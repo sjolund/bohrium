@@ -30,7 +30,9 @@
 
 using namespace std;
 
-// TCC (Tiny C Compiler)
+/**
+ * TCC (Tiny C Compiler)
+ **/
 cphvb_intp compile_tcc(string func_name,string comput_func_text, jit_comp_kernel* kernel) {
     bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"compile_tcc()\n");

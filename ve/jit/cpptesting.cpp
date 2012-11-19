@@ -35,7 +35,7 @@ int main() {
     
     cout << out << "\n";
     
-    test_constant_to_string();
+    //test_constant_to_string();
     
     return 0;
 }

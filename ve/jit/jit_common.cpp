@@ -243,10 +243,7 @@ void cphvb_pprint_instr_small( cphvb_instruction *instr ) {
     puts( buf );
 }
 
-    
 
-void jit_pprint_epxr_childs_names(){
-}
 
 string jit_pprint_functiontext_creator(jitcg_functiontext_creator functext) {    
     switch(functext) {
@@ -269,8 +266,7 @@ string jit_pprint_compile_method(jit_compile_method method) {
             return string("LLVM");
         default:
             return string("none");
-    }
-    
+    }    
 }
 
 void cphvb_pprint_instr_list_small( cphvb_instruction* instruction_list, cphvb_intp instruction_count, const char* txt )
@@ -554,36 +550,36 @@ void jit_pprint_il_map2(jit_io_instruction_list_map_lists* il_map) {
     printf("%s",ss.str().c_str());
 }
 
-void jit_pprint_il_map(jit_io_instruction_list_map* il_map) {
-    stringstream ss;
-    int i=0;
-    cphvb_index instr,operand;
-
-    ss << "IL map\n";
-    ss << "Array map:\n";    
-    for(i = 0; i < il_map->array_map_length; i++) {
-        instr = il_map->array_map[i].instruction;
-        operand = il_map->array_map[i].operand;
-        ss << "(" << instr << "," << operand << "), ";
-    }
-    ss << "\nConstant map:\n";
-    // input constants
-    for(i = 0; i < il_map->constant_map_length; i++) {
-        instr = il_map->constant_map[i].instruction;
-        operand = il_map->constant_map[i].operand;
-        ss << "(" << instr << "," << operand << "), ";
-    }
-
-    ss << "\nOutput map:\n";
-    // output arrays
-    for(i = 0; i < il_map->output_array_map_length; i++) {
-        instr = il_map->output_array_map[i].instruction;
-        operand = il_map->output_array_map[i].operand;
-        ss << "(" << instr << "," << operand << "), ";        
-    }
-    ss << "\n";
-    printf("%s",ss.str().c_str());
-}
+//~ void jit_pprint_il_map(jit_io_instruction_list_map* il_map) {
+    //~ stringstream ss;
+    //~ int i=0;
+    //~ cphvb_index instr,operand;
+//~ 
+    //~ ss << "IL map\n";
+    //~ ss << "Array map:\n";    
+    //~ for(i = 0; i < il_map->array_map_length; i++) {
+        //~ instr = il_map->array_map[i].instruction;
+        //~ operand = il_map->array_map[i].operand;
+        //~ ss << "(" << instr << "," << operand << "), ";
+    //~ }
+    //~ ss << "\nConstant map:\n";
+    //~ // input constants
+    //~ for(i = 0; i < il_map->constant_map_length; i++) {
+        //~ instr = il_map->constant_map[i].instruction;
+        //~ operand = il_map->constant_map[i].operand;
+        //~ ss << "(" << instr << "," << operand << "), ";
+    //~ }
+//~ 
+    //~ ss << "\nOutput map:\n";
+    //~ // output arrays
+    //~ for(i = 0; i < il_map->output_array_map_length; i++) {
+        //~ instr = il_map->output_array_map[i].instruction;
+        //~ operand = il_map->output_array_map[i].operand;
+        //~ ss << "(" << instr << "," << operand << "), ";        
+    //~ }
+    //~ ss << "\n";
+    //~ printf("%s",ss.str().c_str());
+//~ }
 
 void jit_pprint_execute_kernel(jit_execute_kernel* exekernel) {
     stringstream ss;
