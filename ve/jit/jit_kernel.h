@@ -6,7 +6,7 @@
 #include "jit_ast.h"
 #include "jit_compile.h"
 #include "jit_analyser.h"
-#include "jit_mcache.h"
+#include "jit_vcache.h"
 #include "jit_computing.h"
 #include <map>
 #include <vector>

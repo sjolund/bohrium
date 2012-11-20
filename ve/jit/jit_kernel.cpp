@@ -140,7 +140,7 @@ cphvb_error allocate_for_exekernel(jit_execute_kernel* ekernel) {
     for(int i=0;i<ekernel->outputarrays_length;i++) {
         logcustom(cloglevel,0,"outputarray* = %p\n",ekernel->arrays[i]);
         if (cphvb_base_array(ekernel->arrays[i])->data == NULL) {
-            res = jit_mcache_malloc(ekernel->arrays[i]);
+            res = jit_vcache_malloc(ekernel->arrays[i]);
             if (res != CPHVB_SUCCESS) {
                 logcustom(cloglevel,1,"AFE Failed! allocation [%d]\n",i);                
                 return res;

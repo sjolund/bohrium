@@ -674,7 +674,6 @@ def test_pattern_301(H,W):
    
 
 
-
 def test_pattern_400(H,W):
     cphvbbridge.flush()    
     #print "- test_pattern_400()";    
@@ -851,6 +850,7 @@ if __name__ == "__main__":
     # PROBLEM WITH THIS TEST!
     #test_pattern_015(1,5)
     test_pattern_301(2,5)
+    #print "hello world"
 
     #test_pattern_101(1,5)
      

@@ -19,7 +19,7 @@ If not, see <http://www.gnu.org/licenses/>.
 */
 #include <cphvb.h>
 #include "cphvb_ve_jit2.h"
-#include "cphvb_mcache.h"
+#include "cphvb_vcache.h"
 
 #include "jit_codegenerator.h"
 #include "jit_ast.h"
@@ -349,7 +349,7 @@ void jit_analyse_instruction_list(
 void cleanup_free(cphvb_instruction* list, cphvb_index instr_count) {
     for(int i=0;i<instr_count;i++) {
         if(list[i].opcode == CPHVB_FREE) {            
-            jit_mcache_free(list[i].operand[0]);
+            jit_vcache_free(list[i].operand[0]);
         }
     }    
 }
@@ -360,7 +360,7 @@ void cleanup_free(cphvb_instruction* list, cphvb_index instr_count) {
  **/
 cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
     myself = self;
-    cphvb_mcache_init( 10 );
+    cphvb_vcache_init( 10 );
      
     jitssamap = new jit_ssa_map();
     jitnametable = new jit_name_table();    
@@ -389,7 +389,7 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
 cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
     
     //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
-    cphvb_pprint_instr_list_small(instruction_list,instruction_count,"Testing!");
+    //cphvb_pprint_instr_list_small(instruction_list,instruction_count,"Testing!");
     bool cloglevel[] = {0,0,0};
     //bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
     //bool put_in_cache = false;
@@ -523,8 +523,8 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
 cphvb_error cphvb_ve_jit_shutdown( void )
 {
     // De-allocate the malloc-cache
-    cphvb_mcache_clear();
-    cphvb_mcache_delete();
+    cphvb_vcache_clear();
+    cphvb_vcache_delete();
 
     // De-allocate state
     
