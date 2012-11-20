@@ -28,24 +28,25 @@ def jacobi_stencil_fixed(H,W,Dist):
     full[0,:]  +=  40.0
     full[-1,:] += -273.13
 
+
     epsilon=W*H*0.002
     delta=epsilon+1
-    i=0
-    #while epsilon<delta:
+    i=0    
+    #while epsilon<delta:    
     for i in xrange(elems):
-        #~ cphvbbridge.flush();
+        cphvbbridge.flush();
         i+=1
         #~ 
-        work[:] = cells
-        work += up
-        work += left
-        work += right
-        work += down
-        work *= 0.2      
-        cells[:] = work    
+        #~ work[:] = cells
+        #~ work += up
+        #~ work += left
+        #~ work += right
+        #~ work += down
+        #~ work *= 0.2      
+        #~ cells[:] = work    
       
-        #~ work[:] = (cells + up + left + right + down)*0.2
-        #~ cells[:] = work  
+        work[:] = (cells + up + left + right + down)*0.2
+        cells[:] = work  
       
     return cells
 

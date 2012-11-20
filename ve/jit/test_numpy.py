@@ -645,11 +645,34 @@ def test_pattern_300(H,W):
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)       
 
-    h = np.add.reduce(A)    
+    h = np.add.reduce(A)
     t = np.add.reduce(h)
     print t
     A = B * t
     print A
+
+
+def test_pattern_301(H,W):
+    cphvbbridge.flush()
+    print 'reduce userfunc'
+    print "- test_pattern_301()";
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    
+    A = A * 4;
+    B = B * 2
+    A[0,:] = [1,2,3,4,5]
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)       
+    print A    
+    h = np.add.reduce(A,1)
+    print h
+    t = np.add.reduce(h)
+    print t
+    
+   
+
 
 
 def test_pattern_400(H,W):
@@ -826,7 +849,8 @@ if __name__ == "__main__":
     #test_pattern_017(2,5)
     
     # PROBLEM WITH THIS TEST!
-    test_pattern_015(1,5)
+    #test_pattern_015(1,5)
+    test_pattern_301(2,5)
 
     #test_pattern_101(1,5)
      

@@ -386,9 +386,10 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
 /**
  * Function called to exectue this VE. 
  **/
-cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {    
+cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
+    
     //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
-
+    cphvb_pprint_instr_list_small(instruction_list,instruction_count,"Testing!");
     bool cloglevel[] = {0,0,0};
     //bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
     //bool put_in_cache = false;
