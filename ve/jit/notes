@@ -1,0 +1,79 @@
+notes 
+
+
+void do_expr_compute(e1,e2,e3,e4,e5,Array* out) {
+    out_t = new array(get_dim(e1)); // assume the same dimensionality of all input.
+    dims = get_dim(e1);
+
+    // loop over the matrices.
+    for(int i_1=0;i_1<dim[0];i_1++) {
+        for(int i_2=0;i_2<dim[1];i_2++) {
+            ...
+            
+        }        
+    }
+    
+    out[i,j] = (((e1 op e2) op e3) op (e4 op e5));
+    out = out_t;
+}
+
+
+
+15-08-2012
+
+implement a method to handle when to do calculations.
+when should a 
+
+
+implement a method to manage the discard's effect on the 
+on the list_of_expr_tree's.
+
+
+
+nametable = chpvb_array*  <-> Exp
+
+handle_instruction(nametable,instruction) {
+    op1,op2,op3 = instruction_to_operands(instruction)    
+    inst_name = operand_name(op1)
+    inst_exp.operation = instruction_operation(instruction)    
+    
+    for each oprand in operands(op2,op3):
+        name = operand_name(op)
+        exp = nametable.get(name)
+        
+        if not exp:
+            exp = operand_to_exp(op)
+            nametable.register(name,exp)
+        
+        inst_exp.oprands.add(exp) // add in correct order
+        
+    nametable.register(inst_name,inst_exp)    
+}
+
+
+
+
+
+# With Single Static Assignment
+# ======================================================================
+
+handle_instruction(nametable,instruction) {
+    op1,op2,op3 = instruction_to_operands(instruction)    
+    inst_name = operand_name(op1)
+    if nametable.has_name(inst_name):
+        inst_name = increment_version(inst_name)
+        
+    inst_exp.operation = instruction_operation(instruction)    
+    
+    for each oprand in operands(op2,op3):
+        name = operand_name(op)
+        exp = nametable.get(name) // gets the exp from the name with the newest version
+        
+        if not exp:
+            exp = operand_to_exp(op)
+            nametable.register(name,exp)
+        
+        inst_exp.oprands.add(exp) // add in correct order
+        
+    nametable.register(inst_name,inst_exp)    
+}

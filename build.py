@@ -162,6 +162,7 @@ if __name__ == "__main__":
                   ("VE-NAIVE", "ve/naive", False),\
                   ("VE-SCORE", "ve/score", False),\
                   ("VE-MCORE", "ve/mcore", False),\
+                  ("VE-JIT", "ve/jit", False),\
                   ("VEM-NODE", "vem/node", True),\
                   ("VEM-CLUSTER", "vem/cluster", False),\
                   ("NumCIL", "bridge/NumCIL", False),\

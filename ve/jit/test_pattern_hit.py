@@ -1,0 +1,432 @@
+import numpy as np
+#import numpytest
+import cphvbbridge
+import time
+
+type=np.float32
+def test_pattern_001(H,W):
+    print "- test_pattern_001()";
+    type = np.int32;
+    work = np.zeros((H,W), dtype=type)    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    A = A * 5;
+    
+    cphvbbridge.handle_array(work)    
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    
+    work = A + B   
+    t = A[0,1]
+        
+def test_pattern_002(H,W):    
+    type = np.float32; 
+    A = np.ones((H,W),dtype=type)    
+    cphvbbridge.handle_array(A)        
+    A = A + 2.0    
+    t = A[0,1]    
+    return A
+
+
+def test_pattern_003(H,W):   
+    print "- test_pattern_003()";
+    type = np.float32;
+    A = np.ones((H,W),dtype=type)
+    B = np.ones((H,W),dtype=type)
+    B = B * 2;
+    cphvbbridge.handle_array(A)
+    cphvbbridge.handle_array(B)
+
+    A = B * 2 
+    t = A[0,1]
+    return A
+
+def test_pattern_004(H,W):    
+    type = np.float32; 
+    A = np.ones((H,W),dtype=type)
+    B = np.ones((H,W),dtype=type)
+    B = B*2;
+
+    
+    cphvbbridge.handle_array(A)
+    cphvbbridge.handle_array(B)
+
+    A += B 
+    t = A[0,1]
+    return A
+
+
+def test_pattern_005(H,W):
+    print "- test_pattern_001()";
+    type = np.float32;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    A = A * 5;
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    
+    A = A + A 
+    t = A[0,1]  
+    return A
+
+
+def test_pattern_006(H,W):
+    print "- test_pattern_006()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    D = np.ones((H,W),dtype=type)    
+    A = A * 5;
+        
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    
+    cphvbbridge.handle_array(D)   
+    
+    D = (A + B + A + D) * 4
+    t = D[0,1]
+    return D
+
+#
+# In this example, only the B is calculated. A is not, since it is used
+# after it has been used elsewhere. This it not how it should work. Both
+# A and B should be computed.
+
+# compute the last versions of 'handled arrays' on discard. How is it 
+# possible to detect the 'is handles'?
+def test_pattern_007(H,W):
+    print "- test_pattern_007()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    C = np.ones((H,W),dtype=type)    
+
+    B = B * 2;
+    C = C * 3
+            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)   
+    
+    #A = B + C + A  # 6
+    B = A * 2  # 12    
+    #print A[0,1]
+    B[0,1]
+    return A,B 
+
+
+def test_pattern_008(H,W):
+    print "- test_pattern_008()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    C = np.ones((H,W),dtype=type)    
+
+    B = B * 2;
+    C = C * 3
+            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)   
+    
+    
+    A[0,1:3] = B[0,2:4]
+    #A = B + C + A  # 6
+    B = A * 2  # 12    
+    #print A[0,1]
+    B[0,1]
+    print B
+    
+    
+
+    
+
+def test_pattern_101(H,W):
+    print "- test_pattern_007()";
+    type = np.float64;
+    
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    C = np.ones((H,W),dtype=type)    
+
+    B = B * 2;
+    C = C * 3
+            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)   
+    cphvbbridge.handle_array(C)   
+    
+    for i in xrange(2):
+        A = A + B + C
+    
+    
+    A[1]
+    
+    #A = B + C + A  # 6
+    #B = A * 2  # 12
+    #return A,B 
+    
+
+
+
+
+
+
+def test_pattern_miss_b(H,W):
+    print "- Third pattern mis";
+    work = np.zeros((H,W), dtype=type)    
+    ones = np.ones((H,W),dtype=type)    
+    cphvbbridge.handle_array(work)    
+    cphvbbridge.handle_array(ones)      
+    
+    work += ones
+    work += ones
+    work -= ones
+    #work += ones
+    #work -= ones
+    work *= 0.2
+
+def test_pattern_miss_a(H,W):
+    print "- Second pattern mis";
+    work = np.zeros((H,W), dtype=type)    
+    ones = np.ones((H,W),dtype=type)    
+    cphvbbridge.handle_array(work)    
+    cphvbbridge.handle_array(ones)      
+    
+    work += ones    
+    work -= ones
+    #work += ones
+    #work -= ones
+    work *= 0.2    
+
+def test_pattern_miss_c(H,W):
+    print "- No pattern match";
+    work = np.zeros((H,W), dtype=type)    
+    ones = np.ones((H,W),dtype=type)    
+    cphvbbridge.handle_array(work)    
+    cphvbbridge.handle_array(ones)      
+        
+    work -= ones
+    #work += ones
+    #work -= ones
+    work *= 0.2     
+    
+
+def test_pattern_hit_a():
+    H,W = 5,5
+    work = np.zeros((H,W), dtype=type)    
+    ones = np.ones((H,W),dtype=type)    
+    cphvbbridge.handle_array(work)    
+    cphvbbridge.handle_array(ones)        
+
+        
+    work += ones
+    work += ones
+    work += ones
+    work += ones    
+    work *= 0.2
+    #print work
+    #print ones
+
+
+def test_pattern_hit_b():
+    H,W = 5,5
+    work = np.zeros((H,W), dtype=type)    
+    ones = np.ones((H,W),dtype=type)
+    
+    cphvbbridge.handle_array(work)    
+    cphvbbridge.handle_array(ones)        
+
+    for i in xrange(5):
+        work += ones
+        work += ones
+        work += ones
+        work += ones
+        work *= 0.2
+
+def testing_ast():
+    H,W = 5,5
+    A = np.ones((H,W), dtype=type)
+    A*=5;    
+    B = np.ones((H,W),dtype=type)
+    #C = np.float32(np.random.rand(H,W))
+    #print A,B
+    
+    C = np.ones((H,W),dtype=type) * 2.5
+    
+    cphvbbridge.handle_array(A)
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+        
+    for i in range(2):
+        C += (B + A)*2
+    
+    #A = B - C + B
+    #A += B
+    #A += C
+    #A += B
+    return C
+
+def test_slice():
+    H,W = 5,5
+    A = np.ones((H,W), dtype=type)
+    A*=5;    
+    B = np.ones((H,W),dtype=type)
+
+    cphvbbridge.handle_array(A)
+    cphvbbridge.handle_array(B)
+    
+    H = A[:,1:] + B[:,1:]
+    G = A+B
+
+def test_001():
+    H,W = 5,5    
+    A = np.ones((H,W),dtype=type)
+    B = np.ones((H,W),dtype=type)
+    C = np.ones((H,W),dtype=type);
+    D = np.ones((H,W),dtype=type);
+    B = B*2;
+    D = D*3
+    
+    cphvbbridge.handle_array(A)
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+    cphvbbridge.handle_array(D)
+        
+    
+    A = -A
+    A = -A
+    
+    #A += C
+    #A += D
+    return A
+    
+    # what happens when two identical constants are used in and expression?
+    
+    #print A
+type = np.float32
+
+def jacobi_stencil(H,W,Dist,elems=2):
+    full = np.zeros((H+2,W+2), dtype=type)
+    work = np.zeros((H,W), dtype=type)
+    diff = np.zeros((H,W), dtype=type)
+    tmpdelta = np.zeros((H), dtype=type)
+
+    if Dist:
+        cphvbbridge.handle_array(full)
+        cphvbbridge.handle_array(work)
+        cphvbbridge.handle_array(diff)
+        cphvbbridge.handle_array(tmpdelta)
+
+    cells = full[1:-1, 1:-1]
+    up    = full[1:-1, 0:-2]
+    left  = full[0:-2, 1:-1]
+    right = full[2:  , 1:-1]
+    down  = full[1:-1, 2:  ]
+
+    full[:,0]  += -273.15
+    full[:,-1] += -273.15
+    full[0,:]  +=  40.0
+    full[-1,:] += -273.13
+
+    epsilon=W*H*0.002
+    delta=epsilon+1
+    i=0
+    #while epsilon<delta:
+    #for i in xrange(400):
+    for i in xrange(elems):
+        i+=1
+        #~ work[:] = cells
+        #~ work += up
+        #~ work += left
+        #~ work += right
+        #~ work += down
+        #~ work *= 0.2
+
+        # alternative writing:      
+        work[:] = (cells + up + left + right + down) * 0.2
+
+        #~ np.subtract(cells,work,diff)
+        #~ diff = np.absolute(diff)
+        #~ np.add.reduce(diff, out=tmpdelta)
+        #~ delta = np.add.reduce(tmpdelta)
+    
+        cells[:] = work
+
+    cells[0,1]
+    
+
+
+
+#delta = np.add.reduce(diff)
+#delta = np.add.reduce(delta)
+
+if __name__ == "__main__":
+    
+    # get arguments
+    from optparse import OptionParser
+    
+    parser = OptionParser()
+    (options, args) = parser.parse_args()
+    
+    do_sten_fix = 0
+    do_sten = 0    
+    do_num = 0
+    
+    for i in range(len(args)):
+        arg = args[i]        
+        if arg == "do":
+            if len(args) > i+1:
+                try:                
+                    do_num = int(args[i+1]);
+                except:
+                    print "ERROR! : In 'do n' , n must be a number!"
+                    exit(0)
+        
+        
+    #print args
+    #print "do_num",do_num
+
+    start = time.time()
+    
+    if do_num == 1:
+        test_pattern_001(1,5)
+    if do_num == 2:
+        test_pattern_002(1,5)
+    if do_num == 3:
+        test_pattern_003(1,5)
+    if do_num == 4:
+        test_pattern_004(1,5)        
+    if do_num == 5:
+        test_pattern_005(1,5)        
+    if do_num == 6:
+        test_pattern_006(1,5)        
+    if do_num == 7:        
+        test_pattern_007(1,5)                                    
+
+    if do_num == 8:
+        test_pattern_008(1,5)                                           
+        
+    if do_num == 101:
+        test_pattern_101(1,5)                    
+    if do_num == 42:
+        jacobi_stencil(1000,10000,1,20)
+
+    print "execution time", time.time() - start
+    #test_pattern_hit(5,5)
+    
+    #test_pattern_miss_a(5,5)
+    #test_pattern_miss_b(5,5)
+    #test_pattern_miss_c(5,5)
+    
+    #K = test_001()
+    
+    #jacobi_stencil(5,5,True);
+    #test_slice()
+    #test_pattern_hit_a()
+    
