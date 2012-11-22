@@ -155,7 +155,7 @@ cphvb_intp jit_write_function_to_file(string func_name, string func_text) {
 cphvb_intp remove_kernel_files(string func_name) {
     bool cloglevel[] = {1};
     string filepath =  "/tmp/"+func_name;
-    logcustom(cloglevel,0,"CGCC Removing kernelfile %s\n", filepath.c_str());    
+    //logcustom(cloglevel,0,"CGCC Removing kernelfile %s\n", filepath.c_str());    
     remove( (filepath + ".so").c_str() );
     remove( (filepath + ".c").c_str() );
     return 0;
