@@ -31,7 +31,7 @@ def test_pattern_001(H,W):
     cphvbbridge.flush()
     print ''
     print "- test_pattern_001()";    
-    
+    type=np.float64
     A = np.ones((H,W),dtype=type)    
     B = np.ones((H,W),dtype=type)    
     #C = np.ones((H,W), dtype=type)    
@@ -43,7 +43,7 @@ def test_pattern_001(H,W):
     cphvbbridge.handle_array(B)   
     
     C = A + B
-    print C[0,0]
+    print C
     
     
 
@@ -823,6 +823,37 @@ def test_pattern_405(H,W):
     #cphvbbridge.flush()    
     print "execution. Time: {0}".format(time.time()-start)
 
+def test_pattern_501(H,W):
+    cphvbbridge.flush()    
+    type=np.float32
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)    
+    C = np.ones((H,W),dtype=type)
+
+    type=np.float64
+    D = np.ones((H,W),dtype=type)
+    E = np.ones((H,W),dtype=type)
+    F = np.ones((H,W),dtype=type)        
+
+    A+=1
+    B+=2
+    C+=3
+    D+=4
+    E+=5
+    F+=6
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+    cphvbbridge.handle_array(C)
+    cphvbbridge.handle_array(D)
+    cphvbbridge.handle_array(E)
+    cphvbbridge.handle_array(F)    
+    cphvbbridge.flush()
+
+    T1 = A+B+C
+    cphvbbridge.flush()
+    T2 = D+E+F
+    cphvbbridge.flush()
+    
 #delta = np.add.reduce(diff)
 #delta = np.add.reduce(delta)
 
@@ -842,17 +873,17 @@ if __name__ == "__main__":
     #test_pattern_404(H,W)    
     #test_pattern_405(H,W)
    
-    #test_pattern_004(2,5)
+    #test_pattern_001(2,5)
 
     #test_pattern_016(2,5)  
     #test_pattern_017(2,5)
     
     # PROBLEM WITH THIS TEST!
     #test_pattern_015(1,5)
-    test_pattern_301(2,5)
+    #test_pattern_300(2,5)
     #print "hello world"
 
-    #test_pattern_101(1,5)
+    #test_pattern_101(2,5)
      
     #test_pattern_102(1,5)
 
@@ -871,8 +902,9 @@ if __name__ == "__main__":
     #test_pattern_105(2,5)
     
     #test_pattern_104(1,5)
+    test_pattern_501(2,5)    
     
-    #test_pattern_200(1,5)
+    #test_pattern_200(2,5)
     #test_pattern_201(1,5)
     
     #~ s = time.time()    

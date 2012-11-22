@@ -18,8 +18,8 @@
 
 // Settings for comparison
 #ifndef JITCG_FUNCTEXT
-//#define JITCG_FUNCTEXT JITCGFT_NoCast 
-#define JITCG_FUNCTEXT JITCGFT_Vanilla
+#define JITCG_FUNCTEXT JITCGFT_NoCast 
+//#define JITCG_FUNCTEXT JITCGFT_Vanilla
 #endif
 
 #ifndef JITC_COMPILE_METHOD
@@ -344,13 +344,19 @@ cphvb_intp execute_instruction(jit_compute_functions* compute_functions,cphvb_in
         cphvb_data_malloc(instr->operand[0]);
     }
     //cphvb_pprint_instr(instr);
-    logcustom(cloglevel,0,"instr 0 = %s, [0] %p, [1] %p\n", cphvb_opcode_text(instr->opcode),instr->operand[0],instr->operand[1]);
+    logcustom(cloglevel,0,"instr 0 = %s, [0] %p, [1] %p, [2] %p\n", cphvb_opcode_text(instr->opcode),instr->operand[0],instr->operand[1],instr->operand[2]);
     timespec time1, time2;
     if (K_TIMEING == 1) {        
         clock_gettime(CLOCK_REALTIME, &time1);    
     }
     
+    //cphvb_pprint_instr(instr);
+    //printf("%p\n",instr->operand[0]); if (instr->operand[0] != NULL) { jit_pprint_cphvb_array(instr->operand[0],0); }
+    //printf("%p\n",instr->operand[1]); if (instr->operand[1] != NULL) { jit_pprint_cphvb_array(instr->operand[1],0); }
+    //printf("%p\n",instr->operand[2]); if (instr->operand[2] != NULL) { jit_pprint_cphvb_array(instr->operand[2],0); }
+    
     cphvb_error res = compute_functions->instr_compute(instr);
+    
 
     if (K_TIMEING == 1) {     
         clock_gettime(CLOCK_REALTIME, &time2);  
@@ -489,7 +495,8 @@ cphvb_intp execute_compound_kernel(jit_compute_functions* compute_functions, jit
             execute_kernel_expr(compute_functions,ckernel->exekernels[i]);
         } else
         if(ckernel->exekernels[i]->kernel->type == JIT_COMPILE_KERNEL) {
-            logcustom(cloglevel,0,"execute_compound_kernel: JIT_COMPILE_KERNEL - exekernel: %d\n",i);  
+            logcustom(cloglevel,0,"execute_compound_kernel: JIT_COMPILE_KERNEL - exekernel: %d\n",i);
+            logcustom(cloglevel,0,"-- %ld\n",ckernel->exekernels[i]->kernel->hash);
             execute_kernel_compiled(ckernel->exekernels[i]);
         } else {
             logcustom(cloglevel,0,"execute_compound_kernel: NONE - exekernel: %d\n",i);            

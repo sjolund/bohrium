@@ -370,7 +370,7 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
     jitcomputefunctions = new jit_compute_functions();
     jitcomputefunctions->instr_compute = cphvb_compute_apply;
     jitcomputefunctions->userfunctions = new map<cphvb_intp,cphvb_userfunc_impl>();
-    //jitexecutelist = new jit_execute_list(); 
+    jitexecutelist = new jit_execute_list(); 
     jitkernelcache = new jit_kernel_cache();
     jitcompound_kernel_count = 0;
     
@@ -387,7 +387,7 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
  * Function called to exectue this VE. 
  **/
 cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
-    
+    //printf("jit executing\n");
     //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
     //cphvb_pprint_instr_list_small(instruction_list,instruction_count,"Testing!");
     bool cloglevel[] = {0,0,0};
@@ -399,7 +399,7 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
     if(connected_instruction_list) {
        /// todo: might want to handle this case (or just restrict the VEM to never to split up instructionlists.)
        printf("* * * * Connected Instruction list detected. Nametable should not be reset.\n");
-       return 0;  
+       return 0;   
     } // else 
 
     timespec time1, time2;
@@ -408,7 +408,7 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
     }    
     jit_compound_kernel* compound_kernel = NULL;        
     // cache lookup.
-    cphvb_intp instr_list_hash = instructionlist_hash(instruction_list,instruction_count);
+    cphvb_intp instr_list_hash = instructionlist_hash(instruction_list,instruction_count);    
     compound_kernel = jit_kernel_cache_lookup(jitkernelcache,instr_list_hash);            
     set<cphvb_intp>* execution_list = NULL;
 
@@ -528,8 +528,8 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 
     // De-allocate state
     
-    //printf("Instruction list computed: %ld\n", jitinstr_list_count );
-    //printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        
+    printf("Instruction list computed: %ld\n", jitinstr_list_count );
+    printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        
     
     return CPHVB_SUCCESS;
 }
