@@ -3,6 +3,7 @@
 # convert   -delay 20   -loop 0   swater*.png   swater.gif
 
 import cphvbnumpy as numpy
+import cphvbbridge
 import util
 
 B = util.Benchmark()
@@ -29,14 +30,14 @@ H[droploc,droploc] += 5.0
 
 B.start()
 for i in xrange(T):
-
+    cphvbbridge.flush()
     # Reflecting boundary conditions
     #               - equiv
     H[:,0] = H[:,1]   ; U[:,0] = U[:,1]     ; V[:,0] = -V[:,1]
     H[:,n+1] = H[:,n] ; U[:,n+1] = U[:,n]   ; V[:,n+1] = -V[:,n]
     H[0,:] = H[1,:]   ; U[0,:] = -U[1,:]    ; V[0,:] = V[1,:]
     H[n+1,:] = H[n,:] ; U[n+1,:] = -U[n,:]  ; V[n+1,:] = V[n,:]
-
+    
     #
     # First half step
     #

@@ -108,13 +108,13 @@ void jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit) {
 }
 
 
-
 string jit_pprint_true_false(bool stm) {
     if(stm)
         return string("true");
     else
         return string("true");
 }
+
 
 void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
     if (is_array(expr)) {
@@ -133,6 +133,7 @@ void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
         expr_travers_for_hashing(expr->op.expression.left,chain);
     }
 }
+
 
 timespec diff(timespec start, timespec end) {
 	timespec temp;
@@ -163,23 +164,92 @@ cphvb_intp expr_hash(jit_expr* expr) {
     return hash_val;
 }
 
+int jit_cphvb_type_to_num(cphvb_type type)
+{
+    switch(type)
+    {
+    case CPHVB_BOOL:
+        return 1;
+    case CPHVB_INT8:
+        return 2;
+    case CPHVB_INT16:
+        return 3;
+    case CPHVB_INT32:
+        return 4;
+    case CPHVB_INT64:
+        return 5;
+    case CPHVB_UINT8:
+        return 6;
+    case CPHVB_UINT16:
+        return 7;
+    case CPHVB_UINT32:
+        return 8;
+    case CPHVB_UINT64:
+        return 9;
+    case CPHVB_FLOAT16:
+        return 10;
+    case CPHVB_FLOAT32:
+        return 11;
+    case CPHVB_FLOAT64:
+        return 12;
+    case CPHVB_COMPLEX64:
+        return 13;
+    case CPHVB_COMPLEX128:
+        return 14;
+    case CPHVB_UNKNOWN:
+        return 15;
+    default:
+        return -1;
+	}
+}
+
 // compare two cphvb_intp array.
+/**
+ * The hash must take the types of the operand, 
+ **/
 cphvb_intp instructionlist_hash(cphvb_instruction* instruction_list, cphvb_intp instruction_count) {
     cphvb_intp hash_val = 0;
-
+            
     // lookup length in a bit map. no entry with length, it is resonable to skip.
-    cphvb_intp opcodes[instruction_count];    
+    cphvb_intp* opcodes = (cphvb_intp*) malloc(instruction_count * 3 * sizeof(cphvb_intp));    
+    cphvb_instruction instr;    
     
     for(cphvb_index i=0;i<instruction_count;i++) {
-        opcodes[i] = ((cphvb_intp)instruction_list[i].opcode);              
+        instr = instruction_list[i];
+        opcodes[i*3] = ((cphvb_intp)instr.opcode);
+        //cphvb_pprint_instr(&instr);
+
+        //printf("operands %d\n",cphvb_operands_in_instruction(&instruction_list[i]));
+        //~ // instruction opcode
+        if (instr.opcode == CPHVB_USERFUNC) {
+            opcodes[i*3+1] = jit_cphvb_type_to_num(instr.userfunc->operand[0]->type);
+            opcodes[i*3+2] = instr.userfunc->operand[0]->ndim;
+        } else if (cphvb_operands_in_instruction(&instruction_list[i]) != 0) {
+            opcodes[i*3+1] = jit_cphvb_type_to_num(instr.operand[0]->type);
+            opcodes[i*3+2] = instr.operand[0]->ndim;
+            //printf("%d,",opcodes[i+1]);
+        } else {
+            opcodes[i*3+1] = 1;
+            opcodes[i*3+2] = 1;
+        }
+        //printf("%ld-%ld-%ld-",opcodes[i],opcodes[i+1],opcodes[i+2]);
     }
+
+    //~ printf("+++ %p  ",opcodes);
+    //~ for(int i=0;i<instruction_count * 3 ;i++) {
+        //~ printf("%ld.",opcodes[i]);        
+    //~ }
 
     uint32_t result = 0;
     uint32_t seed = 42;
     
-    MurmurHash3_x86_32(&opcodes,(int)instruction_count*2,seed,&result);
-    hash_val = result;
+    MurmurHash3_x86_32(opcodes,(int)instruction_count*2*3,seed,&result);
+
+    //~ printf("== %ld ==",instruction_count * 3 * sizeof(cphvb_intp));
     
+    free(opcodes);    
+    hash_val = result;
+    //printf("hashing value: %ld \n",hash_val);
     return hash_val;
 }
 

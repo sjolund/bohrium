@@ -2,8 +2,11 @@ import cphvbnumpy as np
 from numpytest import numpytest
 import cphvbnumpy.linalg as la
 from cphvbnumpy import examples as exp
+import cphvbbridge
 
 def sor_setup(W,H,dtype=np.float32,cphvb=False):
+    H=4
+    W=4
     if W%2 > 0 or H%2 > 0:
         raise Exception("Each dimension must have an even size.")
     full = np.zeros((H+2,W+2), dtype=dtype,cphvb=cphvb)
@@ -37,23 +40,29 @@ def sor_compute(full):
     red2_left    = full[2:-1:2, 0:-3:2]
     red1_down    = black2
     red2_down    = full[3::2, 1:-2:2]
-
-
+        
     epsilon=full.shape[0]**2*0.002
     delta=epsilon+1
     i=0
-    while epsilon<delta:
+    print black1
+    #while epsilon<delta:
+    for abe in xrange(1):    
       i+=1
-      diff = black1.copy()
+      
+      diff = black1.copy()      
+      
       black1 += black1_up
+      """
       black1 += black1_right
       black1 += black1_left
       black1 += black1_down
       black1 *= 0.2
       diff -= black1
+      
+      
       np.absolute(diff, diff)
       delta = np.add.reduce(np.add.reduce(diff))
-
+      #print "testvalue!!! ",delta  
       diff = black2.copy()
       black2 += black2_up
       black2 += black2_right
@@ -63,7 +72,7 @@ def sor_compute(full):
       diff -= black2
       np.absolute(diff, diff)
       delta += np.add.reduce(np.add.reduce(diff))
-
+        
       diff = red1.copy()
       red1 += red1_up
       red1 += red1_right
@@ -81,6 +90,7 @@ def sor_compute(full):
       red2 *= 0.2
       diff -= red2
       delta += np.add.reduce(np.add.reduce(diff))
+      """
     return cells
 
 

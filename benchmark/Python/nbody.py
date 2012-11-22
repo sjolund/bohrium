@@ -8,7 +8,9 @@ All the work is done in the calc_force, move and random_galaxy functions.
 To vectorize the code these are the functions to transform.
 """
 import cphvbnumpy as np
+import cphvbbridge
 import util
+
 
 # By using the solar-mass as the mass unit and years as the standard time-unit
 # the gravitational constant becomes 1
@@ -91,7 +93,9 @@ if __name__ == '__main__':
 
     B.start()
     for _ in range(time_step):
+        cphvbbridge.flush()
         move(galaxy)
+        
     B.stop()
-    B.pprint()
-
+    B.pprint()    
+    

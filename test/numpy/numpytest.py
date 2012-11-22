@@ -173,7 +173,8 @@ if __name__ == "__main__":
 
     if len(script_list) == 0:
         #script_list = os.listdir(os.path.dirname(os.path.abspath(__file__)))
-        script_list = ["test_views.py"]
+        script_list = ["test_benchmarks.py"]
+        #script_list = ["test_sor.py"]
         
 
     print "*"*3, "Testing the equivalency of cphVB-NumPy and NumPy", "*"*3
@@ -183,6 +184,7 @@ if __name__ == "__main__":
             m = f[:-3]#Remove ".py"
             m = __import__(m)
             #All test classes starts with "test_"
+            #print script_list
             for cls in [o for o in dir(m) if o.startswith("test_")]:
                 cls_obj  = getattr(m, cls)
                 cls_inst = cls_obj()
