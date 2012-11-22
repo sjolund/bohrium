@@ -853,6 +853,7 @@ def test_pattern_501(H,W):
     cphvbbridge.flush()
     T2 = D+E+F
     cphvbbridge.flush()
+    print T2
     
 #delta = np.add.reduce(diff)
 #delta = np.add.reduce(delta)

@@ -16,7 +16,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-
+#include <sys/stat.h>
 //~ #include "libtcc.h"
 #include "cphvb.h"
 #include "jit_logging.h"
@@ -24,11 +24,15 @@
 #include "jit_common.h"
 
 
-#ifndef JIT_KERNEL_DIR
-#define JIT_KERNEL_DIR "/home/jolu/.cphvb/jitkernels"
-#endif    
-
 using namespace std;
+
+static string path_jitkernels = "/tmp";       // tmp
+static string path_cphvb_include;
+string create_source_full_path(string funcname) {
+    stringstream ss;
+    ss << path_jitkernels << "/" << funcname << ".c";
+    return ss.str();
+}
 
 /**
  * TCC (Tiny C Compiler)
@@ -130,7 +134,7 @@ string jit_nameing_kernel_file(string func_name) {
 cphvb_intp jit_write_function_to_file(string func_name, string func_text) {
     bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"write_function_to_file(%s,txt)\n",func_name.c_str());
-    string filepath = string(JIT_KERNEL_DIR)+"/"+func_name+".c";
+    string filepath = create_source_full_path(func_name);// string(JIT_KERNEL_DIR)+"/"+func_name+".c";
     logcustom(cloglevel,1,"writing file to %s" , filepath.c_str());
     ofstream file;    
     file.open(filepath.c_str(), ios::app);
@@ -149,13 +153,37 @@ cphvb_intp jit_write_function_to_file(string func_name, string func_text) {
  * Remove the kernel file for the function name.
  **/
 cphvb_intp remove_kernel_files(string func_name) {
-    bool cloglevel[] = {0};
-    string filepath = string(JIT_KERNEL_DIR)+"/"+func_name;
+    bool cloglevel[] = {1};
+    string filepath =  "/tmp/"+func_name;
     logcustom(cloglevel,0,"CGCC Removing kernelfile %s\n", filepath.c_str());    
     remove( (filepath + ".so").c_str() );
     remove( (filepath + ".c").c_str() );
     return 0;
 }
+
+
+/**
+ * 
+ **/
+cphvb_error get_from_env_cphvb_include_dir() {
+    char *env = getenv("CPHVB_VE_JIT_INCLUDE");         // Override block_size from environment-variable.
+    
+    if(env != NULL)
+    {        
+         path_cphvb_include = string(env);
+    }
+
+    
+    struct stat st;
+    if(env == NULL || stat(path_jitkernels.c_str(),&st) != 0) {
+        fprintf(stderr, "CPHVB_VE_JIT_INCLUDE must exists! %s\n",path_jitkernels.c_str());
+        return CPHVB_ERROR;
+    }
+    return CPHVB_SUCCESS;    
+}
+
+
+
 
 /**
  * Compiles the kernel string to an share library file, which are linked into the running code.
@@ -168,19 +196,28 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
     bool cloglevel[] = {0,0,0};
     bool create_c_file = true;
     logcustom(cloglevel,0,"CGCC compile_gcc(%s, removekernel=%s\n",func_name.c_str(),jit_pprint_true_false(reset_kernel_dir).c_str());
+
+    // check the existence of jitkernels dir.
+    if (get_from_env_cphvb_include_dir() == CPHVB_ERROR) {
+        fprintf(stderr, "jit related paths no ser correctly!\n");
+        return 1;
+    }
+
     
     
-    string jitkernels_dir       = string(JIT_KERNEL_DIR);
-    string cphvb_include_dir    = string("/home/jolu/diku/speciale/cphVB/cphvb-priv/include");
-    string cphvb_core_dir       = string("/home/jolu/diku/speciale/cphVB/cphvb-priv/core");    
+    //string path_jitkernels       = string(JIT_KERNEL_DIR);
+    //string path_cphvb_include    = string("/home/jolu/diku/speciale/cphVB/cphvb-priv/include");
+    //string path_cphvb_core       = string("/home/jolu/diku/speciale/cphVB/cphvb-priv/core");
+    
     string funcname = jit_nameing_kernel_file(func_name);
     string funclibname = funcname+string(".so");
-    string funclibpath = jitkernels_dir + "/" + funclibname;
+    string funclibpath = path_jitkernels + "/" + funclibname;
     // chech if a .so file with the func_name already exists. 
     string escaped = escape_text_quotes(compute_func_text);
     logcustom(cloglevel,2,"CGGC initial dlopen: %s\n",funclibpath.c_str());            
     void* lib_handler = dlopen( funclibpath.c_str(),RTLD_LAZY);
     logcustom(cloglevel,2,"dlopen error: %s\n",dlerror());
+
     
     if (lib_handler == NULL) {        
         logcustom(cloglevel,1,"CGCC creating new %s\n",funclibname.c_str());
@@ -188,13 +225,15 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
                 
         if (create_c_file) {
             if (jit_write_function_to_file(func_name,compute_func_text) == 0) {
-                ss << "gcc -march=native -xc -fPIC -O2 " << jitkernels_dir << "/" << funcname  << ".c -I" << cphvb_include_dir << " -L" << cphvb_core_dir;
+                //ss << "echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH;";
+                ss << "gcc -march=native -xc -fPIC -O2 " << create_source_full_path(funcname) << " -I" << path_cphvb_include << "   -L${CPHVBLIB}";
                 ss << " -lcphvb -lrt -ldl -shared -o " << funclibpath;
             }            
             
         } else {
-            ss << "gcc -march=native -xc -fPIC -O2 -I" << cphvb_include_dir << " -L" << cphvb_core_dir;
-            ss << " -lrt -lcphvb -ldl -shared -o " << funclibpath << " -";    
+            //ss << "gcc -march=native -xc -fPIC -O2 -I" << path_cphvb_include << " -L" << path_cphvb_core;
+            //ss << " -lrt -lcphvb -ldl -shared -o " << funclibpath << " -";
+            ;  
         }
               
         string gccstring = ss.str();
