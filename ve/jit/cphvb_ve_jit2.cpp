@@ -528,8 +528,8 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 
     // De-allocate state
     
-    printf("Instruction list computed: %ld\n", jitinstr_list_count );
-    printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        
+    //printf("Instruction list computed: %ld\n", jitinstr_list_count );
+    //printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        
     
     return CPHVB_SUCCESS;
 }
