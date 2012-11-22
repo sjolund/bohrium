@@ -286,14 +286,14 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
 
 jit_comp_kernel* compile(string kernel_func_name,string codetext, jit_compile_method method) {        
     jit_comp_kernel* kernel = ((jit_comp_kernel*) malloc(sizeof(jit_comp_kernel))) ;
-    cphvb_intp res;
     switch(method) {            
         case COMPILE_METHOD_TCC:
-            res = compile_tcc(kernel_func_name,codetext,kernel);
-            //printf("compile result: %d\n", res);        
+            compile_tcc(kernel_func_name,codetext,kernel);
+            //printf("compile result: %d\n", res);
+            printf("TCC deprecated.\n");
             return kernel;            
         case COMPILE_METHOD_GCC:
-            res = compile_gcc(kernel_func_name,codetext,kernel,true);
+            compile_gcc(kernel_func_name,codetext,kernel,true);
             return kernel;
         case COMPILE_METHOD_LLVM:
             //res = compile_gcc(kernel_func_name,codetext,kernel,false);
