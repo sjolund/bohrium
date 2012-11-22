@@ -17,7 +17,7 @@
 #include <sstream>
 #include <algorithm>
 
-#include "libtcc.h"
+//~ #include "libtcc.h"
 #include "cphvb.h"
 #include "jit_logging.h"
 #include "jit_compile.h"
@@ -34,57 +34,59 @@ using namespace std;
  * TCC (Tiny C Compiler)
  **/
 cphvb_intp compile_tcc(string func_name,string comput_func_text, jit_comp_kernel* kernel) {
-    bool cloglevel[] = {0,0};
-    logcustom(cloglevel,0,"compile_tcc()\n");
-    
-    const char* cphvb_headers = "/home/jolu/diku/speciale/cphVB/cphvb-priv/include";
-    
-    TCCState *s = tcc_new();;        
-    void *mem = NULL;
-    int size = 0;    
-    
-    if (!s) {
-        fprintf(stderr, "Could not create tcc state\n");
-        exit(1);
-    }        
-    //tcc_set_lib_path(s,"/usr/local/lib/");
-    
-    tcc_set_output_type(s, TCC_OUTPUT_MEMORY);                
-    tcc_add_include_path(s,cphvb_headers);   
-    
-    if (tcc_compile_string(s, comput_func_text.c_str()) == -1) {
-        printf("Failure to compile!\n");        
-        return 1;
-    }    
-    
-    // get needed size of the code
-    size = tcc_relocate(s, NULL);
-    //printf("tcc_relocate size: %d\n",size);
-    if (size == -1)
-        return 1;
-        
-    logcustom(cloglevel,1,"Size of code: %ld\n",size);
-    // allocate memory and copy the code into it
-    mem = malloc(size);
-    tcc_relocate(s, mem);
-
-    /* get entry symbol */
-    kernel->memaddr = &mem; 
-    kernel->function = (computefunc3) tcc_get_symbol(s, func_name.c_str());            
-    kernel->key = 0;
-
-    
-    if (kernel->function == NULL) {        
-        logInfo(" ---- ret_fun == %p",kernel->function);
-        return 1;
-    }
-    logcustom(cloglevel,1,"Code compiled and function created: %p \n",kernel->function);
-    tcc_delete(s); // delete the state
-    
-    // run the code
-    //func(32);    
-    //free(mem);    
     return 0;
+    //~ 
+    //~ bool cloglevel[] = {0,0};
+    //~ logcustom(cloglevel,0,"compile_tcc()\n");
+    //~ 
+    //~ const char* cphvb_headers = "/home/jolu/diku/speciale/cphVB/cphvb-priv/include";
+    //~ 
+    //~ TCCState *s = tcc_new();;        
+    //~ void *mem = NULL;
+    //~ int size = 0;    
+    //~ 
+    //~ if (!s) {
+        //~ fprintf(stderr, "Could not create tcc state\n");
+        //~ exit(1);
+    //~ }        
+    //~ //tcc_set_lib_path(s,"/usr/local/lib/");
+    //~ 
+    //~ tcc_set_output_type(s, TCC_OUTPUT_MEMORY);                
+    //~ tcc_add_include_path(s,cphvb_headers);   
+    //~ 
+    //~ if (tcc_compile_string(s, comput_func_text.c_str()) == -1) {
+        //~ printf("Failure to compile!\n");        
+        //~ return 1;
+    //~ }    
+    //~ 
+    //~ // get needed size of the code
+    //~ size = tcc_relocate(s, NULL);
+    //~ //printf("tcc_relocate size: %d\n",size);
+    //~ if (size == -1)
+        //~ return 1;
+        //~ 
+    //~ logcustom(cloglevel,1,"Size of code: %ld\n",size);
+    //~ // allocate memory and copy the code into it
+    //~ mem = malloc(size);
+    //~ tcc_relocate(s, mem);
+//~ 
+    //~ /* get entry symbol */
+    //~ kernel->memaddr = &mem; 
+    //~ kernel->function = (computefunc3) tcc_get_symbol(s, func_name.c_str());            
+    //~ kernel->key = 0;
+//~ 
+    //~ 
+    //~ if (kernel->function == NULL) {        
+        //~ logInfo(" ---- ret_fun == %p",kernel->function);
+        //~ return 1;
+    //~ }
+    //~ logcustom(cloglevel,1,"Code compiled and function created: %p \n",kernel->function);
+    //~ tcc_delete(s); // delete the state
+    //~ 
+    //~ // run the code
+    //~ //func(32);    
+    //~ //free(mem);    
+    //~ return 0;
 }
 
 /*==  ==*/
