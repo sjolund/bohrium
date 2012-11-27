@@ -676,6 +676,8 @@ cphvb_intp jita_handle_arithmetic_instruction3(jit_analyse_state* s, cphvb_instr
     
     jit_expr_tag instr_tag;
     cphvb_intp expr_depth = 1;                
+
+    //jit_pprint_nametable(s->nametable);
     
     //jit_name_entry* first_entry = jita_lookup_name(nametable,ssamap, instr->operand[1],-1);        
 
@@ -685,7 +687,7 @@ cphvb_intp jita_handle_arithmetic_instruction3(jit_analyse_state* s, cphvb_instr
         first = cphvb_constant_to_jit_expr(&instr->constant);
         //operand_to_exp(instr,1,first);            
     } else {
-        first_entry = jita_nametable_lookup_a(s, instr->operand[1]);         
+        first_entry = jita_nametable_lookup_a(s, instr->operand[1]);        
         if (first_entry == NULL) {                                
             first_entry = new_array_creation(s,instr->operand[1]);            
             first_entry->instr = instr;
@@ -723,6 +725,8 @@ cphvb_intp jita_handle_arithmetic_instruction3(jit_analyse_state* s, cphvb_instr
     }
     logcustom(cloglevel,1,"JHAI3 operand 1 and 2 created/extracted.\n");
 
+
+    //jit_pprint_nametable_entry(first_entry);
     // create expr. 
     expr->tag = instr_tag;
     expr->op.expression.opcode = instr->opcode;          

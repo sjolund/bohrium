@@ -435,6 +435,24 @@ def test_pattern_017(H,W):
     print E
 
 
+def test_pattern_018(H,W):
+    cphvbbridge.flush()
+    print 'simple assign'
+    print "- test_pattern_018()";
+    
+    A = np.ones((H,W),dtype=type)    
+    A = A * 3;
+    B = np.ones((H,W),dtype=type)
+    B = B * 2
+    C = np.ones((H,W),dtype=type)
+    
+    cphvbbridge.handle_array(C)            
+    cphvbbridge.handle_array(A)      
+    cphvbbridge.handle_array(B)       
+    A[:] = B
+    B[:] = C
+    print B
+
 
 # ================================================
 
@@ -665,11 +683,13 @@ def test_pattern_301(H,W):
     A[0,:] = [1,2,3,4,5]
     cphvbbridge.handle_array(A)      
     cphvbbridge.handle_array(B)       
-    print A    
+    #print A    
+    #h = np.add.reduce(A,1)
+    
     h = np.add.reduce(A,1)
-    print h
+    print h 
     t = np.add.reduce(h)
-    print t
+    print "t",t
     
    
 
@@ -874,8 +894,8 @@ if __name__ == "__main__":
     #test_pattern_404(H,W)    
     #test_pattern_405(H,W)
    
-    #test_pattern_001(2,5)
-
+    #test_pattern_301(2,5)
+    test_pattern_018(2,6)
     #test_pattern_016(2,5)  
     #test_pattern_017(2,5)
     
@@ -903,7 +923,7 @@ if __name__ == "__main__":
     #test_pattern_105(2,5)
     
     #test_pattern_104(1,5)
-    test_pattern_501(2,5)    
+    #test_pattern_501(2,5)    
     
     #test_pattern_200(2,5)
     #test_pattern_201(1,5)

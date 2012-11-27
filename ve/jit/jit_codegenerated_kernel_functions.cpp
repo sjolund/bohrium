@@ -256,3 +256,49 @@ cphvb_index OffA5;
             }
         }
     }
+
+void kernel_func_1904711455_0(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {
+    cphvb_index last_dim = as[0]->ndim-1;
+    cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );
+    cphvb_index ec = 0;
+    cphvb_index coord[2];
+    memset(coord, 0, 2 * sizeof(cphvb_index));
+    cphvb_float32* DA0 = (cphvb_float32*) cphvb_base_array( as[0])->data;
+    cphvb_index OffA0;
+    cphvb_float32* DA1 = (cphvb_float32*) cphvb_base_array( as[1])->data;
+    cphvb_index OffA1;
+    int j=0, i=0;
+    if (skip>0) {                                // Create coord based on skip
+        while(ec<skip) {
+            ec += as[0]->shape[last_dim];
+            for(j = (last_dim-1); j >= 0; --j) {
+                coord[j]++;
+            }
+        }
+    }
+    while( ec < nelements ) {
+	OffA0 = as[0]->start;
+	OffA1 = as[1]->start;
+        // Compute offset based on coord
+        for(j=0; j<last_dim; ++j) {
+    OffA0 += as[0]->stride[j] * coord[j];
+    OffA1 += as[1]->stride[j] * coord[j];
+        }
+        for(j=0; j < as[0]->shape[last_dim]; j++ ) {
+            // computation code
+            *(OffA0 + DA0) = *(OffA1 + DA1);
+            printf("%f. ",(cphvb_float32) *(OffA0 + DA0));
+    OffA0 += as[0]->stride[last_dim];
+    OffA1 += as[1]->stride[last_dim];
+        }
+        ec += as[0]->shape[last_dim];
+        for(j = last_dim-1; j >= 0; --j) {
+            coord[j]++;
+            if (coord[j] < as[0]->shape[j]) {
+                break;
+            } else {
+                coord[j] = 0;
+            }
+        }
+    }
+}

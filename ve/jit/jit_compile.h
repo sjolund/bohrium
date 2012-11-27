@@ -19,11 +19,11 @@ typedef enum COMPILE_METHOD {
 
 typedef void(*computefunc3) (cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit);
 
-struct jit_comp_kernel{
+typedef struct {
     computefunc3    function;   // function pointer
     void*           memaddr;    // pointer to memory, for later deallocation
     cphvb_intp      key;        // kernel key, a hash of the mathmatical operations.
-};
+} jit_comp_kernel;
 
 jit_comp_kernel* jitc_compile_computefunction(string name,string func_text,jit_compile_method method);
 

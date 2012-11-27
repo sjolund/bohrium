@@ -52,6 +52,10 @@ static cphvb_intp random_impl_id = 0;
 static cphvb_userfunc_impl matmul_impl = NULL;
 static cphvb_intp matmul_impl_id = 0;
 
+static cphvb_intp vcache_size   = 10;
+static bool jit_cache_enabled = true;
+
+
 jit_ssa_map*                jitssamap;
 jit_name_table*             jitnametable;
 jit_base_dependency_table*  jitbasedeptable;
@@ -66,8 +70,13 @@ cphvb_index                 jitcompound_kernel_count;
 cphvb_index                 jitinstr_list_count;
 cphvb_index                 last_nametable_size;
 
+jit_expression_kernel_cache*  jitexpressionkernelcache;
+
 cphvb_index cache_hit = 0;  
 cphvb_index cache_miss = 0;
+bool jit_direct_execute = true;
+
+
 
 
 
@@ -127,9 +136,12 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
     logcustom(cloglevel,0,"expr_dependecy_travers3(%ld)\n",expr->name);
     if (is_array(expr)) {
         logcustom(cloglevel,1,"expr_dependecy_travers3(Array:%ld)\n",expr->name);
-         return;
+        return;
     }
-    
+    if (is_constant(expr)) {
+        logcustom(cloglevel,1,"expr_dependecy_travers3(constant:)\n");
+        return;
+    }
     jit_expr* echild;
     jit_name_entry* entr_child;
     jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
@@ -151,6 +163,7 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
     if (is_userfunc(expr)) {
         logcustom(cloglevel,1,"EDT3 is userfun  (%d). returning.\n",expr->name);
         execute_list->insert(expr->name);
+        entr->is_executed = true;
         return;
     }
 
@@ -354,13 +367,47 @@ void cleanup_free(cphvb_instruction* list, cphvb_index instr_count) {
     }    
 }
 
+
+
+
 /**
  * Initialize the JIT VE.
  * setting up state which must be present cross instructionlist.
  **/
 cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
     myself = self;
-    cphvb_vcache_init( 10 );
+
+    char *env = getenv("CPHVB_CORE_VCACHE_SIZE");     // Override block_size from environment-variable.
+    if(env != NULL)
+    {
+        vcache_size = atoi(env);
+    }
+    if(vcache_size <= 0)                        // Verify it
+    {
+        fprintf(stderr, "CPHVB_CORE_VCACHE_SIZE (%ld) should be greater than zero!\n", (long int)vcache_size);
+        return CPHVB_ERROR;
+    }
+    cphvb_vcache_init( vcache_size );
+
+
+    env = getenv("CPHVB_JIT_CACHE_ENABLED");     // Override block_size from environment-variable.
+    if (env == NULL) {
+        env = "";
+    }
+    //printf("CPHVB_JIT_CACHE_DISABLED=%s %d\n",env,string(env)== string("True"));
+    jit_cache_enabled = (string(env) != string("False"));
+
+    env = getenv("CPHVB_JIT_DIRECTEXECUTE");     // Override block_size from environment-variable.
+    if (env == NULL) {
+        env = "";
+    }
+    //printf("CPHVB_JIT_CACHE_DISABLED=%s %d\n",env,string(env)== string("True"));
+    jit_direct_execute = (string(env) == string("True"));
+    
+    
+    // set GCC or TCC flag
+    // set codegeneration method (vanilla, nocast/naive,)
+    // set paths for GCC compuler
      
     jitssamap = new jit_ssa_map();
     jitnametable = new jit_name_table();    
@@ -370,8 +417,14 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
     jitcomputefunctions = new jit_compute_functions();
     jitcomputefunctions->instr_compute = cphvb_compute_apply;
     jitcomputefunctions->userfunctions = new map<cphvb_intp,cphvb_userfunc_impl>();
+    
     jitexecutelist = new jit_execute_list(); 
     jitkernelcache = new jit_kernel_cache();
+
+    
+    
+    jitexpressionkernelcache = new jit_expression_kernel_cache();
+
     jitcompound_kernel_count = 0;
     
     jitinstr_list_count = 0;
@@ -387,10 +440,10 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
  * Function called to exectue this VE. 
  **/
 cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
-    //printf("jit executing\n");
+    //printf("\njit executing %d\n",instruction_count);
     //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
     //cphvb_pprint_instr_list_small(instruction_list,instruction_count,"Testing!");
-    bool cloglevel[] = {0,0,0};
+    bool cloglevel[] = {0,0,0,0};
     //bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
     //bool put_in_cache = false;
     
@@ -402,19 +455,28 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
        return 0;   
     } // else 
 
+
+
     timespec time1, time2;
-    if (KE_TIMEING > 0) { 
+    if (cloglevel[3]) { 
         clock_gettime(CLOCK_REALTIME, &time1);    
-    }    
+    }
+    
     jit_compound_kernel* compound_kernel = NULL;        
     // cache lookup.
-    cphvb_intp instr_list_hash = instructionlist_hash(instruction_list,instruction_count);    
-    compound_kernel = jit_kernel_cache_lookup(jitkernelcache,instr_list_hash);            
+    cphvb_intp instr_list_hash = instructionlist_hash(instruction_list,instruction_count);
+    if (jit_cache_enabled) {
+        compound_kernel = jit_kernel_cache_lookup(jitkernelcache,instr_list_hash);
+    }
     set<cphvb_intp>* execution_list = NULL;
 
     (compound_kernel != NULL) ? cache_hit++ : cache_miss++ ;    
-    //printf("Time taken is: %ld.%ld\n ",tS.tv_sec, tS.tv_nsec);
+    //printf("Time taken is: %ld.%ld\n ",tS.tv_sec, tS.tv_nsec);        
 
+    if (cloglevel[3]) {        
+        clock_gettime(CLOCK_REALTIME, &time2);  
+        printf("instructionlist_hash %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
+    }
     
     logcustom(cloglevel,0,"=== Kernel from cache: %p  H: %ld\n",compound_kernel, instr_list_hash);            
     // cache miss
@@ -423,50 +485,95 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
         jitnametable = new jit_name_table();    
         jitbasedeptable = new jit_base_dependency_table();
         jitanalysestate = jita_make_jit_analyser_state(jitnametable,jitssamap,jitbasedeptable);
-        
+
+        if (cloglevel[3]) { 
+            clock_gettime(CLOCK_REALTIME, &time1);    
+        }
         // setup                                
         /// do analysis - check on free/discard only isntruction list.
         jit_analyse_instruction_list(jitanalysestate,instruction_list,instruction_count);            
         logcustom(cloglevel,0,"== Instruction-list initial analysis done\n");
-                    
+        if (cloglevel[3]) {    
+            clock_gettime(CLOCK_REALTIME, &time2);  
+            printf("jit_analyse_instruction_list %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
+        }
+
+        if (cloglevel[3]) {
+            clock_gettime(CLOCK_REALTIME, &time1);    
+        }            
         //logcustom(cloglevel,2,"last_nametable_size %ld\n",last_nametable_size);
         /// do dependency analysis
         jita_perform_dependecy_analysis(jitanalysestate,0);
         logcustom(cloglevel,0,"== Dependency analysis done\n");
-
+        if (cloglevel[3]) {    
+            clock_gettime(CLOCK_REALTIME, &time2);  
+            printf("jita_perform_dependecy_analysis %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
+        }
         if (cloglevel[1]) {
             jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);            
             jit_pprint_nametable_dependencies(jitanalysestate->nametable);
             jit_pprint_nametable(jitanalysestate->nametable); printf("\n");
 
         }
+        if (cloglevel[3]) { clock_gettime(CLOCK_REALTIME, &time1); }   
+        
         /// build execution list
         execution_list = generate_execution_list(jitanalysestate);
         logcustom(cloglevel,0,"== Executionlist created %p, size()=%ld\n",execution_list,execution_list->size());
         if(cloglevel[1]) {jit_pprint_set(execution_list);}
         
+        if (cloglevel[3]) {
+            printf("exeuction list size=%d\n",execution_list->size());
+            clock_gettime(CLOCK_REALTIME, &time2);  
+            printf("generate_execution_list %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
+        }        
+
+        if (cloglevel[3]) {
+            printf("exeuction list size=%d\n",execution_list->size());
+            clock_gettime(CLOCK_REALTIME, &time2);  
+            printf("generate_execution_list %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
+        }
         if (execution_list->size() > 0) {
-                    
-            // in the creation of the compoundkernel and executionkernels the executionkernels are bounded to the data of the
-            // insturctionlist used to create the kernels. This is and uptimization step and as it is needed to visit the
-            // input arrays and constants to determin their position in the instructionlist revisiting the same operands again
-            // would be inefficient.
-            /// create compund kernel with creation execution kernels.
-            compound_kernel = (jit_compound_kernel*) malloc(sizeof(jit_compound_kernel));                            
-            compound_kernel->exekernels = (jit_execute_kernel**) malloc(sizeof(jit_execute_kernel*)*execution_list->size());
-            compound_kernel->kernels_length = execution_list->size();                    
-            cphvb_intp buildresult = build_compound_kernel(jitanalysestate, execution_list, jitcompound_kernel_count, compound_kernel);
             
-            logcustom(cloglevel,0,"== Compund kernel created. res: %ld  P: %p, \n", buildresult, compound_kernel);
-            if(cloglevel[2]) {
-                printf("===================================\n");
-                printf("executionlist");jit_pprint_set(execution_list);
-                jit_pprint_nametable(jitanalysestate->nametable);
-                jit_pprint_nametable_dependencies(jitanalysestate->nametable);
-                jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);                        
+            if (jit_direct_execute) {
+
+                //printf("===================================\n");                
+                //jit_pprint_nametable(jitanalysestate->nametable);
+                //printf("executionlist");jit_pprint_set(execution_list);
+                //jit_pprint_nametable_dependencies(jitanalysestate->nametable);
+                //jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);   
+                
+                execute_from_executionlist(jitanalysestate,jitcomputefunctions ,jitexpressionkernelcache, execution_list,jit_cache_enabled)   ;             
+            } else {
+                
+                // in the creation of the compoundkernel and executionkernels the executionkernels are bounded to the data of the
+                // insturctionlist used to create the kernels. This is and uptimization step and as it is needed to visit the
+                // input arrays and constants to determin their position in the instructionlist revisiting the same operands again
+                // would be inefficient.
+                if (cloglevel[3]) { clock_gettime(CLOCK_REALTIME, &time1); }   
+                /// create compund kernel with creation execution kernels.
+                compound_kernel = (jit_compound_kernel*) malloc(sizeof(jit_compound_kernel));                            
+                compound_kernel->exekernels = (jit_execute_kernel**) malloc(sizeof(jit_execute_kernel*)*execution_list->size());
+                compound_kernel->kernels_length = execution_list->size();                    
+                cphvb_intp buildresult = build_compound_kernel(jitanalysestate, execution_list, jitcompound_kernel_count, compound_kernel);
+
+                
+                logcustom(cloglevel,0,"== Compund kernel created. res: %ld  P: %p, \n", buildresult, compound_kernel);
+                if(cloglevel[2]) {
+                    printf("===================================\n");
+                    printf("executionlist");jit_pprint_set(execution_list);
+                    jit_pprint_nametable(jitanalysestate->nametable);
+                    jit_pprint_nametable_dependencies(jitanalysestate->nametable);
+                    jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);                        
+                }
+                // increment the compound_kernel_id.
+                jitcompound_kernel_count++;
+                if (cloglevel[3]) {                
+                    clock_gettime(CLOCK_REALTIME, &time2);  
+                    printf("build_compound_kernel %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
+                }
             }
-            // increment the compound_kernel_id.
-            jitcompound_kernel_count++;
+           
         }
         
     }
@@ -478,24 +585,32 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
     // execute the 
     if (compound_kernel != NULL) {
         /// execute ckernel
-        logcustom(cloglevel,0,"== Bind\n");
+        logcustom(cloglevel,3,"== Bind\n");
         // bind execute_kernels with instruction list
         bind_compound_kernel(compound_kernel,instruction_list,jitinstr_list_count);
-        logcustom(cloglevel,0,"== Execute\n");
+        logcustom(cloglevel,3,"== Execute\n");
         // execute execute kernels
         if (KE_TIMEING > 0) {
             timespec time3;
             clock_gettime(CLOCK_REALTIME, &time3);  
             printf("start to execute %ld : %d  (%ld : %d) \n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec),diff(time2,time3).tv_sec, (diff(time2,time3).tv_nsec) ); 
         }
+        if(cloglevel[0]) {
+            printf("===================================\n");
+            printf("executionlist");//jit_pprint_set(execution_list);
+            jit_pprint_nametable(jitanalysestate->nametable);
+            jit_pprint_nametable_dependencies(jitanalysestate->nametable);
+            jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);                        
+        }
         execute_compound_kernel(jitcomputefunctions,compound_kernel,instruction_list);
+        
         logcustom(cloglevel,0,"== Cache Add\n");
         // if execution happened without errors, the compund_kernel is stored in the cache
         jit_kernel_cache_insert(jitkernelcache,instr_list_hash,compound_kernel);
         
-    } else if(execution_list != NULL && execution_list->size() > 0){
+    } else if(execution_list != NULL && execution_list->size() > 0 && !jit_direct_execute){
         if(cloglevel[1]) {jit_pprint_set(execution_list);}
-        // return error!! ckernel == NULL and is_error
+        // return error!! ckernel == NULL
         printf("something horrible happened! No compound kernel created for instruction list\n");    
     } 
     
@@ -528,9 +643,9 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 
     // De-allocate state
     
-    //printf("Instruction list computed: %ld\n", jitinstr_list_count );
-    //printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        
-    
+    printf("Instruction list computed: %ld\n", jitinstr_list_count );
+    printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        
+    printf("%s\n",jit_expression_kernel_cache_string_stats().c_str());
     return CPHVB_SUCCESS;
 }
 
@@ -538,6 +653,8 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 /**
  **/
 cphvb_error cphvb_ve_jit_reg_func(char *fun, cphvb_intp *id) {
+
+    //printf("register ufunc %s as %ld\n",fun,*id);
     
     map<cphvb_intp,cphvb_userfunc_impl>::iterator it;
     cphvb_userfunc_impl userfunc_impl;

@@ -1,0 +1,17 @@
+READMED
+
+There have been changes to the implementation such thath it now uses environment variables for various settings.
+To run a test with the JIT framework the following MUST be set.
+
+CPHVB_LIB=/opt/cphvb
+CPHVB_VE_JIT_INCLUDE=/home/jolu/diku/speciale/cphVB/cphvb-priv/include
+
+optionally varialbes are:               Default value
+
+CPHVB_JIT_KERNEL_TMP=/path/to/tmpdir    #/tmp                                
+CPHVB_JIT_DIRECTEXECUTE=True            #False
+CPHVB_JIT_CACHE_ENABLED=True            #True
+
+example:
+
+CPHVB_JIT_DIRECTEXECUTE=True CPHVB_JIT_CACHE_ENABLED=True CPHVB_LIB=/opt/cphvb CPHVB_VE_JIT_INCLUDE=/home/jolu/diku/speciale/cphVB/cphvb-priv/include dython bscholes.py --size=5*5 --cphvb=False

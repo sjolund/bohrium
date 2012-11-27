@@ -115,55 +115,6 @@ string jit_pprint_true_false(bool stm) {
         return string("true");
 }
 
-
-void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
-    if (is_array(expr)) {
-        chain->push_back(expr->name^expr->tag);
-        
-    } else if (is_constant(expr)) {
-        chain->push_back(expr->name^expr->tag);
-        
-    } else if(is_bin_op(expr)) {
-        chain->push_back(expr->name^expr->depth);
-        expr_travers_for_hashing(expr->op.expression.left,chain);
-        expr_travers_for_hashing(expr->op.expression.right,chain);
-        
-    } else if (is_un_op(expr)) {
-        chain->push_back(expr->name^expr->depth);
-        expr_travers_for_hashing(expr->op.expression.left,chain);
-    }
-}
-
-
-timespec diff(timespec start, timespec end) {
-	timespec temp;
-	if ((end.tv_nsec-start.tv_nsec)<0) {
-		temp.tv_sec = end.tv_sec-start.tv_sec-1;
-		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-	} else {
-		temp.tv_sec = end.tv_sec-start.tv_sec;
-		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-	}
-	return temp;
-}
-
-cphvb_intp expr_hash(jit_expr* expr) {
-    vector<cphvb_intp> hashinputvector;
-    expr_travers_for_hashing(expr,&hashinputvector);
-    cphvb_intp hashinput[hashinputvector.size()];
-    
-    for(uint i=0;i<hashinputvector.size();i++) {
-        hashinput[i] = hashinputvector[i];              
-    }
-    uint32_t result = 0;
-    uint32_t seed = 42;
-    cphvb_intp hash_val = 0;
-    MurmurHash3_x86_32(&hashinput,(int)hashinputvector.size()*2,seed,&result);
-    hash_val = result;
-    
-    return hash_val;
-}
-
 int jit_cphvb_type_to_num(cphvb_type type)
 {
     switch(type)
@@ -202,6 +153,67 @@ int jit_cphvb_type_to_num(cphvb_type type)
         return -1;
 	}
 }
+
+
+timespec diff(timespec start, timespec end) {
+	timespec temp;
+	if ((end.tv_nsec-start.tv_nsec)<0) {
+		temp.tv_sec = end.tv_sec-start.tv_sec-1;
+		temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+	} else {
+		temp.tv_sec = end.tv_sec-start.tv_sec;
+		temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+	}
+	return temp;
+}
+
+
+void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
+    if (is_array(expr)) {        
+        chain->push_back(jit_cphvb_type_to_num(expr->op.array->type));
+        chain->push_back(1);
+        
+    } else if (is_constant(expr)) {        
+        chain->push_back(jit_cphvb_type_to_num(expr->op.constant->type));
+        chain->push_back(2);
+                
+    } else if(is_bin_op(expr)) {                
+        chain->push_back((cphvb_intp)expr->op.expression.opcode);
+        chain->push_back(3);
+        
+        expr_travers_for_hashing(expr->op.expression.left,chain);
+        expr_travers_for_hashing(expr->op.expression.right,chain);
+        
+    } else if (is_un_op(expr)) {                
+        chain->push_back((cphvb_intp)expr->op.expression.opcode);
+        chain->push_back(4);
+        
+        expr_travers_for_hashing(expr->op.expression.left,chain);
+    }
+}
+
+
+
+
+cphvb_intp expr_hash(jit_expr* expr) {
+    vector<cphvb_intp> hashinputvector;
+    expr_travers_for_hashing(expr,&hashinputvector);
+    cphvb_intp hashinput[hashinputvector.size()];
+    
+    for(uint i=0;i<hashinputvector.size();i++) {
+        hashinput[i] = hashinputvector[i];
+        //printf("%ld.",hashinputvector[i]);
+    }
+    uint32_t result = 0;
+    uint32_t seed = 42;
+    cphvb_intp hash_val = 0;
+    MurmurHash3_x86_32(&hashinput,(int)hashinputvector.size()*sizeof(cphvb_intp),seed,&result);
+    hash_val = result;
+
+    //printf("++ hash ++ %d\n",hash_val);
+    return abs(hash_val);
+}
+
 
 // compare two cphvb_intp array.
 /**
@@ -595,6 +607,11 @@ void jit_pprint_il_map2(jit_io_instruction_list_map_lists* il_map) {
     cphvb_index instr,operand;
 
     ss << "IL map2\n";
+    if (il_map == NULL) {
+        ss << " nil\n";
+        printf("%s",ss.str().c_str());
+        return;
+    }
     ss << "Array map:\n";    
     for(i = 0; i < il_map->array_map->size(); i++) {
         instr = il_map->array_map->at(i)->first;
@@ -698,32 +715,32 @@ void jit_pprint_execute_kernel(jit_execute_kernel* exekernel) {
             }
         }        
     }
-    
     jit_pprint_il_map2(exekernel->kernel->il_map);
 }
 
 int timeval_subtract (timeval* result, timeval* x, timeval* y) {     
     
-       /* Perform the carry for the later subtraction by updating y. */
-       if (x->tv_usec < y->tv_usec) {
-         int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
-         y->tv_usec -= 1000000 * nsec;
-         y->tv_sec += nsec;
-       }
-       if (x->tv_usec - y->tv_usec > 1000000) {
-         int nsec = (x->tv_usec - y->tv_usec) / 1000000;
-         y->tv_usec += 1000000 * nsec;
-         y->tv_sec -= nsec;
-       }
-     
-       /* Compute the time remaining to wait.
-          tv_usec is certainly positive. */
-       result->tv_sec = x->tv_sec - y->tv_sec;
-       result->tv_usec = x->tv_usec - y->tv_usec;
-     
-       /* Return 1 if result is negative. */
-       return x->tv_sec < y->tv_sec;
-     }
+    /* Perform the carry for the later subtraction by updating y. */
+    if (x->tv_usec < y->tv_usec) {
+        int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
+        y->tv_usec -= 1000000 * nsec;
+        y->tv_sec += nsec;
+    }
+    
+    if (x->tv_usec - y->tv_usec > 1000000) {
+        int nsec = (x->tv_usec - y->tv_usec) / 1000000;
+        y->tv_usec += 1000000 * nsec;
+        y->tv_sec -= nsec;
+    }
+
+    /* Compute the time remaining to wait.
+      tv_usec is certainly positive. */
+    result->tv_sec = x->tv_sec - y->tv_sec;
+    result->tv_usec = x->tv_usec - y->tv_usec;
+
+    /* Return 1 if result is negative. */
+    return x->tv_sec < y->tv_sec;
+}
 
 
 

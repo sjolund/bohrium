@@ -1,6 +1,8 @@
 // jit_kernel.h
+#include "jit_kernel_cache.h"
 #ifndef __JIT_KERNEL_H
 #define __JIT_KERNEL_H
+
 
 #include "cphvb.h"
 #include "jit_ast.h"
@@ -8,6 +10,7 @@
 #include "jit_analyser.h"
 #include "jit_vcache.h"
 #include "jit_computing.h"
+
 #include <map>
 #include <vector>
 
@@ -29,6 +32,7 @@
 
 typedef pair<cphvb_intp,cphvb_intp> jit_instruction_list_coord; // <instruction_num, operand> could be cphvb_intp[2] instead.
 
+
 typedef struct {
     vector< jit_instruction_list_coord* >* array_map;
     vector< jit_instruction_list_coord* >* constant_map;
@@ -40,7 +44,8 @@ enum jit_execute_kernel_type { JIT_EXPR_KERNEL, JIT_COMPILE_KERNEL};
 
 typedef struct {
     jit_expr*           expr;
-    cphvb_instruction*  instructions;    
+    cphvb_instruction*  instructions;
+    cphvb_instruction   instruction;   
     cphvb_index         instructions_length;
     cphvb_index         instruction_num;
     bool                is_userfunc;
@@ -104,7 +109,8 @@ cphvb_intp bind_compound_kernel(jit_compound_kernel* ckernel, cphvb_instruction*
 cphvb_intp execute_compound_kernel(jit_compute_functions* compute_functions, jit_compound_kernel* ckernel, cphvb_instruction* list);
 
 
-
+typedef map<cphvb_intp, jit_execute_kernel*> jit_expression_kernel_cache;
+cphvb_error execute_from_executionlist(jit_analyse_state* s, jit_compute_functions* compute_functions, jit_expression_kernel_cache* e_kernel_cache, set<cphvb_intp>* execution_list,bool cache_enabled);
 
 #endif
 

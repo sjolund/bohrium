@@ -26,8 +26,9 @@
 
 using namespace std;
 
-static string path_jitkernels = "/tmp";       // tmp
-static string path_cphvb_include;
+static string path_jitkernels = "/tmp";
+static string path_cphvb_include = "";
+static string path_cphvb_lib = "";
 string create_source_full_path(string funcname) {
     stringstream ss;
     ss << path_jitkernels << "/" << funcname << ".c";
@@ -153,8 +154,8 @@ cphvb_intp jit_write_function_to_file(string func_name, string func_text) {
  * Remove the kernel file for the function name.
  **/
 cphvb_intp remove_kernel_files(string func_name) {
-    bool cloglevel[] = {1};
-    string filepath =  "/tmp/"+func_name;
+    bool cloglevel[] = {0};
+    string filepath =  path_jitkernels+"/"+func_name;
     logcustom(cloglevel,0,"CGCC Removing kernelfile %s\n", filepath.c_str());    
     remove( (filepath + ".so").c_str() );
     remove( (filepath + ".c").c_str() );
@@ -172,18 +173,52 @@ cphvb_error get_from_env_cphvb_include_dir() {
     {        
          path_cphvb_include = string(env);
     }
-
     
     struct stat st;
-    if(env == NULL || stat(path_jitkernels.c_str(),&st) != 0) {
-        fprintf(stderr, "CPHVB_VE_JIT_INCLUDE must exists! %s\n",path_jitkernels.c_str());
+    if(env == NULL || stat(path_cphvb_include.c_str(),&st) != 0) {
+        fprintf(stderr, "CPHVB_VE_JIT_INCLUDE must exists! %s\n",path_cphvb_include.c_str());
         return CPHVB_ERROR;
     }
     return CPHVB_SUCCESS;    
 }
 
+/**
+ * 
+ **/
+cphvb_error get_from_env_kernel_create_tmp_dir() {
+    char *env = getenv("CPHVB_VE_JIT_KERNEL_TMP");         // Override block_size from environment-variable.
+    
+    if(env != NULL)
+    {        
+         path_jitkernels = string(env);
+    }
+    
+    struct stat st;
+    if(stat(path_jitkernels.c_str(),&st) != 0) {
+        fprintf(stderr, "CPHVB_VE_JIT_KERNEL_TMP must exists! %s\n",path_jitkernels.c_str());
+        return CPHVB_ERROR;
+    }
+    return CPHVB_SUCCESS;    
+}
 
-
+/**
+ * 
+ **/
+cphvb_error get_from_env_cphvb_lib_dir() {
+    char *env = getenv("CPHVB_LIB");         // Override block_size from environment-variable.
+    
+    if(env != NULL)
+    {        
+         path_cphvb_lib = string(env);
+    }
+    
+    struct stat st;
+    if(stat(path_cphvb_lib.c_str(),&st) != 0) {
+        fprintf(stderr, "CPHVB_LIB must exists! %s\n",path_cphvb_lib.c_str());
+        return CPHVB_ERROR;
+    }
+    return CPHVB_SUCCESS;    
+}
 
 /**
  * Compiles the kernel string to an share library file, which are linked into the running code.
@@ -199,7 +234,17 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
 
     // check the existence of jitkernels dir.
     if (get_from_env_cphvb_include_dir() == CPHVB_ERROR) {
-        fprintf(stderr, "jit related paths no ser correctly!\n");
+        fprintf(stderr, "jit related paths not set correctly!\n");
+        return 1;
+    }
+
+    if (get_from_env_kernel_create_tmp_dir() == CPHVB_ERROR) {
+        fprintf(stderr, "jit kernel create tmp paths not set correctly!\n");
+        return 1;
+    }
+    
+    if (get_from_env_cphvb_lib_dir() == CPHVB_ERROR) {
+        fprintf(stderr, "cphvb lib paths not set correctly!\n");
         return 1;
     }
 
@@ -217,7 +262,7 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
     logcustom(cloglevel,2,"CGGC initial dlopen: %s\n",funclibpath.c_str());            
     void* lib_handler = dlopen( funclibpath.c_str(),RTLD_LAZY);
     logcustom(cloglevel,2,"dlopen error: %s\n",dlerror());
-
+    remove_kernel_files(funcname);
     
     if (lib_handler == NULL) {        
         logcustom(cloglevel,1,"CGCC creating new %s\n",funclibname.c_str());
@@ -226,7 +271,7 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
         if (create_c_file) {
             if (jit_write_function_to_file(func_name,compute_func_text) == 0) {
                 //ss << "echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH;";
-                ss << "gcc -march=native -xc -fPIC -O2 " << create_source_full_path(funcname) << " -I" << path_cphvb_include << "   -L${CPHVBLIB}";
+                ss << "gcc -march=native -xc -fPIC -O2 " << create_source_full_path(funcname) << " -I" << path_cphvb_include << "   -L" << path_cphvb_lib;
                 ss << " -lcphvb -lrt -ldl -shared -o " << funclibpath;
             }            
             

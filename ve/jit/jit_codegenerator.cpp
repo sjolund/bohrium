@@ -669,7 +669,7 @@ string create_kernel_function_travers_nocast(string name,
     cphvb_index num_arrays = arrays->size();
     cphvb_index num_constants = constants->size();
 
-    logcustom(cloglevel,0,"create_kernel_function_travers_nocast(%s). oa-size = %ld\n",name.c_str(),outputarrays->size());
+    logcustom(cloglevel,0,"create_kernel_function_travers_nocast(%s). oa->size = %ld, as->size=%ld cs->size=%ld\n",name.c_str(),outputarrays->size(),num_arrays,num_constants);
     
     stringstream ss;
     //    ss << "#include <cphvb_win_math.hpp>\n";

@@ -111,6 +111,10 @@ void print_ast_name_recursive_stream(int step, ast* node, std::stringstream* ss)
             //*ss << "[" << step << "] Array: " << node->op.array << " " << node->tag << "\n"; 
             //printf("[%d] Array: %p %d\n",step,node->op.array,node->tag);
             break;
+        case expr_type_userfunc:
+            add_fill(step,ss);
+            *ss << "Ufunc: " << node->op.array << " " << node->tag << "\n"; 
+            break;
     }    
 }
 
