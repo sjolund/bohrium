@@ -1,4 +1,5 @@
 import cphvbnumpy as numpy
+import cphvbbridge as bridge
 import util
     
 def main():
@@ -19,6 +20,7 @@ def main():
 
     b.start()
     for _ in xrange(i):
+        bridge.flush()
         tmp[:] = center
         tmp += left1
         tmp += left2

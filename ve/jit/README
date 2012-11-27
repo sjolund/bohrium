@@ -1,0 +1,6 @@
+The jit-engine uses the following environment variables::
+
+CPHVB_VE_JIT_INCLUDE=~/cphvb/include
+CPHVBLIB=/opt/cphvb/
+
+...
