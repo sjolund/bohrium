@@ -104,9 +104,10 @@ for i in xrange(T):
                                       g/2*Hy[:-1,1:]**2) - \
                                      (Vy[:-1,:-1]**2/Hy[:-1,:-1] + \
                                       g/2*Hy[:-1,:-1]**2))
-
+    
+    
 res = numpy.add.reduce(numpy.add.reduce(H / n))
-
 B.stop()
 B.pprint()
+
 
