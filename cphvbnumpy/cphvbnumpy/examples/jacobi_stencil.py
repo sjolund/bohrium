@@ -1,4 +1,4 @@
-"""
+""" 
 Jacobi Stencil
 --------------
 
@@ -15,7 +15,7 @@ def frezetrap(height, width, dtype=np.float32, cphvb=True):
     return grid
 
 def solve(grid, epsilon=0.005, max_iterations=None):
-    print "test! solve"
+    
     center = grid[1:-1, 1:-1]
     north  = grid[0:-2, 1:-1]
     east   = grid[1:-1, 2:  ]
@@ -33,7 +33,7 @@ def solve(grid, epsilon=0.005, max_iterations=None):
     return grid
 
 def iterate(grid, iterations):
-    print "test! iterate"
+    
     center = grid[1:-1, 1:-1]
     north  = grid[0:-2, 1:-1]
     east   = grid[1:-1, 2:  ]

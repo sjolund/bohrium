@@ -878,6 +878,47 @@ def test_pattern_501(H,W):
 #delta = np.add.reduce(diff)
 #delta = np.add.reduce(delta)
 
+def test_pattern_501(H,W):
+    cphvbbridge.flush()    
+    type=np.float32
+    SURVIVE_LOW= 2
+    SURVIVE_HIGH = 3
+    SPAWN = 3
+    state = np.array([
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 1, 0, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0],
+    [0, 0, 1, 0, 1, 0, 0],
+    [0, 1, 1, 1, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0]], dtype=np.int32)
+
+    cphvbbridge.handle_array(state)
+
+    cells = state[1:-1,1:-1]
+    ul = state[0:-2, 0:-2]
+    um = state[0:-2, 1:-1]
+    ur = state[0:-2, 2:  ]
+    ml = state[1:-1, 0:-2]
+    mr = state[1:-1, 2:  ]
+    ll = state[2:  , 0:-2]
+    lm = state[2:  , 1:-1]
+    lr = state[2:  , 2:  ]
+
+    
+    
+    #neighbors = ul + um + ur + ml + mr + ll + lm + lr
+    print cells
+    B = (cells >= 1) # & (live <= SURVIVE_HIGH))    
+    print B
+
+def test_pattern_502(H,W):
+    cphvbbridge.flush()    
+    type=np.float32
+    A = np.array([1,1,2,2,3,4,5])
+    cphvbbridge.handle_array(A)    
+    B = (A >= 2) # & (live <= SURVIVE_HIGH))    
+    print B
 
 if __name__ == "__main__":
     #~ test_pattern_000(1,5)     
@@ -895,7 +936,8 @@ if __name__ == "__main__":
     #test_pattern_405(H,W)
    
     #test_pattern_301(2,5)
-    test_pattern_018(2,6)
+    #test_pattern_018(2,6)
+    test_pattern_501(1,1)
     #test_pattern_016(2,5)  
     #test_pattern_017(2,5)
     

@@ -7,6 +7,7 @@ So what does this code example illustrate?
 Adapted from: http://people.sc.fsu.edu/~jburkardt/m_src/shallow_water_2d/
 """
 import cphvbnumpy as np
+import cphvbbridge
 
 g = 9.80665 # gravitational acceleration
 
@@ -15,6 +16,7 @@ def setup(matrix_shape, dtype=np.float32, cphvb=False):
    return np.ones(matrix_shape,dtype=dtype,cphvb=cphvb)   
  
 def step(H, U, V, dt=0.02, dx=1.0, dy=1.0):
+    cphvbbridge.flush()
     # Reflecting boundary conditions
     H[:,0] = H[:,1]   ; U[:,0] = U[:,1]     ; V[:,0] = -V[:,1]
     H[:,-1] = H[:,-2] ; U[:,-1] = U[:,-2]   ; V[:,-1] = -V[:,-2]
@@ -71,4 +73,5 @@ def simulate(H, timesteps):
     V = np.zeros_like(H)
     for i in xrange(timesteps):
         (H, U, V) = step(H, U, V)
+    
     return H

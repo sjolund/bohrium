@@ -38,8 +38,7 @@ def solve(a, b):
 
     >>> (np.dot(a, x) == b).all()
     True 
-    """
-
+    """    
     W = np.hstack((a,b[:,np.newaxis]))
     for p in xrange(W.shape[0]-1):
         for r in xrange(p+1,W.shape[0]):
@@ -81,13 +80,14 @@ def jacobi(a, b, tol=0.0005):
 
     >>> (np.dot(a, x) == b).all()
     True 
-    """
+    """    
     x = np.ones(np.shape(b), dtype=b.dtype, cphvb=b.cphvb)
     D = 1/np.diag(a)
     R = np.diag(np.diag(a)) - a
     T = D[:,np.newaxis]*R
     C = D*b
     error = tol + 1
+    
     while error > tol:
         xo = x
         x = np.add.reduce(T*x,-1) + C
@@ -120,8 +120,7 @@ def lu(A):
     p : array, shape (M)
         Contains the row pivots used by the decomposition. 
         Row i have been swaped with p[i]
-    """
-
+    """    
     if A.dtype != numpy.float32 and A.dtype != numpy.float64:
         raise ValueError("Input must be floating point numbers")
     if A.ndim != 2 or A.shape[0] != A.shape[1]:

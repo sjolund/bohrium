@@ -173,8 +173,9 @@ if __name__ == "__main__":
 
     if len(script_list) == 0:
         #script_list = os.listdir(os.path.dirname(os.path.abspath(__file__)))
-        script_list = ["test_benchmarks.py"]
+        script_list = ["test_views.py","test_benchmarks.py"]
         #script_list = ["test_sor.py"]
+        #script_list = ["test_views.py"]
         
 
     print "*"*3, "Testing the equivalency of cphVB-NumPy and NumPy", "*"*3
@@ -189,6 +190,7 @@ if __name__ == "__main__":
                 cls_obj  = getattr(m, cls)
                 cls_inst = cls_obj()
                 #All test methods starts with "test_"
+                
                 for mth in [o for o in dir(cls_obj) if o.startswith("test_")]:
                     name = "%s/%s/%s"%(f,cls[5:],mth[5:])
                     print "Testing %s"%(name)
@@ -197,10 +199,12 @@ if __name__ == "__main__":
                             a.cphvb = False
                         (res1,cmd1) = getattr(cls_inst,mth)(arys)
                         res1 = res1.copy()
-                        cphvbbridge.flush()
+                        
+                        cphvbbridge.flush()                        
                         for a in arys.values():
                             a.cphvb = True
                         (res2,cmd2) = getattr(cls_inst,mth)(arys)
+                        
                         assert cmd1 == cmd2
                         cmd += cmd1
                         try:

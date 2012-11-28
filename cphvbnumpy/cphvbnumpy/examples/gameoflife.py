@@ -5,7 +5,7 @@ Game of Life
 So what does this code example illustrate?
 """
 import cphvbnumpy as np
-
+import cphvbbridge
 SURVIVE_LOW= 2
 SURVIVE_HIGH = 3
 SPAWN = 3
@@ -26,16 +26,23 @@ def play(state, iterations):
     ll = state[2:  , 0:-2]
     lm = state[2:  , 1:-1]
     lr = state[2:  , 2:  ]
-
-    for i in xrange(iterations):
         
-        neighbors = ul + um + ur + ml + mr + ll + lm + lr       # count neighbors
-        live = neighbors * cells                                # extract live cells neighbors
-        stay = (live >= SURVIVE_LOW) & (live <= SURVIVE_HIGH)   # find cells the stay alive
-        dead = neighbors * (cells == 0)                         # extract dead cell neighbors
-        spawn = dead == SPAWN                                   # find cells that spaw new life
-        cells[:] = stay | spawn                                 # save result for next iteration
 
+    cphvbbridge.flush()
+    for i in xrange(iterations):
+        cphvbbridge.flush()
+        neighbors = ul + um + ur + ml + mr + ll + lm + lr       # count neighbors        
+        live = neighbors * cells                                # extract live cells neighbors
+        #print "live",live
+        stay = (live >= SURVIVE_LOW) & (live <= SURVIVE_HIGH)   # find cells the stay alive
+        #print "stay",stay
+        dead = neighbors * (cells == 0)                         # extract dead cell neighbors
+        #print "dead",dead
+        spawn = dead == SPAWN                                   # find cells that spaw new life
+        #print "spawn",spawn
+        cells[:] = stay | spawn                                 # save result for next iteration
+        #print "cells",cells    
+    
     return state
 
 if __name__ == "__main__":
@@ -49,39 +56,49 @@ if __name__ == "__main__":
 
         samples += 1
 
-        #s = randomstate(w, h,cphvb=False)
-        #s = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
- #      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-#       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int32, cphvb=False)
+        #~ s = randomstate(w, h,cphvb=False)
+        s = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int32, cphvb=False)
+
+        #~ s = randomstate(w, h,cphvb=False)
+        #~ s = np.array([
+        #~ [0, 0, 0, 0, 0, 0, 0],
+        #~ [0, 0, 0, 0, 0, 0, 0],
+        #~ [0, 0, 1, 0, 0, 0, 0],
+        #~ [0, 0, 0, 1, 0, 0, 0],
+        #~ [0, 0, 1, 0, 1, 0, 0],
+        #~ [0, 1, 1, 1, 0, 0, 0],
+        #~ [0, 0, 0, 0, 0, 0, 0]], dtype=np.int32, cphvb=False)        
 
         #s = np.zeros((w,h), dtype=np.int32, cphvb=False)
-        s = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
-       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int32, cphvb=False)
+        #~ s = np.array([[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
+       #~ [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.int32, cphvb=False)
         n = s.copy()
         n.cphvb = True
-
-        play( s, 50 )
+        
+        play( s, 50 )        
         play( n, 50 )
-
+        
         print s
         print n
         break

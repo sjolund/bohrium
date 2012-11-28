@@ -442,7 +442,7 @@ def diagflat(d,k=0):
            [0, 0, 2],
            [0, 0, 0]])
 
-    """
+    """    
     d = numpy.asarray(d)
     d = flatten(d) 
     size = d.size+abs(k)
@@ -499,7 +499,7 @@ def diag(v, k=0):
            [0, 4, 0],
            [0, 0, 8]])
     """
-
+    print "found you"
     if v.ndim == 1:
         return diagflat(v,k)
     elif v.ndim == 2:
