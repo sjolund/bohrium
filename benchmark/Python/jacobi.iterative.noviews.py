@@ -15,7 +15,6 @@ AD = np.diagonal(A).copy()
 AD.cphvb    = B.cphvb
 
 B.start()
-print "test! iterate"
 for i in xrange(I):
     t1 = A * h
     t1 = np.add.reduce(t1)
