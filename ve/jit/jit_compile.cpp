@@ -228,9 +228,9 @@ cphvb_error get_from_env_cphvb_lib_dir() {
  * No c-file version not working. needed to? Must create a valid string for the console for gcc to load.
  **/
 cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kernel* kernel, bool reset_kernel_dir) {
-    bool cloglevel[] = {0,0,0};
+    bool cloglevel[] = {0,0,0,0};
     bool create_c_file = true;
-    logcustom(cloglevel,0,"CGCC compile_gcc(%s, removekernel=%s\n",func_name.c_str(),jit_pprint_true_false(reset_kernel_dir).c_str());
+    logcustom(cloglevel,3,"CGCC compile_gcc(%s, removekernel=%s\n",func_name.c_str(),jit_pprint_true_false(reset_kernel_dir).c_str());
 
     // check the existence of jitkernels dir.
     if (get_from_env_cphvb_include_dir() == CPHVB_ERROR) {
@@ -262,6 +262,7 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
     logcustom(cloglevel,2,"CGGC initial dlopen: %s\n",funclibpath.c_str());            
     void* lib_handler = dlopen( funclibpath.c_str(),RTLD_LAZY);
     logcustom(cloglevel,2,"dlopen error: %s\n",dlerror());
+
     remove_kernel_files(funcname);
     
     if (lib_handler == NULL) {        

@@ -135,7 +135,10 @@ cphvb_error allocate_for_exekernel(jit_execute_kernel* ekernel) {
     bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"AFE allocate_for_exekernel(%ld)\n",ekernel->kernel->id);
     cphvb_error res;
-    logcustom(cloglevel,1,"AFE %ld \n",ekernel->outputarrays_length);
+    logcustom(cloglevel,1,"AFE num outputs %ld \n",ekernel->outputarrays_length);
+
+    
+    
     // this will be 1. Could be extended to more if more complex kernels where to be created.
     for(int i=0;i<ekernel->outputarrays_length;i++) {
         logcustom(cloglevel,0,"outputarray* = %p\n",ekernel->arrays[i]);
@@ -176,7 +179,12 @@ void expr_travers_distinct_traverser(jit_analyse_state* s, jit_expr* expr, map<c
     bool cloglevel[] = {0,0};
     logcustom(cloglevel,0,"ETDT expr_travers_distinct_traverser()\n");
     jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-    if (is_array(expr) || entr->is_executed) {
+    if(is_constant(expr)) {
+        logcustom(cloglevel,0,"ETDT constant \n");
+        constants->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,(cphvb_intp)constants->size()));
+        
+        
+    } else if (is_array(expr) || entr->is_executed) {
         logcustom(cloglevel,0,"ETDT array %d %d\n", entr->is_executed,is_array(expr));
         cphvb_array* arr = (entr->is_executed)? entr->arrayp :  entr->expr->op.array ;
         map<cphvb_array*,cphvb_intp>::iterator it;
@@ -184,11 +192,6 @@ void expr_travers_distinct_traverser(jit_analyse_state* s, jit_expr* expr, map<c
             arrays->insert(pair<cphvb_array*,cphvb_intp>(arr,(cphvb_intp)arrays->size()));
             logcustom(cloglevel,0,"ETDT added %p\n",arr);         
         }
-        
-    } else if(is_constant(expr)) {
-        logcustom(cloglevel,0,"ETDT constant \n");
-        constants->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,(cphvb_intp)constants->size()));
-        
         
     } else if(is_bin_op(expr)) {
         logcustom(cloglevel,0,"ETDT binary \n");
@@ -516,8 +519,8 @@ cphvb_intp execute_kernel_compiled(jit_execute_kernel* exekernel) {
     
     for(int i=0;i<exekernel->arrays_length;i++) {        
         //logcustom(cloglevel,1,"A:%p \n",exekernel);
-        logcustom(cloglevel,1,"A:%p \n",exekernel->arrays[i]);
-        if (cloglevel[2]) {jit_pprint_cphvb_array(exekernel->arrays[i],0);}
+        logcustom(cloglevel,1,"A: %p \n",exekernel->arrays[i]);
+        if (cloglevel[1]) {jit_pprint_cphvb_array(exekernel->arrays[i],0);}
     }    
     if (exekernel->inputconstants_length >0) {        
         logcustom(cloglevel,1,"C: %p\n",exekernel->inputconstants[0]);
@@ -536,7 +539,7 @@ cphvb_intp execute_kernel_compiled(jit_execute_kernel* exekernel) {
     
     func(exekernel->arrays,exekernel->inputconstants,0,0);
 
-    //kernel_func_1904711455_0(exekernel->arrays,exekernel->inputconstants,0,0);
+    //kernel_func_1158854506_0(exekernel->arrays,exekernel->inputconstants,0,0);
     //kernel_func_4265622974_0(exekernel->arrays,exekernel->inputconstants,0,0);
 
     if (K_TIMEING > 0) {     
@@ -608,35 +611,14 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
                                         bool create_instruction_list) {
 
     bool cloglevel[] = {0,0,0};    
-    logcustom(cloglevel,0,"s _expr_operand_extract_traverser3()\n");
+    logcustom(cloglevel,0,"EETNC s _expr_operand_extract_traverser_nocast()\n");
     
     stringstream ss;
     
     jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-    logcustom(cloglevel,2,"+++ %ld .. executed= %s\n",entr->expr->name, entr->is_executed?"True":"False");
-    if (is_array(expr) || entr->is_executed) {        
-        cphvb_intp ia = -1;        
-        cphvb_array* arr = is_array(expr)? expr->op.array : entr->arrayp;
-
-        // find or add to array list    
-        if(as->find(arr) == as->end()) {                    
-            ia = as->size();                        
-            as->insert(pair<cphvb_array*,cphvb_intp>(arr,ia));
-
-            // create IL map entry.                                    
-            il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,entr->operand_num));                            
-        } else {            
-            ia = as->find(arr)->second;            
-        }
-            
-        // create computation expression
-        if (create_computation_string) {
-            //ss << "*(" << jitcg_nameing_array_offset("",ia+output_count) <<  " + " << jitcg_nameing_array_datapointer("",ia+output_count) << ")";
-            ss << jitcg_build_array_compute_component(ia);
-            //ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(arr->type) << "*) ds[" << ia << "]->data))";                        
-        }       
-        
-    } else if (is_constant(expr)) {
+    logcustom(cloglevel,2,"EETNC +++ %ld .. %d executed= %s\n",entr->expr->name, expr->tag,  entr->is_executed?"True":"False");
+    if (is_constant(expr)) {
+        logcustom(cloglevel,1,"EETNC Constant\n");     
         cphvb_intp ic = -1;
         //printf("=========== %s - %p - ",cs->find(expr->op.constant) == cs->end()?"NoTIn":"In",expr->op.constant);
         //constant_value_text_s(expr->op.constant);
@@ -644,9 +626,9 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
         
         if(cs->find(expr->op.constant) == cs->end()) {            
             ic = cs->size();
-            logcustom(cloglevel,1,"insert into CS: %d - %p\n",cs->size(), expr->op.constant);            
+            logcustom(cloglevel,1,"EETNC insert into CS: %d - %p\n",cs->size(), expr->op.constant);            
             cs->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,ic));
-            logcustom(cloglevel,1,"%p - %ld / %ld %d\n",entr,entr->instr_num,entr->operand_num,cs->size());
+            logcustom(cloglevel,1,"EETNC %p - %ld / %ld %d\n",entr,entr->instr_num,entr->operand_num,cs->size());
             
             jit_name_entry* tentr = jita_nametable_lookup(s->nametable,expr->parent->name);
             if (tentr->instr->operand[1] == NULL) {
@@ -662,13 +644,37 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
             ss << jitcg_build_constant_compute_component(ic);
         }
         
+    } else if (is_array(expr) || entr->is_executed) {
+        logcustom(cloglevel,1,"EETNC Array\n");     
+        cphvb_intp ia = -1;        
+        cphvb_array* arr = is_array(expr)? expr->op.array : entr->arrayp;
+        
+        // find or add to array list    
+        if(as->find(arr) == as->end()) {                    
+            ia = as->size();
+            logcustom(cloglevel,1,"EETNC Array %p, %d t: %s\n",entr->arrayp, ia, cphvb_type_text(entr->arrayp->type));
+            as->insert(pair<cphvb_array*,cphvb_intp>(arr,ia));
+            
+            // create IL map entry.                                    
+            il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,entr->operand_num));                            
+        } else {            
+            ia = as->find(arr)->second;            
+        }
+            
+        // create computation expression
+        if (create_computation_string) {
+            //ss << "*(" << jitcg_nameing_array_offset("",ia+output_count) <<  " + " << jitcg_nameing_array_datapointer("",ia+output_count) << ")";
+            ss << jitcg_build_array_compute_component(ia);
+            //ss << "*(offs[" << ia << "]+((" << cphvb_type_typetext(arr->type) << "*) ds[" << ia << "]->data))";                        
+        }       
+        
     } else if(is_bin_op(expr)) {
         if (create_instruction_list) {
             is->push_back(entr->instr);
         } 
         string s1 = _expr_extract_traverser4(s,expr->op.expression.left,as,cs,il_map,is,output_count,create_computation_string,create_instruction_list);
         string s2 = _expr_extract_traverser4(s,expr->op.expression.right,as,cs,il_map,is,output_count,create_computation_string,create_instruction_list);
-        logcustom(cloglevel,2,"binary, s1,s2 created\n");
+        logcustom(cloglevel,2,"EETNC binary, s1,s2 created\n");
         if (create_computation_string) {            
             return build_expression_string(expr->op.expression.opcode,s1,s2);
         }        
@@ -678,13 +684,13 @@ string _expr_extract_traverser4(jit_analyse_state* s,jit_expr* expr,
             is->push_back(entr->instr);
         }
         string s1 = _expr_extract_traverser4(s,expr->op.expression.left,as,cs,il_map,is,output_count,create_computation_string,create_instruction_list);
-        logcustom(cloglevel,2,"unary, s1 created\n");
+        logcustom(cloglevel,2,"EETNC unary, s1 created\n");
         if (create_computation_string) {            
             return build_expression_string(expr->op.expression.opcode,s1,"NONE");        
         }        
     }
     
-    logcustom(cloglevel,0,"e jitcg_expr_travers_array() -- %s\n",ss.str().c_str());
+    logcustom(cloglevel,0,"EETNC e jitcg_expr_travers_array() -- %s\n",ss.str().c_str());
     return ss.str();  
 }
 
@@ -702,15 +708,16 @@ string expr_extract_traverser_nocast(jit_analyse_state* s,jit_expr* expr,
                                 vector<cphvb_instruction*>* is,                                                                    
                                 bool create_computation_string,
                                 bool create_instruction_list) {
-
+    bool cloglevel[] = {0,0,0};    
     jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
     
     il_map->output_array_map->push_back(new jit_instruction_list_coord(entr->instr_num,entr->operand_num));            
     oas->insert(pair<cphvb_array*,cphvb_intp>(entr->arrayp,0));
     
     il_map->array_map->push_back(new jit_instruction_list_coord(entr->instr_num,entr->operand_num));            
-    as->insert(pair<cphvb_array*,cphvb_intp>(entr->arrayp,0)); 
-
+    as->insert(pair<cphvb_array*,cphvb_intp>(entr->arrayp,0));
+    
+    logcustom(cloglevel,1,"EETNC adding %p, %d t: %s\n",entr->arrayp, 0, cphvb_type_text(entr->arrayp->type));
     stringstream ss;
     //ss << "*(" << jitcg_nameing_array_offset("",0) << "+"<< jitcg_nameing_array_datapointer("",0) << ") = ";
     ss << jitcg_build_array_compute_component(0) << " = ";
@@ -735,13 +742,38 @@ string _expr_extract_traverser3(jit_analyse_state* s,jit_expr* expr,
                                         bool create_instruction_list) {
 
     bool cloglevel[] = {0,0,0};    
-    logcustom(cloglevel,0,"s _expr_operand_extract_traverser3()\n");
+    logcustom(cloglevel,0,"EET3 s _expr_operand_extract_traverser3()\n");
     
     stringstream ss;
     
     jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
-    logcustom(cloglevel,2,"+++ %ld .. executed= %s\n",entr->expr->name, entr->is_executed?"True":"False");
-    if (is_array(expr) || entr->is_executed) {        
+    logcustom(cloglevel,2,"EET3 %ld .. executed= %s\n",entr->expr->name, entr->is_executed?"True":"False");
+    if (is_constant(expr)) {
+        cphvb_intp ic = -1;
+
+        //printf("=========== %s - %p - ",cs->find(expr->op.constant) == cs->end()?"NoTIn":"In",expr->op.constant);
+        //constant_value_text_s(expr->op.constant);
+        //printf("\n");
+        
+        if(cs->find(expr->op.constant) == cs->end()) {            
+            ic = cs->size();
+            logcustom(cloglevel,1,"EET3 insert into CS: %d - %p\n",cs->size(), expr->op.constant);            
+            cs->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,ic));
+            logcustom(cloglevel,1,"EET3 %p - %ld / %ld %d\n",entr,entr->instr_num,entr->operand_num,cs->size());
+            
+            jit_name_entry* tentr = jita_nametable_lookup(s->nametable,expr->parent->name);
+            if (tentr->instr->operand[1] == NULL) {
+                 il_map->constant_map->push_back(new jit_instruction_list_coord(tentr->instr_num,1));
+            } else { //tentr->instr->operand[2] == NULL
+                il_map->constant_map->push_back(new jit_instruction_list_coord(tentr->instr_num,2));
+            }                
+        } else {            
+            ic = cs->find(expr->op.constant)->second;           
+        }                
+        ss << " *((" << cphvb_type_typetext(expr->op.constant->type)  << "*)" << " &cs[" << ic << "]->value) ";
+        
+        
+    } else if (is_array(expr) || entr->is_executed) {        
         cphvb_intp ia = -1;        
         cphvb_array* arr = is_array(expr)? expr->op.array : entr->arrayp;
         // find or add to array list    
@@ -764,38 +796,13 @@ string _expr_extract_traverser3(jit_analyse_state* s,jit_expr* expr,
             }            
         }       
         
-    } else if (is_constant(expr)) {
-        cphvb_intp ic = -1;
-
-        //printf("=========== %s - %p - ",cs->find(expr->op.constant) == cs->end()?"NoTIn":"In",expr->op.constant);
-        //constant_value_text_s(expr->op.constant);
-        //printf("\n");
-        
-        if(cs->find(expr->op.constant) == cs->end()) {            
-            ic = cs->size();
-            logcustom(cloglevel,1,"insert into CS: %d - %p\n",cs->size(), expr->op.constant);            
-            cs->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,ic));
-            logcustom(cloglevel,1,"%p - %ld / %ld %d\n",entr,entr->instr_num,entr->operand_num,cs->size());
-            
-            jit_name_entry* tentr = jita_nametable_lookup(s->nametable,expr->parent->name);
-            if (tentr->instr->operand[1] == NULL) {
-                 il_map->constant_map->push_back(new jit_instruction_list_coord(tentr->instr_num,1));
-            } else { //tentr->instr->operand[2] == NULL
-                il_map->constant_map->push_back(new jit_instruction_list_coord(tentr->instr_num,2));
-            }                
-        } else {            
-            ic = cs->find(expr->op.constant)->second;           
-        }                
-        ss << " *((" << cphvb_type_typetext(expr->op.constant->type)  << "*)" << " &cs[" << ic << "]->value) ";
-        
-        
     } else if(is_bin_op(expr)) {
         if (create_instruction_list) {
             is->push_back(entr->instr);
         } 
         string s1 = _expr_extract_traverser3(s,expr->op.expression.left,as,cs,il_map,is,create_computation_string,create_instruction_list);
         string s2 = _expr_extract_traverser3(s,expr->op.expression.right,as,cs,il_map,is,create_computation_string,create_instruction_list);
-        logcustom(cloglevel,2,"binary, s1,s2 created\n");
+        logcustom(cloglevel,2,"EET3 binary, s1,s2 created\n");
         if (create_computation_string) {            
             return build_expression_string(expr->op.expression.opcode,s1,s2);
         }        
@@ -805,13 +812,13 @@ string _expr_extract_traverser3(jit_analyse_state* s,jit_expr* expr,
             is->push_back(entr->instr);
         }
         string s1 = _expr_extract_traverser3(s,expr->op.expression.left,as,cs,il_map,is,create_computation_string,create_instruction_list);
-        logcustom(cloglevel,2,"unary, s1 created\n");
+        logcustom(cloglevel,2,"EET3 unary, s1 created\n");
         if (create_computation_string) {            
             return build_expression_string(expr->op.expression.opcode,s1,"NONE");        
         }        
     }
     
-    logcustom(cloglevel,0,"e jitcg_expr_travers_array() -- %s\n",ss.str().c_str());
+    logcustom(cloglevel,0,"EET3 e jitcg_expr_travers_array() -- %s\n",ss.str().c_str());
     return ss.str();  
 }
 
@@ -1048,7 +1055,7 @@ cphvb_intp build_compile_kernel_out_input(jit_analyse_state* s, jit_name_entry* 
     map<cphvb_array*,cphvb_intp>* as,
     map<cphvb_array*,cphvb_intp>* oas,
     map<cphvb_constant*,cphvb_intp>* cs) {
-    bool cloglevel[] = {0,0,0};    
+    bool cloglevel[] = {0,0,0,0};    
     logcustom(cloglevel,0,"build_compile_kernel(%ld %d %p)\n",hash,id,execute_kernel_out);
     logcustom(cloglevel,2,"FunctionTextType = %s, compiler = %s \n", jit_pprint_functiontext_creator(JITCG_FUNCTEXT).c_str(), jit_pprint_compile_method(JITC_COMPILE_METHOD).c_str());
     
@@ -1099,7 +1106,7 @@ cphvb_intp build_compile_kernel_out_input(jit_analyse_state* s, jit_name_entry* 
     switch(JITCG_FUNCTEXT) {         
         case JITCGFT_NoCast:
             logcustom(cloglevel,1,"nocast\n");
-            computestring = expr_extract_traverser_nocast(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);
+            computestring = expr_extract_traverser_nocast(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);            
             func_text = create_kernel_function_travers_nocast(kernel_name.c_str(),computestring,oas,as,cs);
             break;
         default: // JITCGFT_Vanilla
@@ -1114,21 +1121,26 @@ cphvb_intp build_compile_kernel_out_input(jit_analyse_state* s, jit_name_entry* 
     //~ string computestring = expr_extract_traverser(s,entr->expr,oas,as,cs,instr_list_map,NULL,true,false);    
     //~ string func_text = create_kernel_function_travers(kernel_name.c_str(),computestring,oas,as,cs);
 
-    if(K_PRINT_COMPUTESTRING) {
+    if(cloglevel[3]) {
         printf("computation string: %s\n",func_text.c_str());
         //printf("computation string: %s\n",computestring.c_str());
     }
 
     kernel->compute_kernel = jitc_compile_computefunction(kernel_name, func_text, JITC_COMPILE_METHOD );
     execute_kernel_out->kernel = kernel;    
+    //~ build_execution_kernel(kernel,
+                            //~ instr_list_map->output_array_map->size(),
+                            //~ instr_list_map->array_map->size(),
+                            //~ instr_list_map->constant_map->size(),
+                            //~ execute_kernel_out);
     build_execution_kernel(kernel,
-                            instr_list_map->output_array_map->size(),
-                            instr_list_map->array_map->size(),
-                            instr_list_map->constant_map->size(),
+                            oas->size(),
+                            as->size(),
+                            cs->size(),
                             execute_kernel_out);
-    logcustom(cloglevel,1,"test 5\n");
-    logcustom(cloglevel,1,"setting computation string\n");
-    logcustom(cloglevel,1,"computation string: %s\n",computestring.c_str());
+    logcustom(cloglevel,1,"test %d %d %d\n",oas->size(),as->size(),cs->size());
+    logcustom(cloglevel,2,"setting computation string\n");
+    logcustom(cloglevel,2,"computation string: %s\n",computestring.c_str());
 
     
     return 0;
@@ -1205,7 +1217,8 @@ cphvb_intp build_compile_kernel(jit_analyse_state* s, jit_name_entry* entr, cphv
     //~ string func_text = create_kernel_function_travers(kernel_name.c_str(),computestring,oas,as,cs);
 
     if(K_PRINT_COMPUTESTRING) {
-        printf("computation string: %s\n",func_text.c_str());
+        //printf("computation string: %s\n",func_text.c_str());
+        printf("computation string: %s\n",computestring.c_str());
     }
 
     kernel->compute_kernel = jitc_compile_computefunction(kernel_name, func_text, JITC_COMPILE_METHOD );
@@ -1243,20 +1256,17 @@ cphvb_error execute_from_executionlist(jit_analyse_state* s, jit_compute_functio
     map<cphvb_constant*,cphvb_intp>* cs = new map<cphvb_constant*,cphvb_intp>();
 
     if(cloglevel[2]) {
-        printf("===================================\n");
-        
+        printf("===================================\n");        
         jit_pprint_nametable(s->nametable);
         jit_pprint_nametable_dependencies(s->nametable);
         printf("executionlist");jit_pprint_set(execution_list);
         jit_pprint_base_dependency_table(s->base_usage_table);                        
     }
     
-    for(it=execution_list->begin();it!=execution_list->end();it++) {
-        
+    for(it=execution_list->begin();it!=execution_list->end();it++) {    
         as->clear(); 
         oas->clear();
         cs->clear(); 
-
           
         entr = jita_nametable_lookup(s->nametable,*it);
         if (cloglevel[2]) {  
@@ -1283,7 +1293,7 @@ cphvb_error execute_from_executionlist(jit_analyse_state* s, jit_compute_functio
             if (cache_enabled) {
                 execute_kernel = jit_expression_kernel_cache_lookup(e_kernel_cache,exprhash);
             }
-                                    
+            
             from_cache = (execute_kernel != NULL);
 
             if(from_cache) { logcustom(cloglevel,1,"Got from cache: %ld  hash: %ld \n",*it, execute_kernel->kernel->hash);  }
@@ -1293,6 +1303,7 @@ cphvb_error execute_from_executionlist(jit_analyse_state* s, jit_compute_functio
                 if (cloglevel[3]) { clock_gettime(CLOCK_REALTIME, &time1); }   
 
                 logcustom(cloglevel,1,"EFE %d build_compile_kernel \n",*it);
+                //jit_pprint_nametable(s->nametable);
                 build_compile_kernel_out_input(s,entr,exprhash,kernel_count,execute_kernel,as,oas,cs);
                 
                 if (cloglevel[3]) {                
@@ -1656,7 +1667,7 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
             build_expr_kernel(s,entr,exprhash,kernel_count,execute_kernel);
             entr->is_executed = true;
         } else         
-        if (entr->expr->depth == 1) {
+        if (entr->expr->depth == -2) { // create a kernel in this case aswell!
             // a single instruction as and expression.
             logcustom(cloglevel,1,"BCK %d build_expr_kernel \n",*it);
             build_expr_kernel(s,entr,exprhash,kernel_count,execute_kernel);

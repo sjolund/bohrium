@@ -22,7 +22,8 @@ void _jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit, stringstream* ss
                 off0,
                 nelements = (limit>0) ? limit : cphvb_nelements( a0->ndim, a0->shape ),
                 ec = 0;
-
+    printf("type: %s",cphvb_type_typetext(a0->type));
+    
     cphvb_index coord[CPHVB_MAXDIM];
     memset(coord, 0, CPHVB_MAXDIM * sizeof(cphvb_index));
     //*ss << "test ";
@@ -55,7 +56,7 @@ void _jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit, stringstream* ss
 void jit_pprint_cphvb_array_stream(cphvb_array* a0, cphvb_intp limit, stringstream* ss) {
     //logInfo("jitcg_print_cphvb_array()\n");        
     //logDebug("Array: %p\n",a0);
-    if (a0 == NULL)
+    if (a0 == NULL)        
         return;           
     //logDebug("ArrayType: %s\n",cphvb_type_typetext(a0->type)) ;
     
@@ -104,6 +105,7 @@ void jit_pprint_cphvb_array_stream(cphvb_array* a0, cphvb_intp limit, stringstre
 void jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit) {
     stringstream ss;
     jit_pprint_cphvb_array_stream(a0,limit,&ss);
+    
     printf("%s",ss.str().c_str());
 }
 
@@ -374,6 +376,9 @@ void _jit_expr_tag_short_text_stream(jit_expr_tag tag,stringstream* ss) {
         case array_val:
             *ss << "A";
             break;
+        case expr_type_userfunc:
+            *ss << "U";
+            break;
         default:
             *ss << "-";
     }
@@ -391,6 +396,9 @@ void _jit_expr_tag_text_stream(jit_expr_tag tag,stringstream* ss) {
             break;
         case array_val:
             *ss << "Arr";
+            break;
+        case expr_type_userfunc:
+            *ss << "Userfunc";
             break;
         default:
             *
@@ -588,7 +596,7 @@ string jit_pprint_nametable(jit_name_table* nt) {
         } else {
             ss << (*it)->expr->name << ":" ;
             //nametable_entry_text((*it),&ss);
-            ss << "Array: " << (*it)->arrayp << ""<< " DTV = " << (((*it)->dep_trav_visited) ? "T" : "F") << " ,  FreedAt: " << (*it)->freed_at << "  DiscardedAt: " << (*it)->discarded_at << "(" << (*it)->instr_num << "," << (*it)->operand_num << ")\n";
+            ss << "Array: " << (*it)->arrayp << ""<< " DTV = " << (((*it)->dep_trav_visited) ? "T" : "F") << " ,  FreedAt: " << (*it)->freed_at << "  DiscardedAt: " << (*it)->discarded_at << "(" << (*it)->instr_num << "," << (*it)->operand_num << ")" << " .. " <<  (*it)->is_executed <<"\n";
             if ((*it)->expr->depth > 0) {
                print_ast_name_recursive_stream(0,(*it)->expr,&ss);   
             }

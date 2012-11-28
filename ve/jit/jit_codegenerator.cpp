@@ -632,9 +632,9 @@ string codegen_create_array_datapointers_nocast(map<cphvb_array*,cphvb_intp>* ar
     //printf("offset = %ld\n",offset);
     map<cphvb_array*,cphvb_intp>::iterator it;
     int i=0;
-    for(it=arrays->begin(); it!=arrays->end();it++,i++) {
-        ss << cphvb_type_typetext(it->first->type) << "* " << jitcg_nameing_array_datapointer("",i+offset) << " = (" << cphvb_type_typetext(it->first->type) << "*) cphvb_base_array( as[" << i+offset << "])->data;\n";
-        ss << "cphvb_index " << jitcg_nameing_array_offset("",i+offset) << ";\n";
+    for(it=arrays->begin(); it!=arrays->end();it++,i++) {    
+        ss << cphvb_type_typetext(it->first->type) << "* " << jitcg_nameing_array_datapointer("",it->second) << " = (" << cphvb_type_typetext(it->first->type) << "*) cphvb_base_array( as[" << it->second << "])->data;\n";
+        ss << "cphvb_index " << jitcg_nameing_array_offset("",it->second) << ";\n";
     }   
     return ss.str();  
 }
@@ -646,8 +646,8 @@ string codegen_create_constant_datapointers_nocast(map<cphvb_constant*,cphvb_int
     stringstream ss;
     map<cphvb_constant*,cphvb_intp>::iterator it;
     int i=0;
-    for(it=constants->begin(); it!=constants->end();it++,i++) {
-        ss << cphvb_type_typetext(it->first->type) << "* " << jitcg_nameing_constant_datapointer(i) << " = (" << cphvb_type_typetext(it->first->type) << "*) &cs[" << i << "]->value;\n";        
+    for(it=constants->begin(); it!=constants->end();it++,i++) {        
+        ss << cphvb_type_typetext(it->first->type) << "* " << jitcg_nameing_constant_datapointer(it->second) << " = (" << cphvb_type_typetext(it->first->type) << "*) &cs[" << it->second << "]->value;\n";        
     }
     
     return ss.str();

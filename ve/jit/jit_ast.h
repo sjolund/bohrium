@@ -55,7 +55,7 @@ jit_expr* cphvb_constant_to_jit_expr(cphvb_constant* array);
 
 
 
-char* expr_type_to_string(ExprType enumval);
+
 cphvb_error print_ast_node(ast* node);
 void constant_value_text_s(cphvb_constant* constant);
 char* constant_value_text(cphvb_constant* constant);

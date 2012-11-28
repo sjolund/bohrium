@@ -87,7 +87,7 @@ void print_ast_name_recursive_stream(int step, ast* node, std::stringstream* ss)
     switch(node->tag) {
         case bin_op:
             add_fill(step,ss);
-            *ss << "B " << opcode_symbol_text(node->op.expression.opcode) << "  -  " << node->name << "\n";            
+            *ss << "B " << opcode_symbol_text(node->op.expression.opcode) << "  -  " << node->name <<  "\n";            
             print_ast_name_recursive_stream(step+1,node->op.expression.left,ss);
             print_ast_name_recursive_stream(step+1,node->op.expression.right,ss);
             break;
