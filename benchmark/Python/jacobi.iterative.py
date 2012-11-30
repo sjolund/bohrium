@@ -1,4 +1,5 @@
 import cphvbnumpy as np
+import cphvbbridge
 import util
 
 B = util.Benchmark()
@@ -23,6 +24,7 @@ down   = full[2:  , 1:-1]
 
 B.start()
 for i in xrange(I):
+    cphvbbridge.flush()
     work[:] = center 
     work += left
     work += right 
@@ -30,5 +32,6 @@ for i in xrange(I):
     work += down
     work *= 0.2
     center[:] = work
+        
 B.stop()
 B.pprint()
