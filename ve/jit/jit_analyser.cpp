@@ -357,13 +357,13 @@ cphvb_intp jita_base_usage_table_add_usage(jit_base_dependency_table* dep_table,
  **/
 cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* parent, jit_expr* expr) {
     bool cloglevel[] = {0,0,0};
-    logcustom(cloglevel,0,"update_expr_dependencies2(state,%ld,%ld)\n",parent->expr->name,expr->name);
+    logcustom(cloglevel,0,"11update_expr_dependencies2(state,%ld,%ld)\n",parent->expr->name,expr->name);
     cphvb_array* basea = NULL;
     vector<cphvb_intp>* base_dep;
         
     if (!is_constant(expr)) {
         jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);        
-        logcustom(cloglevel,1,"UED2 ! %p %p\n",entr->arrayp->base, entr->arrayp->data);
+        //logcustom(cloglevel,1,"UED2 bases: %p  data:%p\n",entr->arrayp->base, entr->arrayp->data);
         
         basea = cphvb_base_array(entr->arrayp);
         logcustom(cloglevel,1,"UED2 -basea: %p\n",basea);
@@ -377,8 +377,8 @@ cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* paren
 
             logcustom(cloglevel,1,"UED2 base: basedeps:%d depON: %ld\n",base_dep->size(),dep_on_name);
             if (cloglevel[2]) {
-                logcustom(cloglevel,2,"dependencylist for basea: %p",basea);
-                jit_pprint_base_dependency_list(base_dep);
+                logcustom(cloglevel,2,"dependencylist for basea: %p\n ",basea);
+                //jit_pprint_base_dependency_list(base_dep);
             }
             
             // if parent did not write to the base array
@@ -389,6 +389,7 @@ cphvb_intp update_expr_dependencies2(jit_analyse_state* s, jit_name_entry* paren
                 // nametable entries dependency
                 parent->tdon->insert(dep_on_name);
                 jita_nametable_lookup(s->nametable,dep_on_name)->tdto->insert(parent->expr->name);
+                
                 //entr->tdto->insert(parent->expr->name);
             }
         //}        
@@ -417,7 +418,8 @@ void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
     int start = offset;    
     cphvb_index ntcount = 0;
 
-    //logcustom(cloglevel,1,"nametable size %d \n",s->nametable->size());
+    logcustom(cloglevel,1,"nametable size %d \n",s->nametable->size());
+    
     for(uint j=start; j < s->nametable->size(); j++,ntcount++) {
         logcustom(cloglevel,1,"JPDA NT: I %d name%ld\n",j,ntcount);
         
@@ -486,17 +488,17 @@ void jita_perform_dependecy_analysis(jit_analyse_state* s, cphvb_index offset) {
                 
                 // Add lookup usage_list of the basea.
                 
-                base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);
-                dep_on_name = jita_get_prior_element(base_dep,name);
-                //printf("base_dep.size() %d. dep_on: %d name:%d\n",base_dep->size(),dep_on_name,name);
-                logcustom(cloglevel,1,"JPDA %p %p,%ld\n",basea,base_dep,dep_on_name);
-                if (dep_on_name > -1) {
-                    // the entry depends on dep_on_name.
-                    // add dep_on_name to DependON list for the entry.
-                    logcustom(cloglevel,1,"JPDA --- (%ld,%ld) (%ld,%ld)\n",entr->expr->name,dep_on_name,jita_nametable_lookup(s->nametable,dep_on_name)->expr->name,entr->expr->name);
-                    entr->tdon->insert(dep_on_name);                    
-                    jita_nametable_lookup(s->nametable,dep_on_name)->tdto->insert(entr->expr->name);                                
-                }                            
+            base_dep = jita_base_usage_table_get_usage(s->base_usage_table,basea);
+            dep_on_name = jita_get_prior_element(base_dep,name);
+            //printf("base_dep.size() %d. dep_on: %d name:%d\n",base_dep->size(),dep_on_name,name);
+            logcustom(cloglevel,1,"JPDA %p %p,%ld\n",basea,base_dep,dep_on_name);
+            if (dep_on_name > -1) {
+                // the entry depends on dep_on_name.
+                // add dep_on_name to DependON list for the entry.
+                logcustom(cloglevel,1,"JPDA --- (%ld,%ld) (%ld,%ld)\n",entr->expr->name,dep_on_name,jita_nametable_lookup(s->nametable,dep_on_name)->expr->name,entr->expr->name);
+                entr->tdon->insert(dep_on_name);                    
+                jita_nametable_lookup(s->nametable,dep_on_name)->tdto->insert(entr->expr->name);                                
+            }                            
             //}
         }        
     } // end for loop
@@ -524,7 +526,7 @@ jit_name_entry* new_array_creation(jit_analyse_state* s, cphvb_array* array) {
     entr = jita_nametable_lookup(s->nametable,expr_name);                    
     entr->tdto = new set<cphvb_intp>();
     entr->tdon = new set<cphvb_intp>();
-    
+    entr->expr->is_leaf = true;
     // add only usage if the basearray had not been added before!                                  
     if (jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(array)) == NULL) {
         logcustom(cloglevel,1,"NAC adding %ld to base: %p\n",expr_name,cphvb_base_array(array));
@@ -558,7 +560,7 @@ cphvb_intp jita_handle_free_instruction(jit_analyse_state* s,cphvb_instruction* 
 
 
 /**
- * Handle the discard instruction by simply registering it in the nametable entry for the array.
+ * Handle the discard instruction by simply registering it in the nametable entry for the last entry array.
  **/ 
 cphvb_intp jita_handle_discard_instruction(jit_analyse_state* s,cphvb_instruction* instr, cphvb_intp instr_num) {
     bool cloglevel[] = {0};

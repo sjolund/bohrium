@@ -22,6 +22,7 @@ up     = full[0:-2, 1:-1]
 down   = full[2:  , 1:-1]
 
 B.start()
+
 for i in xrange(I):
     work[:]   =  center 
     work      += left 
@@ -32,8 +33,10 @@ for i in xrange(I):
 
     diff  = np.absolute(center - work)
     delta = np.add.reduce(diff)
-    delta = np.add.reduce(delta)
+    delta = np.add.reduce(delta)    
     center[:] = work
+
+
 B.stop()
 
 B.pprint()

@@ -23,15 +23,14 @@ up     = full[0:-2, 1:-1]
 down   = full[2:  , 1:-1]
 
 B.start()
-for i in xrange(I):
-    cphvbbridge.flush()
+for i in xrange(I):    
     work[:] = center 
     work += left
     work += right 
     work += up 
     work += down
     work *= 0.2
-    center[:] = work
-        
+    center[:] = work    
+
 B.stop()
 B.pprint()

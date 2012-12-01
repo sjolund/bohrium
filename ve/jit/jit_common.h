@@ -45,6 +45,8 @@ void jit_pprint_cphvb_array(cphvb_array* a0, cphvb_intp limit);
 void jit_pprint_cphvb_array_stream(cphvb_array* a0, cphvb_intp limit, stringstream* ss);
 string jit_pprint_true_false(bool stm);
 cphvb_intp expr_hash(jit_expr* expr);
+cphvb_intp expr_hash_state(jit_analyse_state* s,jit_expr* expr);
+
 timespec diff(timespec start, timespec end);
 int timeval_subtract (timeval* result, timeval* x, timeval* y);
 

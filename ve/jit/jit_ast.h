@@ -21,7 +21,7 @@ typedef struct Exp {
     cphvb_intp                                      name; 
     cphvb_intp                                      depth;
     jit_expr_status                                 status;
-    
+    bool                                            is_leaf;
     
     struct Exp*                                     parent;                                    
     union { cphvb_constant*                         constant;

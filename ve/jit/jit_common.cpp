@@ -114,7 +114,7 @@ string jit_pprint_true_false(bool stm) {
     if(stm)
         return string("true");
     else
-        return string("true");
+        return string("false");
 }
 
 int jit_cphvb_type_to_num(cphvb_type type)
@@ -170,16 +170,16 @@ timespec diff(timespec start, timespec end) {
 }
 
 
-void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
-    if (is_array(expr)) {        
-        chain->push_back(jit_cphvb_type_to_num(expr->op.array->type));
-        chain->push_back(1);
-        
-    } else if (is_constant(expr)) {        
+void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {    
+    if (is_constant(expr)) {        
         chain->push_back(jit_cphvb_type_to_num(expr->op.constant->type));
         chain->push_back(2);
                 
-    } else if(is_bin_op(expr)) {                
+    } else if (is_array(expr) ) {        
+        chain->push_back(jit_cphvb_type_to_num(expr->op.array->type));
+        chain->push_back(1);
+        
+    } else  if(is_bin_op(expr)) {                
         chain->push_back((cphvb_intp)expr->op.expression.opcode);
         chain->push_back(3);
         
@@ -189,19 +189,67 @@ void expr_travers_for_hashing(jit_expr* expr, vector<cphvb_intp>* chain) {
     } else if (is_un_op(expr)) {                
         chain->push_back((cphvb_intp)expr->op.expression.opcode);
         chain->push_back(4);
-        
+                
         expr_travers_for_hashing(expr->op.expression.left,chain);
     }
 }
-
-
-
 
 cphvb_intp expr_hash(jit_expr* expr) {
     vector<cphvb_intp> hashinputvector;
     expr_travers_for_hashing(expr,&hashinputvector);
     cphvb_intp hashinput[hashinputvector.size()];
     
+    for(uint i=0;i<hashinputvector.size();i++) {
+        hashinput[i] = hashinputvector[i];
+        printf("%ld.",hashinputvector[i]);
+    }
+    uint32_t result = 0;
+    uint32_t seed = 42;
+    cphvb_intp hash_val = 0;
+    MurmurHash3_x86_32(&hashinput,(int)hashinputvector.size()*sizeof(cphvb_intp),seed,&result);
+    hash_val = result;
+
+    //printf("++ hash ++ %d\n",hash_val);
+    return abs(hash_val);
+}
+
+void expr_travers_for_hashing_state(jit_analyse_state* s, jit_expr* expr, vector<cphvb_intp>* chain) {
+    //printf("e %ld > ",expr->name);
+    if (is_constant(expr)) {        
+        chain->push_back(jit_cphvb_type_to_num(expr->op.constant->type));
+        chain->push_back(2);
+                
+    } else if (is_array(expr) || expr->is_leaf) {
+        cphvb_array* arr = expr->op.array;
+        
+        if (expr->is_leaf) {
+            arr = jita_nametable_lookup(s->nametable,expr->name)->arrayp;
+        }         
+        chain->push_back(jit_cphvb_type_to_num(arr->type));
+        chain->push_back(1);
+        
+    } else  if(is_bin_op(expr)) {                
+        chain->push_back((cphvb_intp)expr->op.expression.opcode);
+        chain->push_back(3);
+        
+        expr_travers_for_hashing_state(s,expr->op.expression.left,chain);
+        expr_travers_for_hashing_state(s,expr->op.expression.right,chain);
+        
+    } else if (is_un_op(expr)) {                
+        chain->push_back((cphvb_intp)expr->op.expression.opcode);
+        chain->push_back(4);
+                
+        expr_travers_for_hashing_state(s,expr->op.expression.left,chain);
+    }
+}
+
+cphvb_intp expr_hash_state(jit_analyse_state* s, jit_expr* expr) {
+    //printf("expr_hash_state = %ld\n",expr->name);
+    vector<cphvb_intp> hashinputvector;
+    expr->is_leaf = false;
+    expr_travers_for_hashing_state(s,expr,&hashinputvector);
+    cphvb_intp hashinput[hashinputvector.size()];
+    expr->is_leaf = true;
     for(uint i=0;i<hashinputvector.size();i++) {
         hashinput[i] = hashinputvector[i];
         //printf("%ld.",hashinputvector[i]);
@@ -215,7 +263,6 @@ cphvb_intp expr_hash(jit_expr* expr) {
     //printf("++ hash ++ %d\n",hash_val);
     return abs(hash_val);
 }
-
 
 // compare two cphvb_intp array.
 /**

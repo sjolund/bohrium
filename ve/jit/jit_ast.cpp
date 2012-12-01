@@ -14,6 +14,7 @@
 #include "jit_ssa_analyser.h"
 #include <stdarg.h>
 #include "StringHasher.hpp"
+#include "jit_common.h"
 
 void constant_value_text(cphvb_constant* constant, char buff[]);
 void print_ast_recursive(int step, ast* node);
@@ -87,14 +88,14 @@ void print_ast_name_recursive_stream(int step, ast* node, std::stringstream* ss)
     switch(node->tag) {
         case bin_op:
             add_fill(step,ss);
-            *ss << "B " << opcode_symbol_text(node->op.expression.opcode) << "  -  " << node->name <<  "\n";            
+            *ss << "B " << opcode_symbol_text(node->op.expression.opcode) << "  -  " << node->name << " isLeaf: " << node->is_leaf << "\n";            
             print_ast_name_recursive_stream(step+1,node->op.expression.left,ss);
             print_ast_name_recursive_stream(step+1,node->op.expression.right,ss);
             break;
         
         case un_op:
             add_fill(step,ss);
-            *ss << "U " << opcode_symbol_text(node->op.expression.opcode) << "  -  " << node->name <<"\n";            
+            *ss << "U " << opcode_symbol_text(node->op.expression.opcode) << "  -  " << node->name << " isLeaf: " << node->is_leaf << "\n";            
             print_ast_name_recursive_stream(step+1,node->op.expression.left,ss);
             break;
         
@@ -107,7 +108,7 @@ void print_ast_name_recursive_stream(int step, ast* node, std::stringstream* ss)
         
         case array_val:
             add_fill(step,ss);
-            *ss << "Array: " << node->op.array << " " << node->tag << "\n"; 
+            *ss << "Array: " << node->op.array << " " << node->tag <<  "\n"; 
             //*ss << "[" << step << "] Array: " << node->op.array << " " << node->tag << "\n"; 
             //printf("[%d] Array: %p %d\n",step,node->op.array,node->tag);
             break;
@@ -144,7 +145,7 @@ void print_ast_recursive_stream(int step, ast* node, std::stringstream* ss) {
         
         case array_val:
             add_fill(step,ss);
-            *ss << "Array: " << node->op.array << " " << node->tag << "\n"; 
+            *ss << "Array: " << node->op.array << " " << node->tag << " isLeaf: " << jit_pprint_true_false(node->is_leaf).c_str() << "\n"; 
             //*ss << "[" << step << "] Array: " << node->op.array << " " << node->tag << "\n"; 
             //printf("[%d] Array: %p %d\n",step,node->op.array,node->tag);
             break;

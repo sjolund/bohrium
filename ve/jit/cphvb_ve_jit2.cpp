@@ -128,12 +128,13 @@ cphvb_intp expr_computational_complexity(jit_analyse_state* s, jit_expr* expr) {
     return accessed_elements * opcount;    
 }
 
+
 /**
  * function which finds dependency violations in and expr, and splits it into a list sub expr
  **/
 void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_intp>* execute_list, set<cphvb_intp>* grand_parent_DON) {
     bool cloglevel[] = {0,0};
-    logcustom(cloglevel,0,"expr_dependecy_travers3(%ld)\n",expr->name);
+    logcustom(cloglevel,0,"\nexpr_dependecy_travers3(%ld)\n",expr->name);
     if (is_array(expr)) {
         logcustom(cloglevel,1,"expr_dependecy_travers3(Array:%ld)\n",expr->name);
         return;
@@ -164,118 +165,148 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
         logcustom(cloglevel,1,"EDT3 is userfun  (%d). returning.\n",expr->name);
         execute_list->insert(expr->name);
         entr->is_executed = true;
+        entr->expr->is_leaf = true;
         return;
     }
 
     // if the entry is not discarded in this instructionlist, it must be used in someway in the following and must thus be executed.
     // it is not possible to know how it is used. If it is a root node, it will automatically be added.
     // The entr must not be and bounded array, as these are not discarded before the end of the program.
-    if (entr->discarded_at == -1 && entr->expr->parent != NULL && cphvb_base_array(entr->arrayp)->data == NULL) {
-        logcustom(cloglevel,1,"EDT3 is not discarded in this batch (%d). returning.\n",expr->name);
-        execute_list->insert(expr->name);        
-        
-    } else if (entr->discarded_at == -1 && cphvb_base_array(entr->arrayp)->data != NULL) {
+    //~ if (entr->discarded_at == -1 && entr->expr->parent != NULL && cphvb_base_array(entr->arrayp)->data == NULL) {
+        //~ logcustom(cloglevel,1,"EDT3 is not discarded in this batch (%d). returning.\n",expr->name);
+        //~ //execute_list->insert(expr->name);        
+        //~ 
+    //~ } else
+    if (entr->discarded_at == -1) {
         // if a bounded array is the last one written to, and not discarded it must be executed.
         cphvb_intp lastusage = jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(entr->arrayp))->back();            
                 
         if (lastusage == entr->expr->name) {
             logcustom(cloglevel,1,"EDT3 is not discarded in this batch, is bounded and last use (%d) lastusage %d. returning.\n",entr->expr->name,lastusage);
-            execute_list->insert(expr->name);            
+            execute_list->insert(expr->name);
+            expr->is_leaf = true;
         }
     }
     
     if (is_un_op(expr) || is_bin_op(expr)) {
         int children_num = is_bin_op(expr) ? 2 : 1;    
         jit_expr* children[2] = {expr->op.expression.left, expr->op.expression.right};
-        logcustom(cloglevel,1,"children_num: %d \n",children_num);
-
+        
+        
         // do for both left and right expression. Left first.
         for(int i=0;i<children_num;i++) {                                                        
             echild = children[i];                        
             entr_child = jita_nametable_lookup(s->nametable,echild->name);
-
+            logcustom(cloglevel,1,"EDT3 %d children_num: %d | %d\n",expr->name,children_num,i+1);
             //printf("Child is expression\n",echild->name);
             //printf( (is_un_op(echild) || is_bin_op(echild)) ? "exp ": "val ");
             //print_ast_node(echild); 
             //printf("after copy %ld\n",echild->name);
+
+
+            
             if( (is_un_op(echild) || is_bin_op(echild))  ) {                
                 if (entr_child->tdto->size() > 1) {                
                     // if child is depended on by more then one.
-                    execute_list->insert(echild->name);            
-                    logcustom(cloglevel,1,"Adding to execute:1: %ld\n",echild->name);
+                    execute_list->insert(echild->name);
+                    echild->is_leaf = true;       
+                    logcustom(cloglevel,1,"EDT3 *** Adding child (%ld) to exelist %ld \n",echild->name);
                     expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);
+                    //entr_child->is_executed = true;
                     return;                
                         
                 } else {                    
-                    //vector<cphvb_intp>* dep_table = jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(entr_child->arrayp));
-                    //printf("%p %ld\n",dep_table, echild->name);
-                     
+                     //  child == child basearray last usage
                     if (cphvb_base_array(entr_child->arrayp)->data != NULL && echild->name == jita_base_usage_table_get_usage(s->base_usage_table,cphvb_base_array(entr_child->arrayp))->back()) {
                         // child is the last update to the BoundedArray.
-                        execute_list->insert(echild->name);     
-                        logcustom(cloglevel,1,"Adding to execute:2: %ld\n",echild->name);
+                        execute_list->insert(echild->name);
+                        echild->is_leaf = true;  
+                        logcustom(cloglevel,1,"EDT3 *** adding to execute:2: %ld\n",echild->name);
                         expr_dependecy_travers3(s,echild,execute_list, grand_parent_DON);
                         return;
                     }                    
                 }
-                
+
+
+                // deep analysis for changes to basearrays between the build expressions
+
+                logcustom(cloglevel,1,"Grandparent to %ld DON:",entr->expr->name);
+                //jit_pprint_set(grand_parent_DON);
+                                
                 set<cphvb_intp>::iterator itp,itc;
                 //copy parent to grandparent
                 for (itp=entr->tdon->begin(); itp!=entr->tdon->end(); itp++) {                    
                     grand_parent_DON->insert(*itp);
                 }
                 
+                logcustom(cloglevel,1,"Grandparent to %ld DON:",entr->expr->name);
+                //jit_pprint_set(grand_parent_DON);
+                
+                
                 // get dependency 
                 if(entr_child->tdon->size() > 0 ) {                                 
-                    if (entr->tdon->size() > 0) {                                                                
-                        // check parent and child dependencies for overlaps
-                        for (itc=entr_child->tdon->begin(); itc!=entr_child->tdon->end(); itc++) {                    
-                            for (itp=entr->tdon->begin(); itp!=entr->tdon->end(); itp++) {                    
-                                                            
-                                if (*itp == *itc) {
-                                    // depend on same                            
-                                    continue;
-                                }
-                                if (*itp == echild->name) {
-                                    // echild DTO.size == 1 and dto == parent
-                                    grand_parent_DON->erase(*itp);
-                                    continue;
-                                }
-                                
-                                if (cphvb_base_array(jita_nametable_lookup(s->nametable,*itp)->arrayp) == cphvb_base_array(jita_nametable_lookup(s->nametable,*itc)->arrayp)) {
-                                    if (*itp > *itc) {
-                                        // parent is dependent on a higher version of the BoundedArray.
-                                        // cutting closest to expression dependency conflict
-                                        execute_list->insert(echild->name);
-                                        logcustom(cloglevel,1,"Adding to execute:3: %ld\n",echild->name);
-                                        grand_parent_DON->erase(*itp);                                                                                    
-                                    }                            
-                                }
-                            }
-                        } // end double forloop.                        
-                    }                                                        
+                    //~ if (entr->tdon->size() > 0) {                                                                
+                        //~ // check parent and child dependencies for overlaps
+                        //~ for (itc=entr_child->tdon->begin(); itc!=entr_child->tdon->end(); itc++) {                    
+                            //~ for (itp=entr->tdon->begin(); itp!=entr->tdon->end(); itp++) {                    
+                                                            //~ 
+                                //~ if (*itp == *itc) {
+                                    //~ // depend on same                            
+                                    //~ continue;
+                                //~ }
+                                //~ if (*itp == echild->name) {
+                                    //~ // echild DTO.size == 1 and dto == parent
+                                    //~ // remove the child/parent dependon connection
+                                    //~ grand_parent_DON->erase(*itp);
+                                    //~ continue;
+                                //~ }
+                                //~ 
+                                //~ if (cphvb_base_array(jita_nametable_lookup(s->nametable,*itp)->arrayp) == cphvb_base_array(jita_nametable_lookup(s->nametable,*itc)->arrayp)) {
+                                    //~ if (*itp > *itc) {
+                                        //~ // parent is dependent on a higher version of the BoundedArray.
+                                        //~ // cutting closest to expression dependency conflict
+                                        //~ execute_list->insert(echild->name);
+                                        //~ logcustom(cloglevel,1,"EDT *** Adding to execute:3: %ld\n",echild->name);
+                                        //~ grand_parent_DON->erase(*itp);                                                                                    
+                                    //~ }                            
+                                //~ }
+                            //~ }
+                        //~ } // end double forloop.                        
+                    //~ }                                                        
+
+                    // removed dependencies to the grand parent
                     
                     if (grand_parent_DON->size() > 0) {
                         // check vs. grandparents DON
+
+                        if (cloglevel[1]) {
+                            logcustom(cloglevel,1,"child "); jit_pprint_set(entr_child->tdon);
+                            logcustom(cloglevel,1,"GP:");  jit_pprint_set(grand_parent_DON);
+                        }
+                        
                         for (itc=entr_child->tdon->begin(); itc!=entr_child->tdon->end(); itc++) {            
                             for (itp=grand_parent_DON->begin(); itp!=grand_parent_DON->end(); itp++) {
                                 if (*itp == *itc) {
                                     // depend on same
                                     continue;
                                 }
-                                if (*itp == echild->name) {
+                                //if (*itp == echild->name || *itp > echild->name) {
+                                if (*itp == echild->name || *itp > echild->name) {
                                     // echild DTO.size == 1 and dto == grandparent
                                     // grand parent DON == child name
+                                    logcustom(cloglevel,1,"EDT DON, remove %ld\n",*itp);
                                     grand_parent_DON->erase(*itp);
                                     continue;
                                 }
-                                
+
+                                // basearray of parent == basearray of child
                                 if (cphvb_base_array(jita_nametable_lookup(s->nametable,*itp)->arrayp) == cphvb_base_array(jita_nametable_lookup(s->nametable,*itc)->arrayp)) {
                                     if (*itp > *itc) {
                                         // a grand parent is dependent on a higher version of the BoundedArray.
                                         // cutting closest to expression dependency conflict
                                         execute_list->insert(echild->name);
-                                        logcustom(cloglevel,1,"Adding to execute:4: %ld",echild->name);
+                                        echild->is_leaf = true;
+                                        logcustom(cloglevel,1,"EDT *** Adding to execute:4: %ld\n",echild->name);
                                         grand_parent_DON->erase(*itp);                              
                                     }                            
                                 }
@@ -293,14 +324,25 @@ void expr_dependecy_travers3(jit_analyse_state* s, jit_expr* expr, set<cphvb_int
 
 
 /**
+ *  add a entry to the executionlist
+ */
+void execute_list_insert(jit_analyse_state* s, set<cphvb_intp>* exelist, cphvb_intp name, jit_name_entry* entr) {
+    
+    exelist->insert(entr->expr->name);
+
+    // ensure depth is updated!
+    
+}
+
+/**
  * this functions takes an array and from this determines which expressions must be
  * executed and in what order. a list of expressions are generated based on the
  * analyse_state tables. This will contain a copy of the existing structure, but point
  * to the existing data.
  **/
-set<cphvb_intp>* generate_execution_list(jit_analyse_state* s) {
+set<cphvb_intp>* create_expression_entities(jit_analyse_state* s) {
     bool cloglevel[] = {0,0};
-    logcustom(cloglevel,0,"Generate_execution_list()\n");
+    logcustom(cloglevel,0,"create_expression_entities()\n");
     
     set<cphvb_intp>* exelist = new set<cphvb_intp>();
     for(int i=s->nametable->size()-1;i>=0;i--) {        
@@ -309,6 +351,7 @@ set<cphvb_intp>* generate_execution_list(jit_analyse_state* s) {
             expr_dependecy_travers3(s,s->nametable->at(i)->expr,exelist,new set<cphvb_intp>());
             logcustom(cloglevel,1,"GEL add to executelist (%d)\n",i);
             exelist->insert(i);
+            s->nametable->at(i)->expr->is_leaf = true;
         }        
     }    
     return exelist;
@@ -393,17 +436,16 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
     env = getenv("CPHVB_JIT_CACHE_ENABLED");     // Override block_size from environment-variable.
     if (env == NULL) {
         env = "";
-    }
-    //printf("CPHVB_JIT_CACHE_DISABLED=%s %d\n",env,string(env)== string("True"));
-    jit_cache_enabled = (string(env) != string("False"));
-
+    }    
+    jit_cache_enabled = (string(env) == string("True"));
+    //printf("CPHVB_JIT_CACHE_ENABLED=%s %d %s\n",env,string(env)== string("True"),jit_pprint_true_false(jit_cache_enabled).c_str());
+    
     env = getenv("CPHVB_JIT_DIRECTEXECUTE");     // Override block_size from environment-variable.
     if (env == NULL) {
         env = "";
-    }
-    //printf("CPHVB_JIT_CACHE_DISABLED=%s %d\n",env,string(env)== string("True"));
+    }    
     jit_direct_execute = (string(env) == string("True"));
-    
+    //printf("CPHVB_JIT_DIRECTEXECUTE=%s %d %s\n",env,jit_direct_execute,jit_pprint_true_false(jit_cache_enabled).c_str());
     
     // set GCC or TCC flag
     // set codegeneration method (vanilla, nocast/naive,)
@@ -441,7 +483,7 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
  **/
 cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
     //printf("\njit executing %d\n",instruction_count);
-    cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
+    //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
     //cphvb_pprint_instr_list_small(instruction_list,instruction_count,"Testing!");
     bool cloglevel[] = {0,0,0,0};
     //bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
@@ -464,9 +506,13 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
     
     jit_compound_kernel* compound_kernel = NULL;        
     // cache lookup.
+    
     cphvb_intp instr_list_hash = instructionlist_hash(instruction_list,instruction_count);
-    if (jit_cache_enabled) {
-        compound_kernel = jit_kernel_cache_lookup(jitkernelcache,instr_list_hash);
+    //printf("instr_list_hash: %ld cache enabled= %s , direct execute=%s\n",instr_list_hash,      jit_pprint_true_false(jit_cache_enabled).c_str(),jit_pprint_true_false(jit_direct_execute).c_str());
+    if (!jit_direct_execute) {
+        if (jit_cache_enabled) {        
+            compound_kernel = jit_kernel_cache_lookup(jitkernelcache,instr_list_hash);
+        }
     }
     set<cphvb_intp>* execution_list = NULL;
 
@@ -513,12 +559,12 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);            
             jit_pprint_nametable_dependencies(jitanalysestate->nametable);
             jit_pprint_nametable(jitanalysestate->nametable); printf("\n");
-
         }
+        
         if (cloglevel[3]) { clock_gettime(CLOCK_REALTIME, &time1); }   
         
         /// build execution list
-        execution_list = generate_execution_list(jitanalysestate);
+        execution_list = create_expression_entities(jitanalysestate);
         logcustom(cloglevel,0,"== Executionlist created %p, size()=%ld\n",execution_list,execution_list->size());
         if(cloglevel[1]) {jit_pprint_set(execution_list);}
         
@@ -533,11 +579,11 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             clock_gettime(CLOCK_REALTIME, &time2);  
             printf("generate_execution_list %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
         }
-        if (execution_list->size() > 0) {
-            
+        if (execution_list->size() > 0) {            
             if (jit_direct_execute) {
 
-                //printf("===================================\n");                
+                //printf("===================================\n");
+                //printf("====== Direkt execution ===========\n");
                 //jit_pprint_nametable(jitanalysestate->nametable);
                 //printf("executionlist");jit_pprint_set(execution_list);
                 //jit_pprint_nametable_dependencies(jitanalysestate->nametable);
@@ -642,7 +688,7 @@ cphvb_error cphvb_ve_jit_shutdown( void )
     cphvb_vcache_delete();
 
     // De-allocate state
-    bool output = false;
+    bool output = true;
     if (output) {
         printf("Instruction list computed: %ld\n", jitinstr_list_count );
         printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        

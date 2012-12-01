@@ -1240,7 +1240,7 @@ cphvb_error execute_from_executionlist(jit_analyse_state* s, jit_compute_functio
                                     jit_expression_kernel_cache* e_kernel_cache,                                    
                                     set<cphvb_intp>* execution_list,
                                     bool cache_enabled) {
-    bool cloglevel[] = {0,0,0,0};
+    bool cloglevel[] = {0,0,0,0,0};
     logcustom(cloglevel,0,"EFE execute_from_executionlist( executionlist length: %d)\n",execution_list->size());
     timespec time1, time2;
     // set id of the compund kernel.            
@@ -1285,11 +1285,14 @@ cphvb_error execute_from_executionlist(jit_analyse_state* s, jit_compute_functio
             }
             
         } else {
-            logcustom(cloglevel,1,"EFE name:%d  depth: %ld\n",*it, entr->expr->depth);
-            exprhash = expr_hash(entr->expr);
+            //logcustom(cloglevel,1,"EFE name:%d  depth: %ld\n",*it, entr->expr->depth);
+            exprhash = expr_hash_state(s,entr->expr);
+
+            logcustom(cloglevel,4,"EFE name:%d  depth: %ld  hash: %ld\n",*it, entr->expr->depth, exprhash);
             
             // == check expression kernel level cache
             jit_execute_kernel* execute_kernel = NULL;
+            
             if (cache_enabled) {
                 execute_kernel = jit_expression_kernel_cache_lookup(e_kernel_cache,exprhash);
             }
@@ -1397,7 +1400,7 @@ cphvb_error execute_from_executionlist0(jit_analyse_state* s, jit_compute_functi
         
         entr = jita_nametable_lookup(s->nametable,*it);
         logcustom(cloglevel,1,"EFE name:%d  depth: %ld\n",*it, entr->expr->depth);
-        exprhash = expr_hash(entr->expr);
+        exprhash = expr_hash_state(s,entr->expr);
 
         // == check expression kernel level cache
         jit_execute_kernel* execute_kernel = jit_expression_kernel_cache_lookup(e_kernel_cache,exprhash);
@@ -1656,8 +1659,8 @@ cphvb_intp build_compound_kernel(jit_analyse_state* s, set<cphvb_intp>* executio
     
     for(it=execution_list->begin();it!=execution_list->end();it++) {
         entr = jita_nametable_lookup(s->nametable,*it);
-        logcustom(cloglevel,1,"BCK name:%d  depth: %ld\n",*it, entr->expr->depth);
-        exprhash = expr_hash(entr->expr);
+        logcustom(cloglevel,1,"BCK name:%d  depth: %ld\n",*it, entr->expr->depth);        
+        exprhash = expr_hash_state(s, entr->expr);
         
         jit_execute_kernel* execute_kernel = (jit_execute_kernel*) malloc(sizeof(jit_execute_kernel));
         jit_update_expr_depth(s,entr->expr);
