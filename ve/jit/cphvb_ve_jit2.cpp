@@ -565,6 +565,7 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
         
         /// build execution list
         execution_list = create_expression_entities(jitanalysestate);
+        
         logcustom(cloglevel,0,"== Executionlist created %p, size()=%ld\n",execution_list,execution_list->size());
         if(cloglevel[1]) {jit_pprint_set(execution_list);}
         

@@ -107,6 +107,7 @@ for i in xrange(T):
     
     
 res = numpy.add.reduce(numpy.add.reduce(H / n))
+print res
 B.stop()
 B.pprint()
 
