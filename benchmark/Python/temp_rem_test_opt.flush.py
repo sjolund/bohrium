@@ -13,8 +13,8 @@ c = np.ones((H,W),       dtype=B.dtype, cphvb=B.cphvb)
 d = np.ones((H,W),       dtype=B.dtype, cphvb=B.cphvb)
 e = np.ones((H,W),       dtype=B.dtype, cphvb=B.cphvb)
 
-B.start()
 for i in xrange(I):
+B.start()
     cphvbbridge.flush()
     a += b
     a += c

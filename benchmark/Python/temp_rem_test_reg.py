@@ -16,9 +16,8 @@ e = np.ones((H,W),       dtype=B.dtype, cphvb=B.cphvb)
 B.start()
 for i in xrange(I):        
     a = a + b + c + d + e    
-    #cphvbbridge.flush()
-    
-#print a[10,10]
+
+[10,10]
 B.stop()
 B.pprint()
 
