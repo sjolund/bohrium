@@ -19,8 +19,7 @@ for i in xrange(I):
     a += c
     a += d
     a += e
-    #cphvbbridge.flush()
     
-#print a[10,10]
+    
 B.stop()
 B.pprint()

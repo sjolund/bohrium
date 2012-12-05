@@ -35,10 +35,10 @@ def main():
 
     B       = util.Benchmark()
     N       = B.size[0]
-    year    = B.size[1]
-
-    S = np.ones([N], cphvb=B.cphvb)
-    S = np.array([0.62352766, 0.68084793,  0.67529464, 0.28902324, 0.85378185], cphvb=B.cphvb)   #0.01675295, 0.21176588 , 0.8606528  , 0.17270649 , 0.89418568], cphvb=B.cphvb)
+    year    = B.size[1]    
+    S = np.random.random([N], cphvb=B.cphvb)
+    #S = np.ones([N], cphvb=B.cphvb)
+    #S = np.array([0.62352766, 0.68084793,  0.67529464, 0.28902324, 0.85378185], cphvb=B.cphvb)   #0.01675295, 0.21176588 , 0.8606528  , 0.17270649 , 0.89418568], cphvb=B.cphvb)
     
     S = S*4.0-2.0 + 60.0 # Price is 58-62
     
@@ -55,6 +55,7 @@ def main():
         #print BS('c', S, X, T, r, v)
         np.sum(BS('c', S, X, T, r, v)) / N
         T += day
+    #print np.sum(BS('c', S, X, T, r, v)) / N
     B.stop()
     B.pprint()   
 
