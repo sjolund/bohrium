@@ -127,3 +127,128 @@ cphvb_error cphvb_compute_apply_naive( cphvb_instruction *instr ) {
 
 }
 
+/**
+ * Execute an instruction using the iterator traversal.
+ *
+ * @param instr Instruction to execute.
+ * @return Status of execution
+ */
+cphvb_error cphvb_compute_iterator_apply( cphvb_instruction *instr ) {
+
+	cphvb_index i;
+	void* args[3];
+	cphvb_dense_iterator dit;
+	cphvb_constant_iterator cit;
+
+	cphvb_computeloop_iterator comp = cphvb_compute_iterator_get(instr);
+    if (comp == NULL)
+        return CPHVB_TYPE_NOT_SUPPORTED;
+	
+	cphvb_dense_iterator_reset(&dit, instr);	
+	args[0] = &dit;
+	
+	// If we have a constant, pass a constant iterator as well
+	if (cphvb_is_constant(instr->operand[1]) || (cphvb_operands(instr->opcode) == 3 && cphvb_is_constant(instr->operand[2]))) {
+		cphvb_constant_iterator_reset(&cit, instr);
+		args[1] = &cit;
+	}
+
+	cphvb_index ops = 1;
+	for(i = 0; i < instr->operand[0]->ndim; i++)
+		ops *= instr->operand[0]->shape[i];
+
+	return comp(ops, (void**)&args);
+	
+}
+
+/**
+ * Execute an instruction using the iterator traversal.
+ *
+ * @param it Iterator to reset.
+ * @param instr Instruction to setup iterator for.
+ * @return Status of reset
+ */
+cphvb_error cphvb_dense_iterator_reset(cphvb_dense_iterator* it, cphvb_instruction* instr)
+{
+	cphvb_index i;
+	cphvb_tstate tstate;
+	
+	cphvb_index operandcount = cphvb_operands(instr->opcode);
+
+	//We need mostly whatever tstate has
+	cphvb_tstate_reset(&tstate, instr);
+	memcpy(it->stride, tstate.stride, sizeof(cphvb_index) * CPHVB_MAXDIM * operandcount);
+	memcpy(it->start, tstate.start, sizeof(void*) * operandcount);
+	memcpy(it->shape, tstate.shape, sizeof(cphvb_index) * tstate.ndim);
+
+	//We count down, because we can compare with 0 instead of a value lookup
+	memcpy(it->counters, tstate.shape, sizeof(cphvb_index) * tstate.ndim);
+	
+	cphvb_index lastdim = tstate.ndim - 1;
+	it->pstart = tstate.ndim - 4;
+	it->inner_ops = 0;
+	
+	// Special case, the middle operand is constant, so we
+	// rearrange the rightmost operand to use the middle index.
+	// This removes the need for a special next iterator
+	if (operandcount == 3 && cphvb_is_constant(instr->operand[1]))
+	{
+		it->start[1] = it->start[2];
+		memcpy(it->stride[1], it->stride[2], sizeof(cphvb_index) * CPHVB_MAXDIM);
+		operandcount--;
+	}
+	
+	// Prepare 2-bit inner lookup tables
+	for(i = 0; i < operandcount; i++) {
+		it->stride_lookup[0][i] = it->stride[i][lastdim];
+		if (lastdim == 0) {
+			it->stride_lookup[1][i] = it->stride[i][lastdim];
+			it->stride_lookup[2][i] = it->stride[i][lastdim];
+			it->stride_lookup[3][i] = it->stride[i][lastdim];
+		} else if (lastdim == 1) {
+			it->stride_lookup[1][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1];
+			it->stride_lookup[2][i] = it->stride[i][lastdim];
+			it->stride_lookup[3][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1];
+		} else {
+			it->stride_lookup[1][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1];
+			it->stride_lookup[2][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 2];
+			it->stride_lookup[3][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1] + it->stride[i][lastdim - 2];
+		}
+	}
+
+	// Calculate the sizes of the inner dimensions
+	it->shapelimit2 = it->shape[lastdim];
+	if (lastdim == 0) {
+		it->shapelimit1 = -1;
+		it->shapelimit0 = -1;
+	} else if (lastdim == 1) {
+		it->shapelimit1 = it->shapelimit2 * it->shape[lastdim - 1];
+		it->shapelimit0 = -1;
+	} else {
+		it->shapelimit1 = it->shapelimit2 * it->shape[lastdim - 1];
+		it->shapelimit0 = it->shapelimit1 * it->shape[lastdim - 2];
+	}
+		
+	return CPHVB_SUCCESS;
+}
+
+/**
+ * Execute an instruction using the iterator traversal.
+ *
+ * @param it Iterator to reset.
+ * @param instr Instruction to setup iterator for.
+ * @return Status of reset
+ */
+cphvb_error cphvb_constant_iterator_reset(cphvb_constant_iterator* it, cphvb_instruction* instr)
+{
+	cphvb_index i, noperands;
+	noperands = cphvb_operands(instr->opcode);
+	
+	for(i = 0; i < noperands; i++)
+        if (cphvb_is_constant(instr->operand[i])) {
+        	it->start[0] = &instr->constant.value;
+        	return CPHVB_SUCCESS;
+        }
+
+	return CPHVB_ERROR;
+}
