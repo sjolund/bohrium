@@ -690,7 +690,7 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 
     // De-allocate state
     //~ bool output = true;
-    bool output = true;
+    bool output = false;
     if (output) {
         printf("Instruction list computed: %ld\n", jitinstr_list_count );
         printf("InstructionBatchKernel cache (hits %ld , misses %ld)\n", cache_hit, cache_miss);        
