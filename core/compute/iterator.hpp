@@ -58,10 +58,6 @@ struct cphvb_dense_iterator_next_general_2op {
     	cphvb_index lookup = ((!(iops % it->shapelimit1)) << 1) | (!(iops % it->shapelimit2));
     	cphvb_index* tb = it->stride_lookup[lookup];
 
-		//printf("2D outer, iops: %lld, lookup: %lld, shapelimit1: %lld, shapelimit2: %lld\n", iops, lookup, it->shapelimit1, it->shapelimit2);
-
-		//printf("2D outer, p0: %lld, p1: %lld, tb0: %lld, tb1: %lld\n", (cphvb_int64)it->start[0], (cphvb_int64)it->start[1], tb[0], tb[1] );
-
     	ADD_VOID_POINTER(it->start[0], tb[0]);
     	ADD_VOID_POINTER(it->start[1], tb[1]);
     	
@@ -69,23 +65,17 @@ struct cphvb_dense_iterator_next_general_2op {
 			cphvb_index p = it->pstart;
 			it->inner_ops = 0;
 	
-			//printf("Hit inner for 2d, shapelimit0: %lld, p: %lld\n", it->shapelimit0, p);
-
 			ADD_VOID_POINTER(it->start[0], it->stride[0][p]);
 			ADD_VOID_POINTER(it->start[1], it->stride[1][p]);
 	
 			while(--it->counters[p] == 0 && p > 0)
 			{
-				//printf("While inner for 2d, p: %lld, pointer0: %lld , pointer1: %lld\n", p, (cphvb_int64)it->start[0], (cphvb_int64)it->start[1]);
-
 				it->counters[p] = it->shape[p];
 				p--;
 				
 		    	ADD_VOID_POINTER(it->start[0], it->stride[0][p]);
 		    	ADD_VOID_POINTER(it->start[1], it->stride[1][p]);
 			}
-
-			//printf("Leaving inner for 2d, p: %lld, pointer0: %lld, pointer1: %lld\n", p, (cphvb_int64)it->start[0], (cphvb_int64)it->start[1]);
     	}
     }
 };
