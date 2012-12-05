@@ -920,6 +920,20 @@ def test_pattern_502(H,W):
     B = (A >= 2) # & (live <= SURVIVE_HIGH))    
     print B
 
+def test_patter_repport_tests1(H,W):
+    cphvbbridge.flush()    
+    type=np.float32
+    A = np.ones((H,W),dtype=type)    
+    B = np.ones((H,W),dtype=type)        
+    A += 4 
+    B += 6
+    cphvbbridge.handle_array(A)                
+    cphvbbridge.handle_array(B)
+
+    O = (A+5)*B
+    O[0,1]
+    
+    
 if __name__ == "__main__":
     #~ test_pattern_000(1,5)     
     #~ exit(0)
@@ -937,7 +951,7 @@ if __name__ == "__main__":
    
     #test_pattern_301(2,5)
     #test_pattern_018(2,6)
-    test_pattern_501(1,1)
+    #test_pattern_501(1,1)
     #test_pattern_016(2,5)  
     #test_pattern_017(2,5)
     
@@ -949,7 +963,7 @@ if __name__ == "__main__":
     #test_pattern_101(2,5)
      
     #test_pattern_102(1,5)
-
+    test_patter_repport_tests1(5,2) 
     #test_pattern_103(2,5)
 
     # testing double dto epxression

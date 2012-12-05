@@ -177,29 +177,29 @@ cphvb_array* ilmap_fetch_instruction_array(cphvb_instruction* instruction, cphvb
  **/
 void expr_travers_distinct_traverser(jit_analyse_state* s, jit_expr* expr, map<cphvb_array*,cphvb_intp>* arrays, map<cphvb_constant*,cphvb_intp>* constants ) {
     bool cloglevel[] = {0,0};
-    logcustom(cloglevel,0,"ETDT expr_travers_distinct_traverser()\n");
+    logcustom(cloglevel,0,"ETDT expr_travers_distinct_traverser(): expr: %ld, arrays: %ld\n",expr->name,arrays->size(),constants->size());
     jit_name_entry* entr = jita_nametable_lookup(s->nametable,expr->name);
     if(is_constant(expr)) {
-        logcustom(cloglevel,0,"ETDT constant \n");
+        logcustom(cloglevel,1,"ETDT constant \n");
         constants->insert(pair<cphvb_constant*,cphvb_intp>(expr->op.constant,(cphvb_intp)constants->size()));
         
         
     } else if (is_array(expr) || entr->is_executed) {
-        logcustom(cloglevel,0,"ETDT array %d %d\n", entr->is_executed,is_array(expr));
+        logcustom(cloglevel,1,"ETDT array %d %d\n", entr->is_executed,is_array(expr));
         cphvb_array* arr = (entr->is_executed)? entr->arrayp :  entr->expr->op.array ;
         map<cphvb_array*,cphvb_intp>::iterator it;
         if(arrays->find(arr) == arrays->end()) {            
             arrays->insert(pair<cphvb_array*,cphvb_intp>(arr,(cphvb_intp)arrays->size()));
-            logcustom(cloglevel,0,"ETDT added %p\n",arr);         
+            logcustom(cloglevel,1,"ETDT added %p\n",arr);         
         }
         
     } else if(is_bin_op(expr)) {
-        logcustom(cloglevel,0,"ETDT binary \n");
+        logcustom(cloglevel,1,"ETDT binary: l: %ld, r: %ld\n",expr->op.expression.left->name,expr->op.expression.right->name);
         expr_travers_distinct_traverser(s,expr->op.expression.left,arrays,constants);
         expr_travers_distinct_traverser(s,expr->op.expression.right,arrays,constants);
             
     } else if (is_un_op(expr)) {
-        logcustom(cloglevel,0,"ETDT unary \n");
+        logcustom(cloglevel,1,"ETDT unary: l: %ld \n",expr->op.expression.left->name);
         expr_travers_distinct_traverser(s,expr->op.expression.left,arrays,constants);
     }        
 }
@@ -521,7 +521,8 @@ cphvb_intp execute_kernel_compiled(jit_execute_kernel* exekernel) {
         //logcustom(cloglevel,1,"A:%p \n",exekernel);
         logcustom(cloglevel,1,"A: %p \n",exekernel->arrays[i]);
         if (cloglevel[1]) {jit_pprint_cphvb_array(exekernel->arrays[i],0);}
-    }    
+    }
+    
     if (exekernel->inputconstants_length >0) {        
         logcustom(cloglevel,1,"C: %p\n",exekernel->inputconstants[0]);
     }
@@ -1344,24 +1345,34 @@ cphvb_error execute_from_executionlist(jit_analyse_state* s, jit_compute_functio
                 clock_gettime(CLOCK_REALTIME, &time2);  
                 printf("- bind cached expression_kernel %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
             }
+
+            
+            //printf("EFE "); jit_pprint_execute_kernel(execute_kernel);                        
+            
             // allocate
             res = allocate_for_exekernel(execute_kernel);
-                logcustom(cloglevel,1,"allocation result= %d\n",res);
+            logcustom(cloglevel,1,"allocation result= %d\n",res);
                 
             if (res != CPHVB_SUCCESS) {
                 return res;
             }
 
             // execute compiled kernel
-            logcustom(cloglevel,0,"EFE execute: JIT_COMPILE_KERNEL - exekernel: \n");
+            logcustom(cloglevel,1,"EFE execute: JIT_COMPILE_KERNEL - exekernel: \n");
             if (cloglevel[3]) { clock_gettime(CLOCK_REALTIME, &time1); }
             //jit_pprint_execute_kernel(execute_kernel) ;
+            //printf("entry for array:%p \n",execute_kernel->arrays[execute_kernel->arrays_length-1]);
+            jit_name_entry* entr1 = jita_nametable_lookup_a(s,execute_kernel->arrays[execute_kernel->arrays_length-1]);
+            //printf("entry for array:%p = %p\n",execute_kernel->arrays[execute_kernel->arrays_length-1],entr1);
+            //printf("entry for array:%p = %p\n",execute_kernel->arrays[0],entr1);
+            //jit_pprint_nametable_entry(entr1);
+            
             execute_result = execute_kernel_compiled(execute_kernel);
             if (cloglevel[3]) {                
                 clock_gettime(CLOCK_REALTIME, &time2);  
                 printf("- execute expression_kernel %d %ld : %d\n",execute_kernel->kernel->hash,diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
             }
-
+            logcustom(cloglevel,1,"EFE execute: result: %ld \n",execute_result);
             // insert into cache
             if(execute_result == 0 && !from_cache && cache_enabled) {
                 if (!jit_expression_kernel_cache_insert(e_kernel_cache,exprhash,execute_kernel)) {

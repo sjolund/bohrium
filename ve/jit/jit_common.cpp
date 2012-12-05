@@ -341,11 +341,11 @@ static void cphvb_sprint_instr_small( cphvb_instruction *instr, char buf[] ) {
         cphvb_userfunc* userfunc = instr->userfunc;
         for(i=0; i < userfunc->nout; i++) {
             //cphvb_sprint_array( userfunc->operand[i], op_str );
-            sprintf(op_str,"A:%p",instr->operand[i]);
-            sprintf(tmp, "  OUT%d %s\n", i, op_str);
+            sprintf(op_str,"A:%p",userfunc->operand[i]);
+            sprintf(tmp, " OP%d %s ", i, op_str);
             strcat(buf, tmp);
             if (userfunc->operand[i]->base != NULL) {
-                sprintf(op_str,"A:%p",instr->operand[i]->base);
+                sprintf(op_str,"A:%p",userfunc->operand[i]);
                 //cphvb_sprint_array( userfunc->operand[i]->base, op_str );
                 sprintf(tmp, "      %s\n", op_str);
                 strcat(buf, tmp);
@@ -353,11 +353,11 @@ static void cphvb_sprint_instr_small( cphvb_instruction *instr, char buf[] ) {
         }
         for(i=userfunc->nout; i < userfunc->nout + userfunc->nin; i++) {
             //cphvb_sprint_array( userfunc->operand[i], op_str );
-            sprintf(op_str,"A:%p",instr->operand[i]);
-            sprintf(tmp, "  IN%d %s\n", i, op_str);
+            sprintf(op_str,"A:%p",userfunc->operand[i]);
+            sprintf(tmp, " OP%d %s ", i, op_str);
             strcat(buf, tmp);
             if (userfunc->operand[i]->base != NULL) {
-                sprintf(op_str,"A:%p",instr->operand[i]->base);
+                sprintf(op_str,"A:%p",userfunc->operand[i]);
                 //cphvb_sprint_array( userfunc->operand[i]->base, op_str );
                 sprintf(tmp, "      %s\n", op_str);
                 strcat(buf, tmp);

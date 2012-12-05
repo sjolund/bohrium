@@ -484,7 +484,9 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
 cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instruction* instruction_list ) {
     //printf("\njit executing %d\n",instruction_count);
     //cphvb_pprint_instr_list(instruction_list,instruction_count,"Testing!");
-    //cphvb_pprint_instr_list_small(instruction_list,instruction_count,"Testing!");
+    char buff[10];
+    sprintf(buff,"# %d",jitinstr_list_count);
+    //cphvb_pprint_instr_list_small(instruction_list,instruction_count, buff);
     bool cloglevel[] = {0,0,0,0};
     //bool clean_up_list = false; // true if the instruction list holds no arithmetic instructions. (old.nametable.size() == new.nametable.size())
     //bool put_in_cache = false;
@@ -496,8 +498,6 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
        printf("* * * * Connected Instruction list detected. Nametable should not be reset.\n");
        return 0;   
     } // else 
-
-
 
     timespec time1, time2;
     if (cloglevel[3]) { 
@@ -585,11 +585,11 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
 
                 //printf("===================================\n");
                 //printf("====== Direkt execution ===========\n");
-                //jit_pprint_nametable(jitanalysestate->nametable);
-                //printf("executionlist");jit_pprint_set(execution_list);
-                //jit_pprint_nametable_dependencies(jitanalysestate->nametable);
-                //jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);   
-                
+                //~ jit_pprint_nametable(jitanalysestate->nametable);
+                //~ printf("executionlist");jit_pprint_set(execution_list);
+                //~ jit_pprint_nametable_dependencies(jitanalysestate->nametable);
+                //~ jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);   
+                //~ 
                 execute_from_executionlist(jitanalysestate,jitcomputefunctions ,jitexpressionkernelcache, execution_list,jit_cache_enabled)   ;             
             } else {
                 
@@ -689,12 +689,17 @@ cphvb_error cphvb_ve_jit_shutdown( void )
     cphvb_vcache_delete();
 
     // De-allocate state
-    bool output = false;
+    //~ bool output = true;
+    bool output = true;
     if (output) {
         printf("Instruction list computed: %ld\n", jitinstr_list_count );
-        printf("Kernel cache: hits %ld , misses: %ld\n", cache_hit, cache_miss);        
+        printf("InstructionBatchKernel cache (hits %ld , misses %ld)\n", cache_hit, cache_miss);        
         printf("%s\n",jit_expression_kernel_cache_string_stats().c_str());
+        printf("\n",jit_expression_kernel_cache_string_stats().c_str());
+        //jit_expr_kernel_cache_hits
+        //jit_expr_kernel_cache_miss;
     }
+    
     
     return CPHVB_SUCCESS;
 }
