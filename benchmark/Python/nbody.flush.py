@@ -92,7 +92,8 @@ if __name__ == '__main__':
     galaxy = random_galaxy(B, x_max, y_max, z_max, bodies, B.dtype)
 
     B.start()
-    for _ in range(time_step):        
+    for _ in range(time_step):
+        cphvbbridge.flush()
         move(galaxy)
         
     B.stop()
