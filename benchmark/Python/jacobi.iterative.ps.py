@@ -1,4 +1,5 @@
 import cphvbnumpy as np
+import cphvbbridge
 import util
 import sys
 
@@ -20,6 +21,7 @@ for i in xrange(I):
     work[1:-1, 1:-1] += full[2:  , 1:-1]
     work[1:-1, 1:-1] *= 0.2
     temp=work; work=full; full=temp
+    #cphvbbridge.flush()
 
 B.stop()
 B.pprint()
