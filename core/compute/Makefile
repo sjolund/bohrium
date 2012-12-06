@@ -2,7 +2,7 @@ ROOT=../..
 CXX=g++
 #CXX=clang
 WARNOPTS=-Wall
-LCFLAGS= $(WARNOPTS) -g -O2 -std=c++98 -fPIC -I$(ROOT)/include
+LCFLAGS= $(WARNOPTS) -g -O2 -std=c++98 -Winline -fPIC -I$(ROOT)/include
 LDFLAGS=-L$(ROOT)/core -lcphvb -lrt -shared -Wl,-soname
 HEADER=./*.hpp $(ROOT)/include/*
 SRC= $(shell find -iname '*.cpp') $(shell find -iname '*.c')

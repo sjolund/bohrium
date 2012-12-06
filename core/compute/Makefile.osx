@@ -2,7 +2,7 @@ ROOT=../..
 CXX?=g++
 WARNOPTS=-Wall
 ARCHOPTS?=-arch i386 -arch x86_64
-LCFLAGS= $(WARNOPTS) $(ARCHOPTS) -g -O2 -std=c++98 -fPIC -I$(ROOT)/include
+LCFLAGS= $(WARNOPTS) $(ARCHOPTS) -g -O2 -std=c++98 -Winline -fPIC -I$(ROOT)/include
 LDFLAGS= $(ARCHOPTS) -L$(ROOT)/core -lcphvb -lrt -shared -Wl
 HEADER=./*.hpp $(ROOT)/include/*
 SRC= $(shell find . -iname '*.cpp') $(shell find . -iname '*.c')
