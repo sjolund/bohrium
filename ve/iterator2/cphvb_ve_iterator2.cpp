@@ -116,7 +116,6 @@ cphvb_error cphvb_ve_iterator2_execute( cphvb_intp instruction_count, cphvb_inst
 
             default:                            // Built-in operations
                 inst->status = cphvb_compute_iterator2_apply( inst );
-                printf("YES!\n");
 
         }
 
