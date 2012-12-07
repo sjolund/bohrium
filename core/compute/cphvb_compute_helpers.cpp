@@ -252,3 +252,94 @@ cphvb_error cphvb_constant_iterator_reset(cphvb_constant_iterator* it, cphvb_ins
 
 	return CPHVB_ERROR;
 }
+
+cphvb_error cphvb_compute_iterator2_apply(cphvb_instruction* instr) {
+	cphvb_index i, j;
+	cphvb_itstate itstate;
+	cphvb_tstate tstate;
+	
+	cphvb_computeloop_iterator2 comp;
+	
+	cphvb_const2_iterator cit;
+	cphvb_dense2_iterator its[CPHVB_MAX_NO_OPERANDS];
+
+	cphvb_index operandcount = cphvb_operands(instr->opcode);
+	
+	cphvb_tstate_reset(&tstate, instr);
+
+	comp = cphvb_compute_iterator2_get(instr, tstate.ndim);
+	if (comp == NULL) 
+        return CPHVB_TYPE_NOT_SUPPORTED;
+
+	// Reverse order of dimension sizes
+	for(i = 0; i < tstate.ndim; i++) {
+		itstate.shape[i] = tstate.shape[tstate.ndim - i - 1];
+	}
+	
+	for(i = 0; i < operandcount; i++) {
+		if (cphvb_is_constant(instr->operand[i])) {
+			cit.start = &instr->constant;
+			itstate.iterator[i] = &cit;
+		} else {
+			its[i].start = tstate.start[i];
+			
+			// Reverse order of strides
+			for(j = 0; j < tstate.ndim; j++) {
+				its[i].stride[j] = tstate.stride[i][tstate.ndim - j - 1];
+			}
+			
+			itstate.iterator[i] = &its[i];
+		}
+	}
+
+
+	comp(&itstate);
+	
+	return CPHVB_SUCCESS;
+}
+
+
+cphvb_error cphvb_compute_iterator3_apply(cphvb_instruction* instr) {
+	cphvb_index i, j;
+	cphvb_itstate itstate;
+	cphvb_tstate tstate;
+	
+	cphvb_computeloop_iterator2 comp;
+	
+	cphvb_const2_iterator cit;
+	cphvb_dense2_iterator its[CPHVB_MAX_NO_OPERANDS];
+
+	cphvb_index operandcount = cphvb_operands(instr->opcode);
+	
+	cphvb_tstate_reset(&tstate, instr);
+
+	comp = cphvb_compute_iterator3_get(instr, tstate.ndim);
+	if (comp == NULL) 
+        return CPHVB_TYPE_NOT_SUPPORTED;
+
+	// Reverse order of dimension sizes
+	for(i = 0; i < tstate.ndim; i++) {
+		itstate.shape[i] = tstate.shape[tstate.ndim - i - 1];
+	}
+	
+	for(i = 0; i < operandcount; i++) {
+		if (cphvb_is_constant(instr->operand[i])) {
+			cit.start = &instr->constant;
+			itstate.iterator[i] = &cit;
+		} else {
+			its[i].start = tstate.start[i];
+			
+			// Reverse order of strides
+			for(j = 0; j < tstate.ndim; j++) {
+				its[i].stride[j] = tstate.stride[i][tstate.ndim - j - 1];
+			}
+			
+			itstate.iterator[i] = &its[i];
+		}
+	}
+
+
+	comp(&itstate);
+	
+	return CPHVB_SUCCESS;
+}
