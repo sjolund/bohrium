@@ -26,8 +26,9 @@ If not, see <http://www.gnu.org/licenses/>.
 
 #define ADD_VOID_POINTER(pointer, value) ((pointer) = (void*)(((BYTE*)pointer) + (value)))
 
+
 struct cphvb_dense_iterator_next_general_1op {
-    void operator()(cphvb_dense_iterator* it) {
+    inline void operator()(cphvb_dense_iterator* it) {
     	it->inner_ops++;
 
     	cphvb_index lookup = ((!(it->inner_ops % it->shapelimit1)) << 1) | (!(it->inner_ops % it->shapelimit2));
@@ -52,7 +53,7 @@ struct cphvb_dense_iterator_next_general_1op {
 };
 
 struct cphvb_dense_iterator_next_general_2op {
-    void operator()(cphvb_dense_iterator* it) {
+    inline void operator()(cphvb_dense_iterator* it) {
     	cphvb_index iops = ++it->inner_ops;
 
     	cphvb_index lookup = ((!(iops % it->shapelimit1)) << 1) | (!(iops % it->shapelimit2));
@@ -81,7 +82,7 @@ struct cphvb_dense_iterator_next_general_2op {
 };
 
 struct cphvb_dense_iterator_next_general_3op {
-    void operator()(cphvb_dense_iterator* it) {
+    inline void operator()(cphvb_dense_iterator* it) {
     	it->inner_ops++;
 
     	cphvb_index lookup = ((!(it->inner_ops % it->shapelimit1)) << 1) | (!(it->inner_ops % it->shapelimit2));
@@ -112,7 +113,7 @@ struct cphvb_dense_iterator_next_general_3op {
 };
 
 struct cphvb_constant_iterator_next {
-    void operator()(cphvb_constant_iterator* it) {
+    inline void operator()(cphvb_constant_iterator* it) {
     }
 };
 

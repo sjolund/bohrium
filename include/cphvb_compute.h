@@ -82,12 +82,19 @@ struct cphvb_constant_iterator {
     void* start[1];
 };
 
+typedef struct {
+	cphvb_index shape[CPHVB_MAXDIM];
+	void* iterator[CPHVB_MAX_NO_OPERANDS];
+} cphvb_itstate;
+
+
 cphvb_error cphvb_dense_iterator_reset(cphvb_dense_iterator* it, cphvb_instruction* instr);
 cphvb_error cphvb_constant_iterator_reset(cphvb_constant_iterator* it, cphvb_instruction* instr);
 
 typedef cphvb_error (*cphvb_computeloop)( cphvb_instruction*, cphvb_tstate* );
 typedef cphvb_error (*cphvb_computeloop_naive)( cphvb_instruction*, cphvb_tstate_naive*, cphvb_index );
 typedef cphvb_error (*cphvb_computeloop_iterator)( cphvb_index, void** );
+typedef void (*cphvb_computeloop_iterator2)( cphvb_itstate* );
 
 cphvb_computeloop_naive cphvb_compute_get_naive( cphvb_instruction *instr );
 cphvb_error cphvb_compute_apply_naive( cphvb_instruction *instr );
@@ -95,6 +102,12 @@ cphvb_error cphvb_compute_reduce_naive(cphvb_userfunc *arg, void* ve_arg);
 
 cphvb_error cphvb_compute_iterator_apply( cphvb_instruction *instr );
 cphvb_computeloop_iterator cphvb_compute_iterator_get (cphvb_instruction *instr);
+
+cphvb_error cphvb_compute_iterator2_apply( cphvb_instruction *instr );
+cphvb_computeloop_iterator2 cphvb_compute_iterator2_get( cphvb_instruction *instr, cphvb_index ndim );
+
+cphvb_error cphvb_compute_iterator3_apply( cphvb_instruction *instr );
+cphvb_computeloop_iterator2 cphvb_compute_iterator3_get( cphvb_instruction *instr, cphvb_index ndim );
 
 cphvb_computeloop cphvb_compute_get( cphvb_instruction *instr );
 cphvb_error cphvb_compute_apply( cphvb_instruction *instr );
@@ -104,6 +117,15 @@ cphvb_error cphvb_compute_aggregate(cphvb_userfunc *arg, void* ve_arg);
 cphvb_error cphvb_compute_random(cphvb_userfunc *arg, void* ve_arg);
 cphvb_error cphvb_compute_matmul(cphvb_userfunc *arg, void* ve_arg);
 cphvb_error cphvb_compute_nselect(cphvb_userfunc *arg, void* ve_arg);
+
+typedef struct {
+	void* start;
+	cphvb_index stride[CPHVB_MAXDIM];
+} cphvb_dense2_iterator;
+
+typedef struct {
+    void* start;
+} cphvb_const2_iterator;
 
 #ifdef __cplusplus
 }

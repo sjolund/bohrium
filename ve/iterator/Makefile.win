@@ -19,8 +19,8 @@ OBJ=$(SRC:.cpp=.obj)
 
 all: $(DLLNAME)
 
-cphvb_ve_simple.obj: cphvb_ve_iterator.cpp $(HEADER)
-		$(CXX) $(CFLAGS) cphvb_ve_simple.cpp /Fo$@
+cphvb_ve_iterator.obj: cphvb_ve_iterator.cpp $(HEADER)
+		$(CXX) $(CFLAGS) cphvb_ve_iterator.cpp /Fo$@
 
 
 $(LIBNAME): $(OBJ)
