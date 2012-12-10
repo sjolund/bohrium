@@ -42,72 +42,21 @@ struct cphvb_tstate {
 };
 void cphvb_tstate_reset( cphvb_tstate *state, cphvb_instruction* instr );
 
-typedef struct cphvb_dense_iterator cphvb_dense_iterator;
-struct cphvb_dense_iterator {
-
-	// Counters for keeping track of positions in anything above 3D
-	cphvb_index counters[CPHVB_MAXDIM];
-
-	// The number of elements in each dimension
-	cphvb_index shape[CPHVB_MAXDIM];
-
-	// The stride (in bytes) for moving in each dimension
-	cphvb_index stride[CPHVB_MAX_NO_OPERANDS][CPHVB_MAXDIM];
-		
-	// The pointer offsets
-    void* start[CPHVB_MAX_NO_OPERANDS];
-
-	// A 4-element lookup table for fast calculation of offsets
-	// when moving in the inner 3 dimensions
-	cphvb_index stride_lookup[4][CPHVB_MAX_NO_OPERANDS];
-
-	// The number of dimensions - 3
-	cphvb_index pstart;
-	
-	// The counter for inner elements, moving from 0 to shapelimit0
-	cphvb_index inner_ops;
-
-	// The number of elements in the inner 3 dimensions
-	cphvb_index shapelimit0;
-	
-	// The number of elements in the inner 2 dimensions
-	cphvb_index shapelimit1;
-		
-	// The number of elements in the innermost dimension
-	cphvb_index shapelimit2;
-};
-
-typedef struct cphvb_constant_iterator cphvb_constant_iterator;
-struct cphvb_constant_iterator {
-    void* start[1];
-};
-
 typedef struct {
 	cphvb_index shape[CPHVB_MAXDIM];
 	void* iterator[CPHVB_MAX_NO_OPERANDS];
 } cphvb_itstate;
 
-
-cphvb_error cphvb_dense_iterator_reset(cphvb_dense_iterator* it, cphvb_instruction* instr);
-cphvb_error cphvb_constant_iterator_reset(cphvb_constant_iterator* it, cphvb_instruction* instr);
-
 typedef cphvb_error (*cphvb_computeloop)( cphvb_instruction*, cphvb_tstate* );
 typedef cphvb_error (*cphvb_computeloop_naive)( cphvb_instruction*, cphvb_tstate_naive*, cphvb_index );
-typedef cphvb_error (*cphvb_computeloop_iterator)( cphvb_index, void** );
-typedef void (*cphvb_computeloop_iterator2)( cphvb_itstate* );
+typedef void (*cphvb_computeloop_iterator)( cphvb_itstate* );
 
 cphvb_computeloop_naive cphvb_compute_get_naive( cphvb_instruction *instr );
 cphvb_error cphvb_compute_apply_naive( cphvb_instruction *instr );
 cphvb_error cphvb_compute_reduce_naive(cphvb_userfunc *arg, void* ve_arg);
 
 cphvb_error cphvb_compute_iterator_apply( cphvb_instruction *instr );
-cphvb_computeloop_iterator cphvb_compute_iterator_get (cphvb_instruction *instr);
-
-cphvb_error cphvb_compute_iterator2_apply( cphvb_instruction *instr );
-cphvb_computeloop_iterator2 cphvb_compute_iterator2_get( cphvb_instruction *instr, cphvb_index ndim );
-
-cphvb_error cphvb_compute_iterator3_apply( cphvb_instruction *instr );
-cphvb_computeloop_iterator2 cphvb_compute_iterator3_get( cphvb_instruction *instr, cphvb_index ndim );
+cphvb_computeloop_iterator cphvb_compute_iterator_get( cphvb_instruction *instr, cphvb_index ndim );
 
 cphvb_computeloop cphvb_compute_get( cphvb_instruction *instr );
 cphvb_error cphvb_compute_apply( cphvb_instruction *instr );
@@ -119,13 +68,8 @@ cphvb_error cphvb_compute_matmul(cphvb_userfunc *arg, void* ve_arg);
 cphvb_error cphvb_compute_nselect(cphvb_userfunc *arg, void* ve_arg);
 
 typedef struct {
-	void* start;
-	cphvb_index stride[CPHVB_MAXDIM];
-} cphvb_dense2_iterator;
-
-typedef struct {
     void* start;
-} cphvb_const2_iterator;
+} cphvb_const_iterator;
 
 #ifdef __cplusplus
 }

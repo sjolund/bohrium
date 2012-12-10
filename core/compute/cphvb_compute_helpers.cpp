@@ -20,6 +20,7 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <assert.h>
 #include <cphvb.h>
 #include <cphvb_compute.h>
+#include "cphvb_compute_iterator.hpp"
 
 //This function protects against arrays that have superfluos dimensions,
 // which could negatively affect computation speed
@@ -127,147 +128,21 @@ cphvb_error cphvb_compute_apply_naive( cphvb_instruction *instr ) {
 
 }
 
-/**
- * Execute an instruction using the iterator traversal.
- *
- * @param instr Instruction to execute.
- * @return Status of execution
- */
-cphvb_error cphvb_compute_iterator_apply( cphvb_instruction *instr ) {
-
-	cphvb_index i;
-	void* args[3];
-	cphvb_dense_iterator dit;
-	cphvb_constant_iterator cit;
-
-	cphvb_computeloop_iterator comp = cphvb_compute_iterator_get(instr);
-    if (comp == NULL)
-        return CPHVB_TYPE_NOT_SUPPORTED;
-	
-	cphvb_dense_iterator_reset(&dit, instr);	
-	args[0] = &dit;
-	
-	// If we have a constant, pass a constant iterator as well
-	if (cphvb_is_constant(instr->operand[1]) || (cphvb_operands(instr->opcode) == 3 && cphvb_is_constant(instr->operand[2]))) {
-		cphvb_constant_iterator_reset(&cit, instr);
-		args[1] = &cit;
-	}
-
-	cphvb_index ops = 1;
-	for(i = 0; i < instr->operand[0]->ndim; i++)
-		ops *= instr->operand[0]->shape[i];
-
-	return comp(ops, (void**)&args);
-	
-}
-
-/**
- * Execute an instruction using the iterator traversal.
- *
- * @param it Iterator to reset.
- * @param instr Instruction to setup iterator for.
- * @return Status of reset
- */
-cphvb_error cphvb_dense_iterator_reset(cphvb_dense_iterator* it, cphvb_instruction* instr)
-{
-	cphvb_index i;
-	cphvb_tstate tstate;
-	
-	cphvb_index operandcount = cphvb_operands(instr->opcode);
-
-	//We need mostly whatever tstate has
-	cphvb_tstate_reset(&tstate, instr);
-	memcpy(it->stride, tstate.stride, sizeof(cphvb_index) * CPHVB_MAXDIM * operandcount);
-	memcpy(it->start, tstate.start, sizeof(void*) * operandcount);
-	memcpy(it->shape, tstate.shape, sizeof(cphvb_index) * tstate.ndim);
-
-	//We count down, because we can compare with 0 instead of a value lookup
-	memcpy(it->counters, tstate.shape, sizeof(cphvb_index) * tstate.ndim);
-	
-	cphvb_index lastdim = tstate.ndim - 1;
-	it->pstart = tstate.ndim - 4;
-	it->inner_ops = 0;
-	
-	// Special case, the middle operand is constant, so we
-	// rearrange the rightmost operand to use the middle index.
-	// This removes the need for a special next iterator
-	if (operandcount == 3 && cphvb_is_constant(instr->operand[1]))
-	{
-		it->start[1] = it->start[2];
-		memcpy(it->stride[1], it->stride[2], sizeof(cphvb_index) * CPHVB_MAXDIM);
-		operandcount--;
-	}
-	
-	// Prepare 2-bit inner lookup tables
-	for(i = 0; i < operandcount; i++) {
-		it->stride_lookup[0][i] = it->stride[i][lastdim];
-		if (lastdim == 0) {
-			it->stride_lookup[1][i] = it->stride[i][lastdim];
-			it->stride_lookup[2][i] = it->stride[i][lastdim];
-			it->stride_lookup[3][i] = it->stride[i][lastdim];
-		} else if (lastdim == 1) {
-			it->stride_lookup[1][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1];
-			it->stride_lookup[2][i] = it->stride[i][lastdim];
-			it->stride_lookup[3][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1];
-		} else {
-			it->stride_lookup[1][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1];
-			it->stride_lookup[2][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 2];
-			it->stride_lookup[3][i] = it->stride[i][lastdim] + it->stride[i][lastdim - 1] + it->stride[i][lastdim - 2];
-		}
-	}
-
-	// Calculate the sizes of the inner dimensions
-	it->shapelimit2 = it->shape[lastdim];
-	if (lastdim == 0) {
-		it->shapelimit1 = -1;
-		it->shapelimit0 = -1;
-	} else if (lastdim == 1) {
-		it->shapelimit1 = it->shapelimit2 * it->shape[lastdim - 1];
-		it->shapelimit0 = -1;
-	} else {
-		it->shapelimit1 = it->shapelimit2 * it->shape[lastdim - 1];
-		it->shapelimit0 = it->shapelimit1 * it->shape[lastdim - 2];
-	}
-		
-	return CPHVB_SUCCESS;
-}
-
-/**
- * Execute an instruction using the iterator traversal.
- *
- * @param it Iterator to reset.
- * @param instr Instruction to setup iterator for.
- * @return Status of reset
- */
-cphvb_error cphvb_constant_iterator_reset(cphvb_constant_iterator* it, cphvb_instruction* instr)
-{
-	cphvb_index i, noperands;
-	noperands = cphvb_operands(instr->opcode);
-	
-	for(i = 0; i < noperands; i++)
-        if (cphvb_is_constant(instr->operand[i])) {
-        	it->start[0] = &instr->constant.value;
-        	return CPHVB_SUCCESS;
-        }
-
-	return CPHVB_ERROR;
-}
-
-cphvb_error cphvb_compute_iterator2_apply(cphvb_instruction* instr) {
+cphvb_error cphvb_compute_iterator_apply(cphvb_instruction* instr) {
 	cphvb_index i, j;
 	cphvb_itstate itstate;
 	cphvb_tstate tstate;
 	
-	cphvb_computeloop_iterator2 comp;
+	cphvb_computeloop_iterator comp;
 	
-	cphvb_const2_iterator cit;
-	cphvb_dense2_iterator its[CPHVB_MAX_NO_OPERANDS];
+	cphvb_const_iterator cit;
+	cphvb_dense_iterator its[CPHVB_MAX_NO_OPERANDS];
 
 	cphvb_index operandcount = cphvb_operands(instr->opcode);
 	
 	cphvb_tstate_reset(&tstate, instr);
 
-	comp = cphvb_compute_iterator2_get(instr, tstate.ndim);
+	comp = cphvb_compute_iterator_get(instr, tstate.ndim);
 	if (comp == NULL) 
         return CPHVB_TYPE_NOT_SUPPORTED;
 
@@ -299,47 +174,4 @@ cphvb_error cphvb_compute_iterator2_apply(cphvb_instruction* instr) {
 }
 
 
-cphvb_error cphvb_compute_iterator3_apply(cphvb_instruction* instr) {
-	cphvb_index i, j;
-	cphvb_itstate itstate;
-	cphvb_tstate tstate;
-	
-	cphvb_computeloop_iterator2 comp;
-	
-	cphvb_const2_iterator cit;
-	cphvb_dense2_iterator its[CPHVB_MAX_NO_OPERANDS];
 
-	cphvb_index operandcount = cphvb_operands(instr->opcode);
-	
-	cphvb_tstate_reset(&tstate, instr);
-
-	comp = cphvb_compute_iterator3_get(instr, tstate.ndim);
-	if (comp == NULL) 
-        return CPHVB_TYPE_NOT_SUPPORTED;
-
-	// Reverse order of dimension sizes
-	for(i = 0; i < tstate.ndim; i++) {
-		itstate.shape[i] = tstate.shape[tstate.ndim - i - 1];
-	}
-	
-	for(i = 0; i < operandcount; i++) {
-		if (cphvb_is_constant(instr->operand[i])) {
-			cit.start = &instr->constant;
-			itstate.iterator[i] = &cit;
-		} else {
-			its[i].start = tstate.start[i];
-			
-			// Reverse order of strides
-			for(j = 0; j < tstate.ndim; j++) {
-				its[i].stride[j] = tstate.stride[i][tstate.ndim - j - 1];
-			}
-			
-			itstate.iterator[i] = &its[i];
-		}
-	}
-
-
-	comp(&itstate);
-	
-	return CPHVB_SUCCESS;
-}

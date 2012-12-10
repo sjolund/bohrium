@@ -26,9 +26,10 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <cphvb_compute.h>
 #include "functors.hpp"
 #include "iterator.hpp"
+#include "cphvb_compute_iterator.hpp"
 #include <complex>
 
-cphvb_computeloop_iterator cphvb_compute_iterator_get( cphvb_instruction *instr ) {
+cphvb_computeloop_iterator cphvb_compute_iterator_get( cphvb_instruction *instr, cphvb_index ndim ) {
 
     // Poly contains a unique value, pairing an opcode with its function signature.
     // All in one nicely switchable value.
@@ -70,29 +71,36 @@ cphvb_computeloop_iterator cphvb_compute_iterator_get( cphvb_instruction *instr 
                 +(instr->operand[1]->type << 12);
         }
     }
-
-    switch(poly) {
-
-        %for $case in $data
-        %if $case.nop == 2
-        case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12):
-            return &traverse_it_aa<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next_general_2op, cphvb_dense_iterator >;
-        case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (1 << 17):
-            return &traverse_it_ab<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next_general_1op, cphvb_dense_iterator, cphvb_constant_iterator_next, cphvb_constant_iterator >;
-        %else
-        case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (${case.op3} <<16):
-            return &traverse_it_aaa<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next_general_3op, cphvb_dense_iterator >;
-        case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (${case.op3} <<16) + (1 << 18):
-            return &traverse_it_aab<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next_general_2op, cphvb_dense_iterator, cphvb_constant_iterator_next, cphvb_constant_iterator >;
-        case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (${case.op3} <<16) + (1 << 17):
-            return &traverse_it_aba<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next_general_2op, cphvb_dense_iterator, cphvb_constant_iterator_next, cphvb_constant_iterator >;
-        %end if
-        %end for
-
-        default:
-            return NULL;
-
+    
+    switch(ndim) {
+    	%for $dim in range(16)
+		case ${dim+1}:
+			switch(poly) {
+		
+				%for $case in $data
+				%if $case.nop == 2
+				case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12):
+					return &traverse_it_aa_${dim+1}d<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next, cphvb_dense_iterator, cphvb_dense_iterator_next, cphvb_dense_iterator >;
+				case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (1 << 17):
+					return &traverse_it_aa_${dim+1}d<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next, cphvb_dense_iterator, cphvb_noop_iterator_next, cphvb_const_iterator >;
+				%else
+				case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (${case.op3} <<16):
+					return &traverse_it_aaa_${dim+1}d<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next, cphvb_dense_iterator, cphvb_dense_iterator_next, cphvb_dense_iterator, cphvb_dense_iterator_next, cphvb_dense_iterator >;
+				case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (${case.op3} <<16) + (1 << 18):
+					return &traverse_it_aaa_${dim+1}d<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next, cphvb_dense_iterator, cphvb_dense_iterator_next, cphvb_dense_iterator, cphvb_noop_iterator_next, cphvb_const_iterator >;
+				case ${case.opcode} + (${case.op1} << 8) +(${case.op2} <<12) + (${case.op3} <<16) + (1 << 17):
+					return &traverse_it_aaa_${dim+1}d<${case.ftypes}, ${case.fname}_functor<${case.ftypes} >, cphvb_dense_iterator_next, cphvb_dense_iterator, cphvb_noop_iterator_next, cphvb_const_iterator, cphvb_dense_iterator_next, cphvb_dense_iterator >;
+				%end if
+				%end for
+		
+				default:
+					return NULL;
+		
+			}
+		%end for
+		
+		default:
+			return NULL;
     }
 
 }
-

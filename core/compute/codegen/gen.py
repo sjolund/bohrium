@@ -18,8 +18,6 @@ def main():
         ('reduce',      'cphvb_reduce.ctpl',    'cphvb_compute_reduce.cpp'),
         ('reduce',      'cphvb_aggregate.ctpl', 'cphvb_compute_aggregate.cpp'),
         ('compute',     'cphvb_iterator.ctpl',   'cphvb_compute_iterator.cpp'),
-        ('compute',     'cphvb_iterator2.ctpl',   'cphvb_compute_iterator2.cpp'),
-        ('compute',     'cphvb_iterator3.ctpl',   'cphvb_compute_iterator3.cpp'),
     ]
 
     ignore  = json.load(open(script_dir+'ignore.json'))

@@ -17,25 +17,27 @@ GNU Lesser General Public License along with cphVB.
 
 If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef __CPHVB_VE_ITERATOR_H
-#define __CPHVB_VE_ITERATOR_H
-
+ 
 #include <cphvb.h>
+#include <assert.h>
+#include <cphvb_compute.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+typedef struct {
+	void* start;
+} cphvb_constant_iterator;
 
-DLLEXPORT cphvb_error cphvb_ve_iterator3_init(cphvb_component *self);
+typedef struct {
+	void* start;
+	cphvb_index stride[CPHVB_MAXDIM];
+} cphvb_dense_iterator;
 
-DLLEXPORT cphvb_error cphvb_ve_iterator3_execute(cphvb_intp instruction_count, cphvb_instruction* instruction_list);
+struct cphvb_dense_iterator_next {
+	inline void operator()(cphvb_dense_iterator* it, cphvb_index dimension) {
+		it->start = (void*)(((char*)it->start) + it->stride[dimension]);
+	}
+};
 
-DLLEXPORT cphvb_error cphvb_ve_iterator3_shutdown(void);
-
-DLLEXPORT cphvb_error cphvb_ve_iterator3_reg_func(char *fun, cphvb_intp *id);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
+struct cphvb_noop_iterator_next {
+    inline void operator()(void* it, cphvb_index dimension) {
+    }
+};

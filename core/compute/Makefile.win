@@ -40,12 +40,6 @@ cphvb_compute_aggregate.obj: cphvb_compute_aggregate.cpp
 cphvb_compute_iterator.obj: cphvb_compute_iterator.cpp
 		$(CC) $(CFLAGS) cphvb_compute_iterator.cpp /Fo$@
 
-cphvb_compute_iterator2.obj: cphvb_compute_iterator2.cpp
-		$(CC) $(CFLAGS) cphvb_compute_iterator2.cpp /Fo$@
-
-cphvb_compute_iterator3.obj: cphvb_compute_iterator3.cpp
-		$(CC) $(CFLAGS) cphvb_compute_iterator3.cpp /Fo$@
-
 $(LIBNAME): $(OBJ)
 		$(LIBTOOL) $(LIBFLAGS) $(OBJ)
 		

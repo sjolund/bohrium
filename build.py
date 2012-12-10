@@ -161,8 +161,6 @@ if __name__ == "__main__":
                   ("VE-TILE", "ve/tile", False),\
                   ("VE-NAIVE", "ve/naive", False),\
                   ("VE-ITERATOR", "ve/iterator", False),\
-                  ("VE-ITERATOR2", "ve/iterator2", False),\
-                  ("VE-ITERATOR3", "ve/iterator3", False),\
                   ("VE-SCORE", "ve/score", False),\
                   ("VE-MCORE", "ve/mcore", False),\
                   ("VEM-NODE", "vem/node", True),\
