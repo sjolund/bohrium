@@ -30,11 +30,38 @@ void traverse_it_aa_1d( cphvb_itstate* itstate ) {
 	
 	cphvb_index i;
 	cphvb_index limit = itstate->shape[0];
+	cphvb_index fulls = limit / 4;
+	cphvb_index remainder = limit % 4;
 	
-	for(i = 0; i < limit; i++) {
+	for(i = 0; i < fulls; i++) {
 		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start);
 		nextA((IteratortypeA*)itstate->iterator[0], 0);
 		nextB((IteratortypeB*)itstate->iterator[1], 0);
+		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start);
+		nextA((IteratortypeA*)itstate->iterator[0], 0);
+		nextB((IteratortypeB*)itstate->iterator[1], 0);
+		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start);
+		nextA((IteratortypeA*)itstate->iterator[0], 0);
+		nextB((IteratortypeB*)itstate->iterator[1], 0);
+		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start);
+		nextA((IteratortypeA*)itstate->iterator[0], 0);
+		nextB((IteratortypeB*)itstate->iterator[1], 0);
+	}
+	
+	switch(remainder)
+	{
+		case 3:
+			op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start);
+			nextA((IteratortypeA*)itstate->iterator[0], 0);
+			nextB((IteratortypeB*)itstate->iterator[1], 0);
+		case 2:
+			op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start);
+			nextA((IteratortypeA*)itstate->iterator[0], 0);
+			nextB((IteratortypeB*)itstate->iterator[1], 0);
+		case 1:
+			op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start);
+			nextA((IteratortypeA*)itstate->iterator[0], 0);
+			nextB((IteratortypeB*)itstate->iterator[1], 0);
 	}
 };
 
@@ -47,21 +74,46 @@ void traverse_it_aaa_1d( cphvb_itstate* itstate ) {
 	
 	cphvb_index i;
 	cphvb_index limit = itstate->shape[0];
+	cphvb_index fulls = limit / 4;
+	cphvb_index remainder = limit % 4;
 
-	//printf("In aaa 1d, shape: %lld\n", limit);
-
-	//printf("In aaa 1d, it-pointers: %lld, %lld, %lld\n", (cphvb_int64)itstate->iterator[0], (cphvb_int64)itstate->iterator[1], (cphvb_int64)itstate->iterator[2]);
-
-	//printf("In aaa 1d, data-pointers: %lld, %lld, %lld\n", (cphvb_int64)((IteratortypeA*)itstate->iterator[0])->start, (cphvb_int64)((IteratortypeB*)itstate->iterator[1])->start, (cphvb_int64)((IteratortypeC*)itstate->iterator[2])->start);
-
-	for(i = 0; i < limit; i++) {
+	for(i = 0; i < fulls; i++) {
+		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start, (T2*)((IteratortypeC*)itstate->iterator[2])->start);
+		nextA((IteratortypeA*)itstate->iterator[0], 0);
+		nextB((IteratortypeB*)itstate->iterator[1], 0);
+		nextC((IteratortypeC*)itstate->iterator[2], 0);
+		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start, (T2*)((IteratortypeC*)itstate->iterator[2])->start);
+		nextA((IteratortypeA*)itstate->iterator[0], 0);
+		nextB((IteratortypeB*)itstate->iterator[1], 0);
+		nextC((IteratortypeC*)itstate->iterator[2], 0);
+		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start, (T2*)((IteratortypeC*)itstate->iterator[2])->start);
+		nextA((IteratortypeA*)itstate->iterator[0], 0);
+		nextB((IteratortypeB*)itstate->iterator[1], 0);
+		nextC((IteratortypeC*)itstate->iterator[2], 0);
 		op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start, (T2*)((IteratortypeC*)itstate->iterator[2])->start);
 		nextA((IteratortypeA*)itstate->iterator[0], 0);
 		nextB((IteratortypeB*)itstate->iterator[1], 0);
 		nextC((IteratortypeC*)itstate->iterator[2], 0);
 	}
-
-	//printf("Leaving aaa 1d, shape: %lld\n", limit);
+	
+	switch(remainder)
+	{
+		case 3:
+			op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start, (T2*)((IteratortypeC*)itstate->iterator[2])->start);
+			nextA((IteratortypeA*)itstate->iterator[0], 0);
+			nextB((IteratortypeB*)itstate->iterator[1], 0);
+			nextC((IteratortypeC*)itstate->iterator[2], 0);
+		case 2:
+			op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start, (T2*)((IteratortypeC*)itstate->iterator[2])->start);
+			nextA((IteratortypeA*)itstate->iterator[0], 0);
+			nextB((IteratortypeB*)itstate->iterator[1], 0);
+			nextC((IteratortypeC*)itstate->iterator[2], 0);
+		case 1:
+			op((T0*)((IteratortypeA*)itstate->iterator[0])->start, (T1*)((IteratortypeB*)itstate->iterator[1])->start, (T2*)((IteratortypeC*)itstate->iterator[2])->start);
+			nextA((IteratortypeA*)itstate->iterator[0], 0);
+			nextB((IteratortypeB*)itstate->iterator[1], 0);
+			nextC((IteratortypeC*)itstate->iterator[2], 0);
+	}
 };
 
 #define TRAVERSE_IT_AAA_ND(DIMNO, THISF, PREVF) \
