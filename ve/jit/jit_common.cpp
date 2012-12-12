@@ -249,10 +249,12 @@ cphvb_intp expr_hash_state(jit_analyse_state* s, jit_expr* expr) {
     expr->is_leaf = false;
     expr_travers_for_hashing_state(s,expr,&hashinputvector);
     cphvb_intp hashinput[hashinputvector.size()];
+
+    //~ printf("%ld ",hashinputvector.size());
     expr->is_leaf = true;
     for(uint i=0;i<hashinputvector.size();i++) {
         hashinput[i] = hashinputvector[i];
-        //printf("%ld.",hashinputvector[i]);
+        //~ printf("%ld.",hashinputvector[i]);
     }
     uint32_t result = 0;
     uint32_t seed = 42;

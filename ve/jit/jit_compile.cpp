@@ -24,6 +24,8 @@
 #include "jit_common.h"
 
 
+#define JIT_FORCE_NOCACHE 1
+
 using namespace std;
 
 static string path_jitkernels = "/tmp";
@@ -39,8 +41,8 @@ string create_source_full_path(string funcname) {
  * TCC (Tiny C Compiler)
  **/
 cphvb_intp compile_tcc(string func_name,string comput_func_text, jit_comp_kernel* kernel) {
-    return 0;
     //~ 
+    
     //~ bool cloglevel[] = {0,0};
     //~ logcustom(cloglevel,0,"compile_tcc()\n");
     //~ 
@@ -254,16 +256,22 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
     //string path_cphvb_core       = string("/home/jolu/diku/speciale/cphVB/cphvb-priv/core");
 
     
-    string funcname = jit_nameing_kernel_file(func_name);
-    remove_kernel_files(funcname);
+    string funcname = jit_nameing_kernel_file(func_name);    
     string funclibname = funcname+string(".so");
     
     string funclibpath = path_jitkernels + "/" + funclibname;
     // chech if a .so file with the func_name already exists. 
     string escaped = escape_text_quotes(compute_func_text);
-    logcustom(cloglevel,2,"CGGC initial dlopen: %s\n",funclibpath.c_str());            
-    void* lib_handler = dlopen( funclibpath.c_str(),RTLD_LAZY);    
-    logcustom(cloglevel,2,"dlopen error (if any):  %s\n",dlerror());
+    //printf("%s \n",compute_func_text.c_str());
+    logcustom(cloglevel,2,"CGGC initial dlopen: %s\n",funclibpath.c_str());
+
+    
+    void* lib_handler = NULL;
+    if (JIT_FORCE_NOCACHE == 0) {
+        logcustom(cloglevel,1,"** loading from file.\n");
+        lib_handler = dlopen( funclibpath.c_str(),RTLD_LAZY);    
+        logcustom(cloglevel,2,"dlopen error (if any):  %s %p\n",dlerror(), lib_handler);
+    }
 
     
     
@@ -334,12 +342,14 @@ cphvb_intp compile_gcc(string func_name,string compute_func_text, jit_comp_kerne
 
 jit_comp_kernel* compile(string kernel_func_name,string codetext, jit_compile_method method) {        
     jit_comp_kernel* kernel = ((jit_comp_kernel*) malloc(sizeof(jit_comp_kernel))) ;
+    cphvb_intp res;
     switch(method) {            
         case COMPILE_METHOD_TCC:
-            compile_tcc(kernel_func_name,codetext,kernel);
-            //printf("compile result: %d\n", res);
+            //~ res = compile_tcc(kernel_func_name,codetext,kernel);
+            //~ return kernel;                    
             printf("TCC deprecated.\n");
-            return kernel;            
+            return NULL;
+            
         case COMPILE_METHOD_GCC:
             compile_gcc(kernel_func_name,codetext,kernel,true);
             return kernel;

@@ -680,16 +680,16 @@ string create_kernel_function_travers_nocast(string name,
     ss << "#include \"cphvb.h\"\n\n";
     
     //ss << "#define K_NARRAYS " << num_arrays << "\n";
-    //ss << "#define K_NCONSTANTS " << num_constants << "\n";
-    ss << "#define K_OUT_NDIM " << num_outarray_dimension << "\n";    
+    //ss << "#define K_NCONSTANTS " << num_constants << "\n";    
     ss << kernel_define_header();
     ss <<"\n";    
     ss << "void " << name.c_str() << "(cphvb_array** as,cphvb_constant** cs, cphvb_index skip, cphvb_index limit) {\n"
 "        cphvb_index last_dim = as[0]->ndim-1;\n"
 "        cphvb_index nelements = (limit>0) ? limit : cphvb_nelements( as[0]->ndim, as[0]->shape );\n"
 "        cphvb_index ec = 0;\n"
-"        cphvb_index coord[K_OUT_NDIM];\n"
-"        memset(coord, 0, K_OUT_NDIM * sizeof(cphvb_index));\n";    
+"        cphvb_index coord[";
+    ss << num_outarray_dimension << "];\n";
+    ss << "        memset(coord, 0, " << num_outarray_dimension << " * sizeof(cphvb_index));\n";    
     ss << codegen_create_array_datapointers_nocast(arrays,0);    
     ss << codegen_create_constant_datapointers_nocast(constants);
 

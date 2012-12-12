@@ -1,5 +1,8 @@
 READMED
 
+CPHVB_JIT_DIRECTEXECUTE=False CPHVB_JIT_CACHE_ENABLED=False  CPHVB_LIB=/opt/cphvb CPHVB_VE_JIT_INCLUDE=/home/jolu/diku/speciale/cphVB/cphvb-priv/include python jacobi.iterative.py --size=400*400*10 --cphvb=True
+CPHVB_JIT_DIRECTEXECUTE=True  CPHVB_JIT_CACHE_ENABLED=False CPHVB_LIB=/opt/cphvb CPHVB_VE_JIT_INCLUDE=/home/jolu/diku/speciale/cphVB/cphvb-priv/include python jacobi.iterative.py --size=400*400*10 --cphvb=True
+
 There have been changes to the implementation such thath it now uses environment variables for various settings.
 To run a test with the JIT framework the following MUST be set.
 
@@ -15,3 +18,7 @@ CPHVB_JIT_CACHE_ENABLED=True            #True
 example:
 
 CPHVB_JIT_DIRECTEXECUTE=True CPHVB_JIT_CACHE_ENABLED=True CPHVB_LIB=/opt/cphvb CPHVB_VE_JIT_INCLUDE=/home/jolu/diku/speciale/cphVB/cphvb-priv/include dython bscholes.py --size=5*5 --cphvb=False
+
+
+benchpress runs
+CPHVB_LIB=/opt/cphvb CPHVB_VE_JIT_INCLUDE=/home/jolu/diku/speciale/cphVB/cphvb-priv/include python press.py /home/jolu/diku/speciale/cphVB/cphvb-priv/ --runs 0 --suite jit_mark --output /tmp/

@@ -1087,7 +1087,8 @@ cphvb_intp build_compile_kernel_out_input(jit_analyse_state* s, jit_name_entry* 
     kernel->compute_kernel = NULL;
 
     char buff[30];
-    sprintf(buff,"kernel_func_%ld_%ld",hash,id);
+    //sprintf(buff,"kernel_func_%ld_%ld",hash,id);
+    sprintf(buff,"kernel_func_%ld",hash);
     string kernel_name = buff;
 
     logcustom(cloglevel,1,"test\n");

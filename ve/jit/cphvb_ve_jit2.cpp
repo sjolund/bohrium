@@ -446,6 +446,9 @@ cphvb_error cphvb_ve_jit_init(cphvb_component *self) {
     }    
     jit_direct_execute = (string(env) == string("True"));
     //printf("CPHVB_JIT_DIRECTEXECUTE=%s %d %s\n",env,jit_direct_execute,jit_pprint_true_false(jit_cache_enabled).c_str());
+
+    
+    
     
     // set GCC or TCC flag
     // set codegeneration method (vanilla, nocast/naive,)
@@ -555,6 +558,11 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             clock_gettime(CLOCK_REALTIME, &time2);  
             printf("jita_perform_dependecy_analysis %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
         }
+
+        //jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);            
+        //jit_pprint_nametable_dependencies(jitanalysestate->nametable);
+        //jit_pprint_nametable(jitanalysestate->nametable); printf("\n");
+
         if (cloglevel[1]) {
             jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);            
             jit_pprint_nametable_dependencies(jitanalysestate->nametable);
@@ -580,15 +588,30 @@ cphvb_error cphvb_ve_jit_execute( cphvb_intp instruction_count, cphvb_instructio
             clock_gettime(CLOCK_REALTIME, &time2);  
             printf("generate_execution_list %ld : %d\n",diff(time1,time2).tv_sec, (diff(time1,time2).tv_nsec)); 
         }
-        if (execution_list->size() > 0) {            
+                    
+        if (execution_list->size() > 0) {
+            //~ printf("instruction list: %ld\n",instruction_count);
+            //~ printf("exeuction list (%ld): ",execution_list->size());jit_pprint_set(execution_list);         
+            //~ set<cphvb_intp>::iterator itexe;
+            //~ for(itexe=execution_list->begin();itexe != execution_list->end(); itexe++) {
+                //~ jit_name_entry* entr = jita_nametable_lookup(jitanalysestate->nametable,*itexe);
+                //~ // printf("[%ld] = %ld\n",*itexe, expr_hash_state(jitanalysestate,entr->expr));
+                //~ // printf("[%ld] = %ld\n",*itexe, expr_hash_state(jitanalysestate,entr->expr));
+                //~ printf("%ld,\n",expr_hash_state(jitanalysestate,jita_nametable_lookup(jitanalysestate->nametable,*itexe)->expr));                
+            //~ }
+            
             if (jit_direct_execute) {
 
                 //printf("===================================\n");
                 //printf("====== Direkt execution ===========\n");
-                //~ jit_pprint_nametable(jitanalysestate->nametable);
-                //~ printf("executionlist");jit_pprint_set(execution_list);
+                //jit_pprint_nametable(jitanalysestate->nametable);
+                //~ printf("executionlist");jit_pprint_set(execution_list);                
                 //~ jit_pprint_nametable_dependencies(jitanalysestate->nametable);
-                //~ jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);   
+                //~ jit_pprint_base_dependency_table(jitanalysestate->base_usage_table);
+
+
+                
+                
                 //~ 
                 execute_from_executionlist(jitanalysestate,jitcomputefunctions ,jitexpressionkernelcache, execution_list,jit_cache_enabled)   ;             
             } else {
@@ -690,7 +713,7 @@ cphvb_error cphvb_ve_jit_shutdown( void )
 
     // De-allocate state
     //~ bool output = true;
-    bool output = false;
+    bool output = true;
     if (output) {
         printf("Instruction list computed: %ld\n", jitinstr_list_count );
         printf("InstructionBatchKernel cache (hits %ld , misses %ld)\n", cache_hit, cache_miss);        

@@ -30,7 +30,7 @@ H[droploc,droploc] += 5.0
 
 B.start()
 for i in xrange(T):
-    cphvbbridge.flush()    
+    cphvbbridge.flush()
     # Reflecting boundary conditions
     #               - equiv
     H[:,0] = H[:,1]   ; U[:,0] = U[:,1]     ; V[:,0] = -V[:,1]
