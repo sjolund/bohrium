@@ -18,25 +18,23 @@ GNU Lesser General Public License along with cphVB.
 If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef __CPHVB_VEM_CLUSTER_ARRAY_EXTENSION_H
-#define __CPHVB_VEM_CLUSTER_ARRAY_EXTENSION_H
+#ifndef __DEPGRAPH_HPP
+#define __DEPGRAPH_HPP
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <cphvb.h>
+#include <map>
+#include "DepSubGraph.hpp"
 
-
-//Extension to the cphvb_array for cluster information
-typedef struct
+class DepGraph
 {
-    //Process rank that owns the array.
-    int rank;
-}darray_ext;
-
-
-
-#ifdef __cplusplus
-}
-#endif
+    typedef std::map<cphvb_array*, DepSubGraph*> LastModifiedByMap;
+private:
+    std::list<DepSubGraph*> subGraphs;
+    LastModifiedByMap lastModifiedBy;
+    void ufunc(cphvb_instruction* inst);
+public:
+    DepGraph(cphvb_intp instruction_count,
+             cphvb_instruction instruction_list[]);
+};
 
 #endif

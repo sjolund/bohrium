@@ -106,8 +106,9 @@ cphvb_index cphvb_nelements(cphvb_intp ndim,
  */
 cphvb_index cphvb_array_size(const cphvb_array *array)
 {
-    return cphvb_nelements(array->ndim, array->shape) * 
-           cphvb_type_size(array->type);
+    const cphvb_array *b = cphvb_base_array(array);
+    return cphvb_nelements(b->ndim, b->shape) * 
+           cphvb_type_size(b->type);
 }
 
 /* Calculate the dimention boundries for shape
@@ -327,7 +328,6 @@ cphvb_type cphvb_type_operand(const cphvb_instruction *instruction,
         return operand->type;
 }
 
-
 /* Determines whether two arrays conflicts.
  *
  * @a The first array
@@ -383,3 +383,68 @@ bool cphvb_is_constant(const cphvb_array* o)
     return (o == NULL);
 }
 
+/* Determines whether the two views are the same
+ *
+ * @a The first array
+ * @b The second array
+ * @return The boolean answer
+ */
+bool cphvb_same_view(const cphvb_array* a, const cphvb_array* b)
+{
+    if (a == b)
+        return true;
+    if (cphvb_base_array(a) != cphvb_base_array(b))
+        return false;
+    if (memcmp(((char*)a)+sizeof(cphvb_array*),
+               ((char*)b)+sizeof(cphvb_array*),
+               sizeof(cphvb_array)-sizeof(cphvb_array*)-sizeof(cphvb_data_ptr)))
+        return false;
+    return true;
+}
+
+
+inline int gcd(int a, int b)
+{
+    int c = a % b;
+    while(c != 0)
+    {
+        a = b;
+        b = c;
+        c = a % b;
+    }
+    return b;
+}
+/* Determines whether two array(views)s access some of the same data points
+ *
+ * @a The first array
+ * @b The second array
+ * @return The boolean answer
+ */
+bool cphvb_disjoint_views(const cphvb_array *a, const cphvb_array *b)
+{
+    if (a == NULL || b == NULL) // One is a constant 
+        return true;
+    if(cphvb_base_array(a) != cphvb_base_array(b)) //different base
+        return true;
+    if(a->ndim != b->ndim) // we dont handle views of differenr dimensions yet
+        return false;
+
+    int astart = a->start;
+    int bstart = b->start;
+    int stride = 1;
+    for (int i = 0; i < a->ndim; ++i)
+    {
+        stride = gcd(a->stride[i], b->stride[i]);
+        int as = astart / stride;
+        int bs = bstart / stride;
+        int ae = as + a->shape[i] * (a->stride[i]/stride);
+        int be = bs + b->shape[i] * (b->stride[i]/stride);
+        if (ae <= bs || be <= as)
+            return true;
+        astart %= stride;
+        bstart %= stride;
+    }
+    if (stride > 1 && a->start % stride != b->start % stride)
+        return true;
+    return false;
+}
