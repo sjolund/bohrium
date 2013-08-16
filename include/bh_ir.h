@@ -110,6 +110,20 @@ DLLEXPORT void bh_node_reset(bh_node *node, const bh_ir *bhir);
  */
 DLLEXPORT bh_error bh_node_next(bh_node *node);
 
+/* Allocates space for a bh_ir struct,
+ * used to allow bridges to create the struct
+ * without knowing the size of the struct
+ *
+ * @return An allocated pointer to a bh_ir struct
+ */
+DLLEXPORT bh_ir* bh_ir_malloc();
+
+/* Frees the memory allocated by a previous
+ * call to bh_ir_malloc
+ *
+ * @bhir The BhIR handle
+ */
+DLLEXPORT void bh_ir_free(bh_ir* bhir);
 
 #ifdef __cplusplus
 }
