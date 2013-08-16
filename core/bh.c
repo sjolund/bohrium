@@ -99,59 +99,6 @@ void bh_assign_complete_base(bh_view *view, bh_base *base)
     view->stride[0] = 1;
 }
 
-/* Set the data pointer for the view.
- * Can only set to non-NULL if the data ptr is already NULL
- *
- * @view   The view in question
- * @data   The new data pointer
- * @return Error code (BH_SUCCESS, BH_ERROR)
- */
-bh_error bh_data_set(bh_view* view, bh_data_ptr data)
-{
-    bh_base* base;
-
-    if(view == NULL)
-    {
-        fprintf(stderr, "Attempt to set data pointer for a null view\n");
-        return BH_ERROR;
-    }
-
-    base = bh_base_array(view);
-
-    if(base->data != NULL && data != NULL)
-    {
-        fprintf(stderr, "Attempt to set data pointer an array with existing data pointer\n");
-        return BH_ERROR;
-    }
-
-    base->data = data;
-
-    return BH_SUCCESS;
-}
-
-/* Get the data pointer for the view.
- *
- * @view    The view in question
- * @result  Output data pointer
- * @return  Error code (BH_SUCCESS, BH_ERROR)
- */
-bh_error bh_data_get(bh_view* view, bh_data_ptr* result)
-{
-    bh_base* base;
-
-    if(view == NULL)
-    {
-        fprintf(stderr, "Attempt to get data pointer for a null view\n");
-        return BH_ERROR;
-    }
-
-    base = bh_base_array(view);
-
-    *result = base->data;
-
-    return BH_SUCCESS;
-}
-
 /* Allocate data memory for the given base if not already allocated.
  * For convenience, the base is allowed to be NULL.
  *

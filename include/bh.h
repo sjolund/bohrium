@@ -175,23 +175,6 @@ DLLEXPORT const char* bh_type_text(bh_type type);
  */
 DLLEXPORT const char* bh_error_text(bh_error error);
 
-/* Set the data pointer for the view.
- * Can only set to non-NULL if the data ptr is already NULL
- *
- * @view   The view in question
- * @data   The new data pointer
- * @return Error code (BH_SUCCESS, BH_ERROR)
- */
-DLLEXPORT bh_error bh_data_set(bh_view* view, bh_data_ptr data);
-
-/* Get the data pointer for the view.
- *
- * @view    The view in question
- * @result  Output data pointer
- * @return  Error code (BH_SUCCESS, BH_ERROR)
- */
-DLLEXPORT bh_error bh_data_get(bh_view* view, bh_data_ptr* result);
-
 /* Allocate data memory for the given base if not already allocated.
  * For convenience, the base is allowed to be NULL.
  *

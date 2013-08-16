@@ -30,9 +30,9 @@ template <typename Type> bh_error do_matmul(bh_view *A, bh_view *B, bh_view *C){
     Type* B_data;
     Type* C_data;
 
-    bh_data_get(A, (bh_data_ptr*) &A_data);
-    bh_data_get(B, (bh_data_ptr*) &B_data);
-    bh_data_get(C, (bh_data_ptr*) &C_data);
+    A_data = (Type*)bh_base_array(A)->data;
+    B_data = (Type*)bh_base_array(B)->data;
+    C_data = (Type*)bh_base_array(C)->data;
 
     bh_intp M = A->shape[0];
     bh_intp N = B->shape[1];
