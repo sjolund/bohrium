@@ -189,7 +189,7 @@ DLLEXPORT bh_error bh_data_malloc(bh_base* base);
  * @base    The base in question
  * @return  Error code (BH_SUCCESS, BH_ERROR)
  */
-bh_error bh_data_free(bh_base* base);
+DLLEXPORT bh_error bh_data_free(bh_base* base);
 
 /* Retrive the operands of a instruction.
  *
