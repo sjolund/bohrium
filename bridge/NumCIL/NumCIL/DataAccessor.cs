@@ -247,12 +247,7 @@ namespace NumCIL.Generic
 		/// The lock guarding the pending operations
 		/// </summary>
 		private static readonly object _pendingOperationsLock = new object();
-		
-		/// <summary>
-		/// The clock of the maximum operation already executed
-		/// </summary>
-		private static long _pendingOperationOffset;
-		
+				
 		/// <summary>
 		/// Adds an operation to the list of pending operations
 		/// </summary>
@@ -284,7 +279,6 @@ namespace NumCIL.Generic
 				var tmp = new List<IPendingOperation>();
 				while (_pendingOperations.Count > 0 && _pendingOperations[0].Clock <= maxclock)
 				{
-					_pendingOperationOffset = _pendingOperations[0].Clock;
 					tmp.Add(_pendingOperations[0]);
 					_pendingOperations.RemoveAt(0);
 				}
