@@ -100,6 +100,19 @@ namespace NumCIL.Bohrium
         public static readonly int PLAINFUNC_SIZE = Marshal.SizeOf(typeof(bh_userfunc_plain));
 
         /// <summary>
+        /// The size of the bh_type type
+        /// </summary>
+        public static readonly int BH_TYPE_SIZE = Marshal.SizeOf(Enum.GetUnderlyingType(typeof(bh_type)));        
+        /// <summary>
+        /// The size of the bh_index type
+        /// </summary>
+        public static readonly int BH_INDEX_SIZE = Marshal.SizeOf(typeof(bh_index));
+        /// <summary>
+        /// The size of the bh_base type
+        /// </summary>
+        public static readonly int BH_BASE_SIZE = Marshal.SizeOf(typeof(bh_base));
+
+        /// <summary>
         /// The known component types in Bohrium
         /// </summary>
         public enum bh_component_type : long
@@ -692,7 +705,7 @@ namespace NumCIL.Bohrium
 		/// Fake wrapper struct to keep a pointer to bh_ir typesafe
 		/// </summary>
 		[StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 0)]
-		public struct bh_ir_ptr
+		    public struct bh_ir_ptr
 		{
 			/// <summary>
 			/// The actual IntPtr value
@@ -755,14 +768,19 @@ namespace NumCIL.Bohrium
         /// Fake wrapper struct to keep a pointer to bh_array typesafe
         /// </summary>
         [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_array_ptr
+        public struct bh_base_ptr
         {
             /// <summary>
             /// The actual IntPtr value
             /// </summary>
             [FieldOffset(0)]
             internal IntPtr m_ptr;
-
+            
+            internal bh_base_ptr(IntPtr ptr)
+            {
+                m_ptr = ptr;
+            }
+            
             /// <summary>
             /// Accessor methods to read/write the data pointer
             /// </summary>
@@ -773,38 +791,14 @@ namespace NumCIL.Bohrium
                     if (m_ptr == IntPtr.Zero)
                         throw new ArgumentNullException();
 
-                    //IntPtr test = Marshal.ReadIntPtr(m_ptr, (Marshal.SizeOf(bh_intp) * (4 + (BH_MAXDIM * 2))));
-
-                    IntPtr res;
-                    bh_error e = bh_data_get(this, out res);
-                    if (e != bh_error.BH_SUCCESS)
-                        throw new BohriumException(e);
-                    return res;
+                    return Marshal.ReadIntPtr(m_ptr, BH_TYPE_SIZE + BH_INDEX_SIZE);
                 }
                 set
                 {
                     if (m_ptr == IntPtr.Zero)
                         throw new ArgumentNullException();
-
-                    bh_error e = bh_data_set(this, value);
-                    if (e != bh_error.BH_SUCCESS)
-                        throw new BohriumException(e);
-                }
-            }
-
-            /// <summary>
-            /// Accessor methods to read/write the base array
-            /// </summary>
-            public bh_array_ptr BaseArray
-            {
-                get
-                {
-                    if (m_ptr == IntPtr.Zero)
-                        throw new ArgumentNullException();
-
-                    return new bh_array_ptr() {
-                        m_ptr = Marshal.ReadIntPtr(m_ptr, 0)
-                    };
+                        
+                    Marshal.WriteIntPtr(m_ptr, BH_TYPE_SIZE + BH_INDEX_SIZE, value);
                 }
             }
 
@@ -818,11 +812,36 @@ namespace NumCIL.Bohrium
 					if (m_ptr == IntPtr.Zero)
 						throw new ArgumentNullException();
 
-					if (Is64Bit)
-						return (bh_type)Marshal.ReadInt64(m_ptr, IntPtr.Size);
-					else
-						return (bh_type)Marshal.ReadInt32(m_ptr, IntPtr.Size);
+					return (bh_type)Marshal.ReadInt64(m_ptr, 0);
             	}
+                set
+                {
+                    if (m_ptr == IntPtr.Zero)
+                        throw new ArgumentNullException();
+                        
+                    Marshal.WriteInt64(m_ptr, 0, (long)value);
+                }
+            }
+
+            /// <summary>
+            /// Gets the type of the array
+            /// </summary>
+            public bh_index Length
+            {
+                get
+                {
+                    if (m_ptr == IntPtr.Zero)
+                        throw new ArgumentNullException ();
+
+                    return (bh_index)Marshal.ReadInt64 (m_ptr, BH_TYPE_SIZE);
+                }
+                set
+                {
+                    if (m_ptr == IntPtr.Zero)
+                        throw new ArgumentNullException();
+                        
+                    Marshal.WriteInt64(m_ptr, BH_TYPE_SIZE, value);
+                }
             }
 
 			/// <summary>
@@ -835,7 +854,7 @@ namespace NumCIL.Bohrium
             /// <summary>
             /// A value that represents a null pointer
             /// </summary>
-            public static readonly bh_array_ptr Null = new bh_array_ptr() { m_ptr = IntPtr.Zero };
+            public static readonly bh_base_ptr Null = new bh_base_ptr() { m_ptr = IntPtr.Zero };
 
             /// <summary>
             /// Free's the array view, but does not de-reference it with the VEM
@@ -856,8 +875,8 @@ namespace NumCIL.Bohrium
             /// <returns>True if the objects are equal, false otherwise</returns>
             public override bool Equals(object obj)
             {
-                if (obj is bh_array_ptr)
-                    return ((bh_array_ptr)obj).m_ptr == this.m_ptr;
+                if (obj is bh_base_ptr)
+                    return ((bh_base_ptr)obj).m_ptr == this.m_ptr;
                 else
                     return base.Equals(obj);
             }
@@ -877,7 +896,7 @@ namespace NumCIL.Bohrium
             /// <param name="a">One argument</param>
             /// <param name="b">Another argument</param>
             /// <returns>True if the arguments are the same, false otherwise</returns>
-            public static bool operator ==(bh_array_ptr a, bh_array_ptr b)
+            public static bool operator ==(bh_base_ptr a, bh_base_ptr b)
             {
                 return a.m_ptr == b.m_ptr;
             }
@@ -888,7 +907,7 @@ namespace NumCIL.Bohrium
             /// <param name="a">One argument</param>
             /// <param name="b">Another argument</param>
             /// <returns>False if the arguments are the same, true otherwise</returns>
-            public static bool operator !=(bh_array_ptr a, bh_array_ptr b)
+            public static bool operator !=(bh_base_ptr a, bh_base_ptr b)
             {
                 return a.m_ptr != b.m_ptr;
             }
@@ -899,24 +918,20 @@ namespace NumCIL.Bohrium
             /// <returns>A human readable string representation of the pointer</returns>
             public override string ToString()
             {
-                return string.Format("(self: {0}, data: {1}, base: {2})", m_ptr, m_ptr == IntPtr.Zero ? "null" : this.Data.ToString(), m_ptr == IntPtr.Zero ? "null" : (this.BaseArray == bh_array_ptr.Null ? "null" : this.BaseArray.ToString()));
+                return string.Format("(self: {0}, data: {1})", m_ptr, m_ptr == IntPtr.Zero ? "null" : this.Data.ToString());
             }
         }
         
         /// <summary>
-        /// Representation of a Bohrium array
+        /// Representation of a Bohrium view
         /// </summary>
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_array
+        public struct bh_view
         {
             /// <summary>
-            /// The base array if this is a view, null otherwise
+            /// A pointer to the base array
             /// </summary>
-            public bh_array_ptr basearray;
-            /// <summary>
-            /// The element datatype of the array
-            /// </summary>
-            public bh_type type;
+            public bh_base_ptr basearray;
             /// <summary>
             /// The number of dimensions in the array
             /// </summary>
@@ -935,12 +950,46 @@ namespace NumCIL.Bohrium
             /// </summary>
             [MarshalAs(UnmanagedType.ByValArray, SizeConst=BH_MAXDIM)]
             public bh_index[] stride;
+            
             /// <summary>
-            /// A pointer to the actual data elements
+            /// Initializes a new <see cref="NumCIL.Bohrium.PInvoke+bh_view"/> struct.
             /// </summary>
-            public bh_data_array data;
+            /// <param name="ptr">Pointer to the base that this view represents</param>
+            /// <param name="shape">The shape that this view represents</param>
+            public bh_view(bh_base_ptr ptr, Shape shape)
+            {
+                this.basearray = ptr;
+                this.ndim = shape.Dimensions.Length;
+                this.start = shape.Offset;
+                this.shape = shape.Dimensions.Select(x => x.Length).ToArray();
+                this.stride = shape.Dimensions.Select(x => x.Stride).ToArray();
+            }
+            
+            /// <summary>
+            /// An empty view instance
+            /// </summary>
+            public static readonly bh_view EMPTY_VIEW = new bh_view();
         }
-
+        
+        /// <summary>
+        /// Representation of a Bohrium base array
+        /// </summary>
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
+        public struct bh_base
+        {
+            /// <summary>
+            /// The type of data in the array
+            /// </summary>
+            public bh_type type;
+            /// <summary>
+            /// The number of elements in the array
+            /// </summary>
+            public bh_intp nelem;
+            /// <summary>
+            /// The pointer to data
+            /// </summary>
+            public bh_data_ptr data;
+        }
         /// <summary>
         /// This struct is used to allow us to pass a pointer to different struct types,
         /// because we cannot use inheritance for the bh_userfunc structure to
@@ -1029,14 +1078,14 @@ namespace NumCIL.Bohrium
             /// <summary>
             /// The output operand
             /// </summary>
-            public bh_array_ptr operand;
+            public bh_view operand;
 
             /// <summary>
             /// Creates a new random userfunc
             /// </summary>
             /// <param name="func">The random function id</param>
             /// <param name="op">The output operand</param>
-            public bh_userfunc_random(bh_intp func, bh_array_ptr op)
+            public bh_userfunc_random(bh_intp func, bh_view op)
             {
                 this.id = func;
                 this.nout = 1;
@@ -1071,15 +1120,15 @@ namespace NumCIL.Bohrium
             /// <summary>
             /// The output operand
             /// </summary>
-            public bh_array_ptr operand0;
+            public bh_view operand0;
             /// <summary>
             /// An input operand
             /// </summary>
-            public bh_array_ptr operand1;
+            public bh_view operand1;
             /// <summary>
             /// Another input operand
             /// </summary>
-            public bh_array_ptr operand2;
+            public bh_view operand2;
 
             /// <summary>
             /// Constructs a new matmul userfunc
@@ -1088,7 +1137,7 @@ namespace NumCIL.Bohrium
             /// <param name="op1">The output operand</param>
             /// <param name="op2">An input operand</param>
             /// <param name="op3">Another input operand</param>
-            public bh_userfunc_matmul(bh_intp func, bh_array_ptr op1, bh_array_ptr op2, bh_array_ptr op3)
+            public bh_userfunc_matmul(bh_intp func, bh_view op1, bh_view op2, bh_view op3)
             {
                 this.id = func;
                 this.nout = 1;
@@ -1125,30 +1174,30 @@ namespace NumCIL.Bohrium
             /// <summary>
             /// The output operand
             /// </summary>
-            public bh_array_ptr operand0;
+            public bh_view operand0;
             /// <summary>
             /// An input operand
             /// </summary>
-            public bh_array_ptr operand1;
+            public bh_view operand1;
             /// <summary>
             /// Another input operand
             /// </summary>
-            public bh_array_ptr operand2;
+            public bh_view operand2;
 
             /// <summary>
             /// Creates a new plain userfunc
             /// </summary>
             /// <param name="func">The function id</param>
             /// <param name="op">The output operand</param>
-            public bh_userfunc_plain(bh_intp func, bh_array_ptr op)
+            public bh_userfunc_plain(bh_intp func, bh_view op)
             {
                 this.id = func;
                 this.nout = 1;
                 this.nin = 0;
                 this.struct_size = PLAINFUNC_SIZE;
                 this.operand0 = op;
-                this.operand1 = bh_array_ptr.Null;
-                this.operand2 = bh_array_ptr.Null;
+                this.operand1 = bh_view.EMPTY_VIEW;
+                this.operand2 = bh_view.EMPTY_VIEW;
             }
 
             /// <summary>
@@ -1157,7 +1206,7 @@ namespace NumCIL.Bohrium
             /// <param name="func">The function id</param>
             /// <param name="op1">The output operand</param>
             /// <param name="op2">The input operand</param>
-            public bh_userfunc_plain(bh_intp func, bh_array_ptr op1, bh_array_ptr op2)
+            public bh_userfunc_plain(bh_intp func, bh_view op1, bh_view op2)
             {
                 this.id = func;
                 this.nout = 1;
@@ -1165,7 +1214,7 @@ namespace NumCIL.Bohrium
                 this.struct_size = PLAINFUNC_SIZE;
                 this.operand0 = op1;
                 this.operand1 = op2;
-                this.operand2 = bh_array_ptr.Null;
+                this.operand2 = bh_view.EMPTY_VIEW;
             }
 
             /// <summary>
@@ -1175,7 +1224,7 @@ namespace NumCIL.Bohrium
             /// <param name="op1">The output operand</param>
             /// <param name="op2">An input operand</param>
             /// <param name="op3">Another input operand</param>
-            public bh_userfunc_plain(bh_intp func, bh_array_ptr op1, bh_array_ptr op2, bh_array_ptr op3)
+            public bh_userfunc_plain(bh_intp func, bh_view op1, bh_view op2, bh_view op3)
             {
                 this.id = func;
                 this.nout = 1;
@@ -1200,15 +1249,15 @@ namespace NumCIL.Bohrium
             /// <summary>
             /// The output operand
             /// </summary>
-            public bh_array_ptr operand0;
+            public bh_view operand0;
             /// <summary>
             /// An input operand
             /// </summary>
-            public bh_array_ptr operand1;
+            public bh_view operand1;
             /// <summary>
             /// Another input operand
             /// </summary>
-            public bh_array_ptr operand2;
+            public bh_view operand2;
             /// <summary>
             /// A constant value assigned to the instruction
             /// </summary>
@@ -1224,12 +1273,28 @@ namespace NumCIL.Bohrium
             /// <param name="opcode">The opcode for the operation</param>
             /// <param name="operand">The output operand</param>
             /// <param name="constant">An optional constant</param>
-            public bh_instruction(bh_opcode opcode, bh_array_ptr operand, PInvoke.bh_constant constant = new PInvoke.bh_constant())
+            public bh_instruction(bh_opcode opcode, bh_base_ptr operand)
+            {
+                this.opcode = opcode;
+                this.operand0 = new bh_view(operand, new Shape(operand.Length));
+                this.operand1 = bh_view.EMPTY_VIEW;
+                this.operand2 = bh_view.EMPTY_VIEW;
+                this.userfunc = IntPtr.Zero;
+                this.constant = new bh_constant();
+            }
+            
+            /// <summary>
+            /// Creates a new instruction
+            /// </summary>
+            /// <param name="opcode">The opcode for the operation</param>
+            /// <param name="operand">The output operand</param>
+            /// <param name="constant">An optional constant</param>
+            public bh_instruction(bh_opcode opcode, bh_view operand, PInvoke.bh_constant constant = new PInvoke.bh_constant())
             {
                 this.opcode = opcode;
                 this.operand0 = operand;
-                this.operand1 = bh_array_ptr.Null;
-                this.operand2 = bh_array_ptr.Null;
+                this.operand1 = bh_view.EMPTY_VIEW;
+                this.operand2 = bh_view.EMPTY_VIEW;
                 this.userfunc = IntPtr.Zero;
                 this.constant = constant;
             }
@@ -1241,11 +1306,11 @@ namespace NumCIL.Bohrium
             /// <param name="operand1">The output operand</param>
             /// <param name="constant">A left-hand-side constant</param>
             /// <param name="operand2">An input operand</param>
-            public bh_instruction(bh_opcode opcode, bh_array_ptr operand1, PInvoke.bh_constant constant, bh_array_ptr operand2)
+            public bh_instruction(bh_opcode opcode, bh_view operand1, PInvoke.bh_constant constant, bh_view operand2)
             {
                 this.opcode = opcode;
                 this.operand0 = operand1;
-                this.operand1 = bh_array_ptr.Null;
+                this.operand1 = bh_view.EMPTY_VIEW;
                 this.operand2 = operand2;
                 this.userfunc = IntPtr.Zero;
                 this.constant = constant;
@@ -1258,12 +1323,12 @@ namespace NumCIL.Bohrium
             /// <param name="operand1">The output operand</param>
             /// <param name="operand2">An input operand</param>
             /// <param name="constant">A right-hand-side constant</param>
-            public bh_instruction(bh_opcode opcode, bh_array_ptr operand1, bh_array_ptr operand2, PInvoke.bh_constant constant = new PInvoke.bh_constant())
+            public bh_instruction(bh_opcode opcode, bh_view operand1, bh_view operand2, PInvoke.bh_constant constant = new PInvoke.bh_constant())
             {
                 this.opcode = opcode;
                 this.operand0 = operand1;
                 this.operand1 = operand2;
-                this.operand2 = bh_array_ptr.Null;
+                this.operand2 = bh_view.EMPTY_VIEW;
                 this.userfunc = IntPtr.Zero;
                 this.constant = constant;
             }
@@ -1276,7 +1341,7 @@ namespace NumCIL.Bohrium
             /// <param name="operand2">An input operand</param>
             /// <param name="operand3">Another input operand</param>
             /// <param name="constant">A right-hand-side constant</param>
-            public bh_instruction(bh_opcode opcode, bh_array_ptr operand1, bh_array_ptr operand2, bh_array_ptr operand3, PInvoke.bh_constant constant = new PInvoke.bh_constant())
+            public bh_instruction(bh_opcode opcode, bh_view operand1, bh_view operand2, bh_view operand3, PInvoke.bh_constant constant = new PInvoke.bh_constant())
             {
                 this.opcode = opcode;
                 this.operand0 = operand1;
@@ -1292,7 +1357,7 @@ namespace NumCIL.Bohrium
             /// <param name="opcode">The opcode for the operation</param>
             /// <param name="operands">A list of operands</param>
             /// <param name="constant">A constant</param>
-            public bh_instruction(bh_opcode opcode, IEnumerable<bh_array_ptr> operands, PInvoke.bh_constant constant = new PInvoke.bh_constant())
+            public bh_instruction(bh_opcode opcode, IEnumerable<bh_view> operands, PInvoke.bh_constant constant = new PInvoke.bh_constant())
             {
                 this.opcode = opcode;
                 var en = operands.GetEnumerator();
@@ -1305,19 +1370,19 @@ namespace NumCIL.Bohrium
                         if (en.MoveNext())
                             this.operand2 = en.Current;
                         else
-                            this.operand2 = bh_array_ptr.Null;
+                            this.operand2 = bh_view.EMPTY_VIEW;
                     }
                     else
                     {
-                        this.operand1 = bh_array_ptr.Null;
-                        this.operand2 = bh_array_ptr.Null;
+                        this.operand1 = bh_view.EMPTY_VIEW;
+                        this.operand2 = bh_view.EMPTY_VIEW;
                     }
                 }
                 else
                 {
-                    this.operand0 = bh_array_ptr.Null;
-                    this.operand1 = bh_array_ptr.Null;
-                    this.operand2 = bh_array_ptr.Null;
+                    this.operand0 = bh_view.EMPTY_VIEW;
+                    this.operand1 = bh_view.EMPTY_VIEW;
+                    this.operand2 = bh_view.EMPTY_VIEW;
                 }
                 this.userfunc = IntPtr.Zero;
                 this.constant = constant;
@@ -1332,9 +1397,9 @@ namespace NumCIL.Bohrium
             {
                 this.opcode = opcode;
                 this.userfunc = userfunc;
-                this.operand0 = bh_array_ptr.Null;
-                this.operand1 = bh_array_ptr.Null;
-                this.operand2 = bh_array_ptr.Null;
+                this.operand0 = bh_view.EMPTY_VIEW;
+                this.operand1 = bh_view.EMPTY_VIEW;
+                this.operand2 = bh_view.EMPTY_VIEW;
                 this.constant = new bh_constant();
             }
 
@@ -1387,7 +1452,7 @@ namespace NumCIL.Bohrium
             /// <summary>
             /// Gets the userfunc arrays.
             /// </summary>
-            public bh_array_ptr[] UserfuncArrays
+            public bh_base_ptr[] UserfuncArrays
             {
             	get
             	{
@@ -1396,7 +1461,7 @@ namespace NumCIL.Bohrium
             			return null;
 
             		var nops = tp.Item2 + tp.Item3;
-            		var arrays = new bh_array_ptr[nops];
+            		var arrays = new bh_base_ptr[nops];
             		for(var i = 0; i < nops; i++)
             			arrays[i].m_ptr = Marshal.ReadIntPtr(this.userfunc, (4 + i) * IntPtr.Size);
 
@@ -1404,7 +1469,24 @@ namespace NumCIL.Bohrium
             	}
             }
         }
+        
+        public static bh_base_ptr bh_create_base(bh_type type, bh_index size)
+        {
+            var ptr = new bh_base_ptr(Marshal.AllocHGlobal(BH_BASE_SIZE));
+            ptr.Type = type;
+            ptr.Length = size;
+            ptr.Data = IntPtr.Zero;
+            return ptr;
+        }
 
+        public static void bh_destroy_base(bh_base_ptr ptr)
+        {
+            ptr.Length = 0;
+            ptr.Data = IntPtr.Zero;
+            Marshal.FreeHGlobal(ptr.m_ptr);
+            ptr.m_ptr = IntPtr.Zero;
+        }
+        
         /// <summary>
         /// Delegate for initializing a Bohrium component
         /// </summary>
@@ -1434,35 +1516,6 @@ namespace NumCIL.Bohrium
         /// <returns>A status code</returns>
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate bh_error bh_reg_func(string fun, ref bh_intp id);
-
-        /// <summary>
-        /// Creates a new base array or view in Bohrium
-        /// </summary>
-        /// <param name="basearray">The base array if creating a view, null otherwise</param>
-        /// <param name="type">The element datatype for the array</param>
-        /// <param name="ndim">The number of dimensions</param>
-        /// <param name="start">The data pointer offset</param>
-        /// <param name="shape">The size of each dimension</param>
-        /// <param name="stride">The stride of each dimension</param>
-        /// <param name="new_array">The allocated array</param>
-        /// <returns>A status code</returns>
-        [DllImport("libbh", EntryPoint = "bh_create_array", CallingConvention = CallingConvention.Cdecl, SetLastError = true, CharSet = CharSet.Auto)]
-        public extern static bh_error bh_create_array(
-                                   bh_array_ptr basearray,
-                                   bh_type     type,
-                                   bh_intp     ndim,
-                                   bh_index    start,
-                                   bh_index[]    shape,
-                                   bh_index[]    stride,
-                                   out bh_array_ptr new_array);
-
-        /// <summary>
-        /// Deallocates metadata for a base array or view
-        /// </summary>
-        /// <param name="array">The array to deallocate</param>
-        /// <returns>A status code</returns>
-        [DllImport("libbh", EntryPoint = "bh_destroy_array", CallingConvention = CallingConvention.Cdecl, SetLastError = true, CharSet = CharSet.Auto)]
-        public extern static bh_error bh_destroy_array(bh_array_ptr array);
 
         /// <summary>
         /// Setup the root component, which normally is the bridge.
@@ -1564,10 +1617,9 @@ namespace NumCIL.Bohrium
         /// Can only set to non-NULL if the data ptr is already NULL
         /// </summary>
         /// <param name="array">The array in question</param>
-        /// <param name="data">The new data pointer</param>
         /// <returns>Error code (BH_SUCCESS, BH_ERROR)</returns>
         [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-        public extern static bh_error bh_data_set([In] bh_array_ptr array, [In] IntPtr data);
+        public extern static bh_error bh_data_malloc([In] bh_base_ptr array);
 
         /// <summary>
         /// Set the data pointer for the array.
@@ -1576,25 +1628,7 @@ namespace NumCIL.Bohrium
         /// <param name="array">The array in question</param>
         /// <returns>Error code (BH_SUCCESS, BH_ERROR)</returns>
         [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-        public extern static bh_error bh_data_malloc([In] bh_array_ptr array);
-
-        /// <summary>
-        /// Set the data pointer for the array.
-        /// Can only set to non-NULL if the data ptr is already NULL
-        /// </summary>
-        /// <param name="array">The array in question</param>
-        /// <returns>Error code (BH_SUCCESS, BH_ERROR)</returns>
-        [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-        public extern static bh_error bh_data_free([In] bh_array_ptr array);
-
-        /// <summary>
-        /// Get the data pointer for the array.
-        /// </summary>
-        /// <param name="array">The array in question</param>
-        /// <param name="data">The data pointer</param>
-        /// <returns>Error code (BH_SUCCESS, BH_ERROR)</returns>
-        [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-        public extern static bh_error bh_data_get([In] bh_array_ptr array, [Out] out IntPtr data);
+        public extern static bh_error bh_data_free([In] bh_base_ptr array);
 
 		/// <summary>
 		/// Validates the given types for the operation and returns true if the operation is supported with the given types, and returns false otherwise
@@ -1642,22 +1676,26 @@ namespace NumCIL.Bohrium
 		/// <param name="instructions">The initial instruction list, can be null if instruction_count is 0</param>
  		/// <param name="instruction_count">The number of instructions in the list</param>
 		[DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-		public extern static bh_error bh_graph_create(ref bh_ir_ptr bhir, bh_instruction[] instructions, bh_intp instruction_count);
+		public extern static bh_error bh_ir_create(bh_ir_ptr bhir, bh_intp instruction_count, bh_instruction[] instructions);
 		
 		/// <summary>
 		/// Destroys the instance and releases all resources
 		/// </summary>
 		/// <param name="bhir">The bh_ir instance to destroy</param>
 		[DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-		public extern static bh_error bh_graph_destroy(bh_ir_ptr bhir);
-		
-		/// <summary>
-		/// Appends new instructions to the current batch
-		/// </summary>
-		/// <param name="bhir">The bh_ir instance to update</param>
-		/// <param name="instructions">The instruction list, can be null if instruction_count is 0</param>
-		/// <param name="instruction_count">The number of instructions in the list</param>
-		[DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-		public extern static bh_error bh_graph_append(bh_ir_ptr bhir, bh_instruction[] instructions, bh_intp instruction_count);
+		public extern static void bh_ir_destroy(bh_ir_ptr bhir);
+        
+        /// <summary>
+        /// Allocates space for a bh_ir struct, used to allow bridges to create the struct without knowing the size of the struct
+        /// </summary>        
+        [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_ir_ptr bh_ir_malloc();      
+
+        /// <summary>
+        /// Allocates space for a bh_ir struct, used to allow bridges to create the struct without knowing the size of the struct
+        /// </summary>
+        /// <param name="bhir">The pointer to free</param>>
+        [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static void bh_ir_free(bh_ir_ptr bhir);
 	}
 }

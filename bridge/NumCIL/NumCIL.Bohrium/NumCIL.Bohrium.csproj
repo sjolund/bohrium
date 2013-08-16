@@ -49,8 +49,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utility.cs" />
     <Compile Include="VEM.cs" />
-    <Compile Include="ViewPtrKeeper.cs" />
     <Compile Include="IR.cs" />
+    <Compile Include="BaseArrayKeeper.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NumCIL\NumCIL.csproj">

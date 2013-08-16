@@ -462,7 +462,11 @@ namespace NumCIL.Generic
         /// <returns>A string representation of the data viewed by this NdArray</returns>
         public override string ToString()
         {
+#if DEBUG
+            return string.Format("NdArray<{0}>({1}): {2}", typeof(T).FullName, string.Join(", ", this.Shape.Dimensions.Select(x => x.Length.ToString()).ToArray()), this.DataAccessor.IsAllocated ? "Allocated" : "Not allocated");
+#else
             return string.Format("NdArray<{0}>({1}): {3} {2}", typeof(T).FullName, string.Join(", ", this.Shape.Dimensions.Select(x => x.Length.ToString()).ToArray()), this.AsString(), Environment.NewLine);
+#endif
         }
 
         /// <summary>
@@ -738,26 +742,9 @@ namespace NumCIL.Generic
         }
 
         /// <summary>
-        /// Extension to support unmanaged mapping
-        /// </summary>
-        public object Tag;
-
-        /// <summary>
         /// Flag for debugging purposes
         /// </summary>
         public string Name;
-
-        /// <summary>
-        /// Destructor, disposes the tag if any
-        /// </summary>
-        ~NdArray()
-        {
-            if (Tag is IDisposable)
-            {
-                ((IDisposable)Tag).Dispose();
-                Tag = null;
-            }
-        }
     }
 }
 

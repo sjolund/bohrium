@@ -25,23 +25,22 @@ namespace NumCIL.Bohrium
 		/// </summary>
 		/// <param name="instructions">The initial instruction list in the IR batch</param>
 		public IR(PInvoke.bh_instruction[] instructions)
-		{
-			var res = PInvoke.bh_graph_create(ref m_ptr, instructions, instructions == null ? 0 : instructions.Length);
-			if (res != PInvoke.bh_error.BH_SUCCESS)
-				throw new BohriumException(res);
+        {
+            try
+            {
+                m_ptr = PInvoke.bh_ir_malloc ();
+                var res = PInvoke.bh_ir_create (m_ptr, instructions == null ? 0 : instructions.Length, instructions);
+                if (res != PInvoke.bh_error.BH_SUCCESS)
+                    throw new BohriumException (res);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+                if (m_ptr != PInvoke.bh_ir_ptr.Null)
+                    PInvoke.bh_ir_free(m_ptr);
+            }
 		}
-		
-		/// <summary>
-		/// Appends the specified instructions to the batch
-		/// </summary>
-		/// <param name="instructions">The instruction to append</param>
-		public void Append(params PInvoke.bh_instruction[] instructions)
-		{
-			var res = PInvoke.bh_graph_append(m_ptr, instructions, instructions == null ? 0 : instructions.Length);
-			if (res != PInvoke.bh_error.BH_SUCCESS)
-				throw new BohriumException(res);
-		}
-		
+				
 		/// <summary>
 		/// Executes the current batch
 		/// </summary>
@@ -55,7 +54,7 @@ namespace NumCIL.Bohrium
 		/// <summary>
 		/// Disposes all resources
 		/// </summary>
-		/// <param name="disposing">Aet to <c>true</c> if called from dispose, false otherwise</param>
+		/// <param name="disposing">Set to <c>true</c> if called from dispose, false otherwise</param>
 		protected void Dispose(bool disposing)
 		{
 			if (m_ptr == PInvoke.bh_ir_ptr.Null)
@@ -66,9 +65,8 @@ namespace NumCIL.Bohrium
 			
 			try
 			{
-				var res = PInvoke.bh_graph_destroy(m_ptr);
-				if (res != PInvoke.bh_error.BH_SUCCESS)
-					throw new BohriumException(res);
+				PInvoke.bh_ir_destroy(m_ptr);
+                PInvoke.bh_ir_free(m_ptr);
 			}
 			finally
 			{

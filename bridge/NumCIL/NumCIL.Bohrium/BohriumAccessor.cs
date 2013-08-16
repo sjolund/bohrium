@@ -333,7 +333,17 @@ namespace NumCIL.Bohrium
         /// <summary>
         /// A pointer to the base-array view structure
         /// </summary>
-        protected ViewPtrKeeper m_externalData = null;
+        internal BaseArrayKeeper ExternalData 
+        { 
+            get { return this.Tag as BaseArrayKeeper; }
+            set { this.Tag = null; }
+        }
+        
+        /// <summary>
+        /// Grabs the internal allocated storage
+        /// </summary>
+        /// <value>The internal data</value>
+        internal T[] InternalData { get { return m_data; } }
 
         /// <summary>
         /// Ensures that local data is synced
@@ -341,11 +351,11 @@ namespace NumCIL.Bohrium
         private void EnsureSynced()
         {
             this.Flush();
-            if (m_data == null && m_externalData == null)
+            if (m_data == null && ExternalData == null)
                 base.Allocate();
 
-            if (m_externalData != null)
-                VEM.Execute(new PInvoke.bh_instruction(bh_opcode.BH_SYNC, m_externalData.Pointer));
+            if (ExternalData != null)
+                VEM.Execute(new PInvoke.bh_instruction(bh_opcode.BH_SYNC, ExternalData.BasePointer));
         }
 
         /// <summary>
@@ -375,12 +385,12 @@ namespace NumCIL.Bohrium
                     return m_data[index];
                 else
                 {
-                    if (m_externalData.Pointer.Data == IntPtr.Zero)
+                    if (ExternalData.BasePointer.Data == IntPtr.Zero)
                     {
                         throw new Exception("Data not yet allocated?");
                     }
 
-                    IntPtr ptr = new IntPtr(m_externalData.Pointer.Data.ToInt64() + (index * NATIVE_ELEMENT_SIZE));
+                    IntPtr ptr = new IntPtr(ExternalData.BasePointer.Data.ToInt64() + (index * NATIVE_ELEMENT_SIZE));
                     if (typeof(T) == typeof(float))
                     {
                         T[] tmp = new T[1];
@@ -445,14 +455,14 @@ namespace NumCIL.Bohrium
             lock (m_lock)
             {
                 EnsureSynced();
-                if (m_data != null && m_externalData == null)
+                if (m_data != null && ExternalData == null)
                     return;
 
                 if (m_data == null)
                 {
                     base.Allocate();
 
-                    IntPtr actualData = m_externalData.Pointer.Data;
+                    IntPtr actualData = ExternalData.BasePointer.Data;
                     if (actualData == IntPtr.Zero)
                     {
                         //The array is "empty" which will be zeroes in NumCIL
@@ -577,12 +587,12 @@ namespace NumCIL.Bohrium
                                 throw new BohriumException(string.Format("Unexpected data type: {0}", typeof(T).FullName));
                         }
 
-                        VEM.Execute(new PInvoke.bh_instruction(bh_opcode.BH_FREE, m_externalData.Pointer));
+                        VEM.Execute(new PInvoke.bh_instruction(bh_opcode.BH_FREE, ExternalData.BasePointer));
                     }
                 }
 
-                m_externalData.Dispose();
-                m_externalData = null;
+                ExternalData.Dispose();
+                ExternalData = null;
             }
         }
 
@@ -592,6 +602,15 @@ namespace NumCIL.Bohrium
         public override void Allocate()
         {
             this.EnsureSynced();
+        }
+        
+        /// <summary>
+        /// Returns a value indicating if the array is allocated
+        /// </summary>
+        /// <value><c>true</c> if this instance is allocated; otherwise, <c>false</c>.</value>
+        public override bool IsAllocated
+        {
+            get { return (ExternalData != null && ExternalData.BasePointer != PInvoke.bh_base_ptr.Null && ExternalData.BasePointer.Data != IntPtr.Zero) || m_data != null; }
         }
 
         /// <summary>
@@ -603,57 +622,51 @@ namespace NumCIL.Bohrium
             {
                 EnsureSynced();
 
-                System.Diagnostics.Debug.Assert(m_data != null || m_externalData != null);
+                System.Diagnostics.Debug.Assert(m_data != null || ExternalData != null);
 
                 if (m_data != null)
                 {
-                    if (m_externalData != null && !m_externalData.HasHandle)
+                    if (ExternalData != null && !ExternalData.HasHandle)
                     {
-                        m_externalData.Dispose();
-                        m_externalData = null;
+                        ExternalData.Dispose();
+                        ExternalData = null;
                     }
 
-                    if (m_externalData == null || !m_externalData.HasHandle)
-                    {
-                        GCHandle h = GCHandle.Alloc(m_data, GCHandleType.Pinned);
-                        PInvoke.bh_array_ptr p = VEM.CreateBaseArray(m_data);
-                        p.Data = h.AddrOfPinnedObject();
-                        m_externalData = new ViewPtrKeeper(p, h);
-                    }
+                    if (ExternalData == null)
+                        BaseArrayKeeper.CreateBaseArrayKeeper(this);
+                    if (ExternalData.BasePointer.Data == IntPtr.Zero)
+                        ExternalData.Pin(m_data);
                 }
                 else
                 {
-                    System.Diagnostics.Debug.Assert(m_externalData != null && m_externalData.Pointer.Data != IntPtr.Zero);
+                    System.Diagnostics.Debug.Assert(ExternalData != null && ExternalData.BasePointer.Data != IntPtr.Zero);
                 }
 
-                return m_externalData.Pointer.Data;
+                return ExternalData.BasePointer.Data;
             }
         }
 
         /// <summary>
         /// Gets a pointer to the base array
         /// </summary>
-        public PInvoke.bh_array_ptr BaseArrayPtr
+        public PInvoke.bh_base_ptr BaseArrayPtr
         {
             get
             {
-                if (m_data == null && m_externalData == null)
+                if (m_data == null && ExternalData == null)
                 {
-                    m_externalData = new ViewPtrKeeper(VEM.CreateBaseArray(BH_TYPE, m_size));
-                    return m_externalData.Pointer;
+                    ExternalData = BaseArrayKeeper.CreateBaseArrayKeeper(this);
+                    return ExternalData.BasePointer;
                 }
 
-                if (m_externalData != null)
-                    return m_externalData.Pointer;
+                if (ExternalData != null)
+                    return ExternalData.BasePointer;
 
                 if (m_data != null)
                 {
-                    GCHandle h = GCHandle.Alloc(m_data, GCHandleType.Pinned);
-                    PInvoke.bh_array_ptr p = VEM.CreateBaseArray(m_data);
-                    p.Data = h.AddrOfPinnedObject();
-                    m_externalData = new ViewPtrKeeper(p, h);
-
-                    return m_externalData.Pointer;
+                    ExternalData = BaseArrayKeeper.CreateBaseArrayKeeper(this);
+                    ExternalData.Pin(m_data);
+                    return ExternalData.BasePointer;
                 }
 
                 throw new Exception("An assumption failed");
@@ -794,7 +807,7 @@ namespace NumCIL.Bohrium
                     {
 						isSupported = false;
 						
-						if (VEM.SupportsRandom && ops is NumCIL.Generic.IRandomGeneratorOp<T>)
+						/*if (VEM.SupportsRandom && ops is NumCIL.Generic.IRandomGeneratorOp<T>)
                         {
                             //Bohrium only supports random for plain arrays
                             if (operands[0].Shape.IsPlain && operands[0].Shape.Offset == 0 && operands[0].Shape.Elements == operands[0].DataAccessor.Length)
@@ -808,7 +821,7 @@ namespace NumCIL.Bohrium
                             supported.Add(VEM.CreateMatmulInstruction<T>(BH_TYPE, operands[0], operands[1], operands[2]));
                             isSupported = true;
                         }
-						else if (ops is NumCIL.UFunc.LazyReduceOperation<T>)
+						else*/ if (ops is NumCIL.UFunc.LazyReduceOperation<T>)
 						{
 							NumCIL.UFunc.LazyReduceOperation<T> lzop = (NumCIL.UFunc.LazyReduceOperation<T>)op.Operation;
 							bh_opcode rop = GetReduceOpCode(lzop.Operation);
@@ -962,9 +975,9 @@ namespace NumCIL.Bohrium
         /// <param name="disposing">True if called from the </param>
         protected void Dispose(bool disposing)
         {
-            if (m_externalData != null)
-                m_externalData.Dispose();
-            m_externalData = null;
+            if (ExternalData != null)
+                ExternalData.Dispose();
+            ExternalData = null;
             m_data = null;
 
             if (disposing)

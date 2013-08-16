@@ -54,7 +54,7 @@ namespace NumCIL.Bohrium
                 return _instance;
             }
         }
-
+        
         /// <summary>
         /// Lock object for ensuring single threaded access to the VEM
         /// </summary>
@@ -100,12 +100,6 @@ namespace NumCIL.Bohrium
         /// Flag that guards cleanup execution
         /// </summary>
         private bool m_preventCleanup = false;
-#if VIEW_BOOK_KEEPING
-        /// <summary>
-        /// A ref-counter for base arrays
-        /// </summary>
-        private Dictionary<PInvoke.bh_array_ptr, List<ViewPtrKeeper>> m_baseArrayRefs = new Dictionary<PInvoke.bh_array_ptr, List<ViewPtrKeeper>>();
-#endif
         /// <summary>
         /// Lookup table for all created userfunc structures
         /// </summary>
@@ -113,7 +107,7 @@ namespace NumCIL.Bohrium
         /// <summary>
         /// GC Handles for managed data
         /// </summary>
-        private Dictionary<PInvoke.bh_array_ptr, GCHandle> m_managedHandles = new Dictionary<PInvoke.bh_array_ptr, GCHandle>();
+        private Dictionary<PInvoke.bh_base_ptr, GCHandle> m_managedHandles = new Dictionary<PInvoke.bh_base_ptr, GCHandle>();
 
 		/// <summary>
 		/// Gets a value indicating whether this instance is disposed.
@@ -201,35 +195,19 @@ namespace NumCIL.Bohrium
         }
 
         /// <summary>
-        /// Registers instructions for later execution, usually destroy calls
-        /// </summary>
-        /// <param name="insts">The instructions to queue</param>
-        public void ExecuteRelease(params IInstruction[] insts)
-        {
-            //Locks are re-entrant, so we lock here to enforce order
-            lock(m_releaselock)
-                foreach (var i in insts)
-                    ExecuteRelease((PInvoke.bh_instruction)i);
-        }
-
-        /// <summary>
         /// Registers a release instruction for later execution, including a handle that must be disposed
         /// </summary>
         /// <param name="array">The array to discard</param>
         /// <param name="handle">The handle to dispose after discarding the array</param>
-        public void ExecuteRelease(PInvoke.bh_array_ptr array, GCHandle handle)
+        public void ExecuteRelease(PInvoke.bh_base_ptr array, GCHandle handle)
         {
             lock (m_releaselock)
             {
-                System.Diagnostics.Debug.Assert(array.BaseArray == PInvoke.bh_array_ptr.Null);
                 if (handle.IsAllocated)
                     m_managedHandles.Add(array, handle);
                 ExecuteRelease(new PInvoke.bh_instruction(bh_opcode.BH_DISCARD, array));
             }
         }
-
-
-
 
         /// <summary>
         /// Registers an instruction for later execution, usually destroy calls
@@ -238,77 +216,9 @@ namespace NumCIL.Bohrium
         public void ExecuteRelease(PInvoke.bh_instruction inst)
         {
             lock (m_releaselock)
-            {
-                if (inst.opcode == bh_opcode.BH_DISCARD)
-                {
-#if VIEW_BOOK_KEEPING
-					var ar = inst.operand0;
-                    if (ar.BaseArray != PInvoke.bh_array_ptr.Null)
-                    {
-                        var lst = m_baseArrayRefs[ar.BaseArray];
-                        for (int i = lst.Count - 1; i >= 0; i--)
-                            if (lst[i].Pointer == ar)
-                                lst.RemoveAt(i);
-
-                    }
-                    else
-                    {
-                        var lst = m_baseArrayRefs[ar];
-                        while(lst.Count > 0)
-                            lst[0].Dispose();
-                        
-                        m_baseArrayRefs.Remove(ar);
-                    }
-#endif
-                    //Discard the view
-                    m_cleanups.Add(inst);
-                }
-                else
-                {
-                    m_cleanups.Add(inst);
-                }
-            }
+                m_cleanups.Add(inst);
         }
 
-		/// <summary>
-		/// If the GC is responsible for collecting expired views and bases, 
-		/// it returns these in random order, which is not valid in Bohrium.
-		///
-		///	This method will pick up the invalid order and swap instructions to
-		/// ensure that the views are not discarded before the base array
-		/// </summary>
-		/// <returns>The input array</returns>
-		/// <param name="instructions">The instructions to fix.</param>
-		private static PInvoke.bh_instruction[] LowPassDiscardFixer(PInvoke.bh_instruction[] instructions)
-		{
-			var bases = new Dictionary<long, long>();
-			for(var i = 0; i < instructions.Length; i++)
-			{
-				if (instructions[i].opcode == bh_opcode.BH_DISCARD && instructions[i].operand0 != PInvoke.bh_array_ptr.Null)
-				{
-					var pid = instructions[i].operand0.BaseArray == PInvoke.bh_array_ptr.Null ? instructions[i].operand0.PtrValue : instructions[i].operand0.BaseArray.PtrValue;
-					if (instructions[i].operand0.BaseArray == PInvoke.bh_array_ptr.Null)
-					{
-						bases[pid] = i;
-					}
-					else
-					{
-						long ix;
-						if (bases.TryGetValue(pid, out ix))
-						{
-							var n = instructions[ix];
-							instructions[ix] = instructions[i];
-							instructions[i] = n;
-							bases[pid] = i;
-						}
-					}
-					
-				}
-			}
-			
-			return instructions;
-		}
-		
 		/// <summary>
         /// Executes a list of instructions
         /// </summary>
@@ -329,7 +239,7 @@ namespace NumCIL.Bohrium
                     long ix = inst_list.LongCount();
                     foreach (PInvoke.bh_instruction inst in cleanup_lst)
                     {
-                        if (inst.opcode == bh_opcode.BH_DISCARD && m_managedHandles.TryGetValue(inst.operand0, out tmp))
+                        if (inst.opcode == bh_opcode.BH_DISCARD && m_managedHandles.TryGetValue(inst.operand0.basearray, out tmp))
                         {
                             if (handles == null)
                                 handles = new List<Tuple<long, PInvoke.bh_instruction, GCHandle>>();
@@ -338,11 +248,7 @@ namespace NumCIL.Bohrium
                         ix++;
                     }
 
-#if !VIEW_BOOK_KEEPING
-					lst = lst.Concat(LowPassDiscardFixer(cleanup_lst.Cast<PInvoke.bh_instruction>().ToArray()).Cast<IInstruction>());
-#else
 					lst = lst.Concat(cleanup_lst);
-#endif
                 }
             }
 
@@ -359,13 +265,8 @@ namespace NumCIL.Bohrium
                 if (cleanup_lst != null)
                     lock (m_releaselock)
                     {
-                        errorIndex -= inst_list.LongCount();
-                        if (errorIndex > 0)
-                        {
-                            cleanup_lst.RemoveRange(0, (int)errorIndex);
-                            cleanup_lst.AddRange(m_cleanups);
-                            System.Threading.Interlocked.Exchange(ref m_cleanups, cleanup_lst);
-                        }
+                        cleanup_lst.AddRange(m_cleanups);
+                        System.Threading.Interlocked.Exchange(ref m_cleanups, cleanup_lst);
                     }
 
                 throw;
@@ -379,7 +280,7 @@ namespace NumCIL.Bohrium
                         {
                             if (errorIndex == -1 || kp.Item1 < errorIndex)
                             {
-                                m_managedHandles.Remove(kp.Item2.operand0);
+                                m_managedHandles.Remove(kp.Item2.operand0.basearray);
                                 kp.Item3.Free();
                             }
                         }
@@ -449,7 +350,7 @@ namespace NumCIL.Bohrium
 
                 if (destroys > 0)
                     foreach (var inst in instrBuffer.Where(x => x.opcode == bh_opcode.BH_DISCARD))
-                        PInvoke.bh_destroy_array(inst.operand0);
+                        PInvoke.bh_destroy_base(inst.operand0.basearray);
             }
             finally
             {
@@ -457,24 +358,14 @@ namespace NumCIL.Bohrium
                     h.Free();
             }
         }
-
-        /// <summary>
-        /// Creates a Bohrium descriptor for a base array, without assigning the actual data
-        /// </summary>
-        /// <param name="d">The array to map</param>
-        /// <returns>The pointer to the base array descriptor</returns>
-        public PInvoke.bh_array_ptr CreateBaseArray(Array d)
-        {
-            return CreateBaseArray(MapType(d.GetType().GetElementType()), d.LongLength);
-        }
-
+        
         /// <summary>
         /// Creates a base array with uninitialized memory
         /// </summary>
         /// <typeparam name="T">The data type for the array</typeparam>
         /// <param name="size">The size of the generated base array</param>
         /// <returns>The pointer to the base array descriptor</returns>
-        public PInvoke.bh_array_ptr CreateBaseArray<T>(long size)
+        public PInvoke.bh_base_ptr CreateBaseArray<T>(long size)
         {
             return CreateBaseArray(MapType(typeof(T)), size);
         }
@@ -522,70 +413,15 @@ namespace NumCIL.Bohrium
         /// <param name="type">The Bohrium type of data in the array</param>
         /// <param name="size">The size of the base array</param>
         /// <returns>The pointer to the base array descriptor</returns>
-        public PInvoke.bh_array_ptr CreateBaseArray(PInvoke.bh_type type, long size)
+        public PInvoke.bh_base_ptr CreateBaseArray(PInvoke.bh_type type, long size)
         {
-            var ptr = CreateArray(
-                PInvoke.bh_array_ptr.Null,
-                type,
-                1,
-                0,
-                new long[] { size },
-                new long[] { 1 }
-            );
-
-#if VIEW_BOOK_KEEPING
-			lock (m_releaselock)
-                m_baseArrayRefs.Add(ptr, new List<ViewPtrKeeper>());
-#endif
-            return ptr;
-        }
-
-        /// <summary>
-        /// Creates a Bohrium view descriptor
-        /// </summary>
-        /// <param name="basearray">The base array pointer</param>
-        /// <param name="type">The Bohrium type of data in the array</param>
-        /// <param name="ndim">Number of dimensions</param>
-        /// <param name="start">The offset into the base array</param>
-        /// <param name="shape">The shape values for each dimension</param>
-        /// <param name="stride">The stride values for each dimension</param>
-        /// <returns>The pointer to the array descriptor</returns>
-        public ViewPtrKeeper CreateView(PInvoke.bh_array_ptr basearray, PInvoke.bh_type type, long ndim, long start, long[] shape, long[] stride)
-        {
-            if (basearray == PInvoke.bh_array_ptr.Null)
-                throw new ArgumentException("Base array cannot be null for a view");
-            var ptr = new ViewPtrKeeper(CreateArray(basearray, type, ndim, start, shape, stride));
-#if VIEW_BOOK_KEEPING
-			lock (m_releaselock)
-                m_baseArrayRefs[basearray].Add(ptr);
-#endif
-            return ptr;
-        }
-
-        /// <summary>
-        /// Creates a Bohrium base array or view descriptor
-        /// </summary>
-        /// <param name="basearray">The base array pointer if creating a view or IntPtr.Zero if the view is a base array</param>
-        /// <param name="type">The Bohrium type of data in the array</param>
-        /// <param name="ndim">Number of dimensions</param>
-        /// <param name="start">The offset into the base array</param>
-        /// <param name="shape">The shape values for each dimension</param>
-        /// <param name="stride">The stride values for each dimension</param>
-        /// <returns>The pointer to the array descriptor</returns>
-        protected PInvoke.bh_array_ptr CreateArray(PInvoke.bh_array_ptr basearray, PInvoke.bh_type type, long ndim, long start, long[] shape, long[] stride)
-        {
-            PInvoke.bh_error e;
-            PInvoke.bh_array_ptr res;
-            
-            //TODO: We can just use an internal struct, and Pin it before calling
+            // We do not need to lock, 
+            // but keep it in case we go back
+            // to allocating the data from Bohrium
             lock (m_executelock)
-                e = PInvoke.bh_create_array(basearray, type, ndim, start, shape, stride, out res);
-
-            if (e != PInvoke.bh_error.BH_SUCCESS)
-                throw new BohriumException(e);
-
-            return res;
+                return PInvoke.bh_create_base(type, size);
         }
+
 		/// <summary>
 		/// Releases all resources held
 		/// </summary>
@@ -609,22 +445,6 @@ namespace NumCIL.Bohrium
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
             
-#if VIEW_BOOK_KEEPING
-			if (m_baseArrayRefs.Count > 0)
-			{
-				Console.WriteLine("WARNING: Found allocated views on shutdown");
-				foreach (var k in m_baseArrayRefs.Values.ToArray())
-					foreach (var m in k.ToArray())
-						m.Dispose();
-
-				GC.Collect();
-				GC.WaitForPendingFinalizers();
-			}
-
-			if (m_baseArrayRefs.Count > 0)
-				Console.WriteLine("WARNING: Some base arrays were stil allocated during VEM shutdown");
-#endif
-
 			m_preventCleanup = false;
 			ExecuteCleanups();
 			
@@ -669,124 +489,6 @@ namespace NumCIL.Bohrium
         ~VEM()
         {
             Dispose(false);
-        }
-
-        /// <summary>
-        /// Generates an unmanaged view pointer for the NdArray
-        /// </summary>
-        /// <param name="view">The NdArray to create the pointer for</param>
-        /// <returns>An unmanaged view pointer</returns>
-        protected ViewPtrKeeper CreateViewPtr<T>(NdArray<T> view)
-        {
-            return CreateViewPtr<T>(MapType(typeof(T)), view);
-        }
-
-        /// <summary>
-        /// Generates an unmanaged view pointer for the NdArray
-        /// </summary>
-        /// <param name="type">The type of data</param>
-        /// <param name="view">The NdArray to create the pointer for</param>
-        /// <typeparam name="T">The datatype in the view</typeparam>
-        /// <returns>An unmanaged view pointer</returns>
-        protected ViewPtrKeeper CreateViewPtr<T>(PInvoke.bh_type type, NdArray<T> view)
-        {
-            PInvoke.bh_array_ptr basep;
-
-            if (view.DataAccessor is BohriumAccessor<T>)
-            {
-                basep = ((BohriumAccessor<T>)view.DataAccessor).BaseArrayPtr;
-            }
-            else
-            {
-                if (view.DataAccessor.Tag is ViewPtrKeeper)
-                {
-                    basep = ((ViewPtrKeeper)view.DataAccessor.Tag).Pointer;
-                }
-                else
-                {
-                    GCHandle h = GCHandle.Alloc(view.DataAccessor.AsArray(), GCHandleType.Pinned);
-                    basep = CreateBaseArray<T>(view.DataAccessor.AsArray().Length);
-                    basep.Data = h.AddrOfPinnedObject();
-                    view.DataAccessor.Tag = new ViewPtrKeeper(basep, h);
-                }
-            }
-
-            if (view.Tag as ViewPtrKeeper == null || ((ViewPtrKeeper)view.Tag).Pointer == PInvoke.bh_array_ptr.Null || ((ViewPtrKeeper)view.Tag).Pointer.BaseArray != basep)
-                view.Tag = CreateView(type, view.Shape, basep);
-
-            return (ViewPtrKeeper)view.Tag;
-        }
-
-        /// <summary>
-        /// Creates a new view of data
-        /// </summary>
-        /// <param name="shape">The shape to create the view for</param>
-        /// <param name="baseArray">The array to set as base array</param>
-        /// <typeparam name="T">The type of data in the view</typeparam>
-        /// <returns>A new view</returns>
-        public ViewPtrKeeper CreateView<T>(Shape shape, PInvoke.bh_array_ptr baseArray)
-        {
-            return CreateView(MapType(typeof(T)), shape, baseArray);
-        }
-
-        /// <summary>
-        /// Creates a new view of data
-        /// </summary>
-        /// <param name="BH_TYPE">The data type of the view</param>
-        /// <param name="shape">The shape to create the view for</param>
-        /// <param name="baseArray">The array to set as base array</param>
-        /// <returns>A new view</returns>
-        public ViewPtrKeeper CreateView(PInvoke.bh_type BH_TYPE, Shape shape, PInvoke.bh_array_ptr baseArray)
-        {
-            //Unroll, to avoid creating a Linq query for basic 3d shapes
-            switch(shape.Dimensions.Length)
-            {
-                case 1:
-                    return CreateView(
-                        baseArray,
-                        BH_TYPE,
-                        shape.Dimensions.Length,
-                        (int)shape.Offset,
-                        new long[] { shape.Dimensions[0].Length },
-                        new long[] { shape.Dimensions[0].Stride }
-                    );
-                case 2:
-                    return CreateView(
-                            baseArray,
-                            BH_TYPE,
-                            shape.Dimensions.Length,
-                            (int)shape.Offset,
-                            new long[] { shape.Dimensions[0].Length, shape.Dimensions[1].Length },
-                            new long[] { shape.Dimensions[0].Stride, shape.Dimensions[1].Stride }
-                        );
-                case 3:
-                    return CreateView(
-                        baseArray,
-                        BH_TYPE,
-                        shape.Dimensions.Length,
-                        (int)shape.Offset,
-                        new long[] { shape.Dimensions[0].Length, shape.Dimensions[1].Length, shape.Dimensions[2].Length },
-                        new long[] { shape.Dimensions[0].Stride, shape.Dimensions[1].Stride, shape.Dimensions[2].Stride }
-                    );
-                default:
-                    long[] lengths = new long[shape.Dimensions.LongLength];
-                    long[] strides = new long[shape.Dimensions.LongLength];
-                    for (int i = 0; i < lengths.LongLength; i++)
-                    {
-                        var d = shape.Dimensions[i];
-                        lengths[i] = d.Length;
-                        strides[i] = d.Stride;
-                    }
-
-                    return CreateView(
-                        baseArray,
-                        BH_TYPE,
-                        shape.Dimensions.Length,
-                        (int)shape.Offset,
-                        lengths,
-                        strides
-                    );
-            }
         }
 
         /// <summary>
@@ -841,6 +543,16 @@ namespace NumCIL.Bohrium
             return CreateInstruction<T>(MapType(typeof(T)), opcode, operands);
         }
 
+        public PInvoke.bh_view CreateView<T>(NdArray<T> array)
+        {
+            return CreateView(MapType(typeof(T)), array);
+        }
+
+        public PInvoke.bh_view CreateView<T>(PInvoke.bh_type type, NdArray<T> array)
+        {
+            return new PInvoke.bh_view(BaseArrayKeeper.CreateBaseArrayKeeper(array.DataAccessor).BasePointer, array.Shape);
+        }
+
         /// <summary>
         /// Creates a new instruction
         /// </summary>
@@ -852,7 +564,7 @@ namespace NumCIL.Bohrium
         /// <returns>The new instruction</returns>
         public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> operand, PInvoke.bh_constant constant = new PInvoke.bh_constant())
         {
-            return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, operand).Pointer, constant);
+            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, operand), constant);
         }
 
         /// <summary>
@@ -867,7 +579,7 @@ namespace NumCIL.Bohrium
         /// <returns>The new instruction</returns>
         public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, PInvoke.bh_constant constant = new PInvoke.bh_constant())
         {
-            return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, CreateViewPtr<T>(type, op2).Pointer, constant);
+            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), constant);
         }
 
         /// <summary>
@@ -882,9 +594,9 @@ namespace NumCIL.Bohrium
         public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2)
         {
             if (IsScalar(op2))
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, PInvoke.bh_array_ptr.Null, new PInvoke.bh_constant(type, op2.DataAccessor[0]));
+                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), PInvoke.bh_view.EMPTY_VIEW, new PInvoke.bh_constant(type, op2.DataAccessor[0]));
             else
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, CreateViewPtr<T>(type, op2).Pointer, new PInvoke.bh_constant());
+                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), new PInvoke.bh_constant());
         }
 
         /// <summary>
@@ -899,7 +611,7 @@ namespace NumCIL.Bohrium
         /// <returns>The new instruction</returns>
         public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, PInvoke.bh_constant constant, NdArray<T> op2)
         {
-            return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, constant, CreateViewPtr<T>(type, op2).Pointer);
+            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), constant, CreateView<T>(type, op2));
         }
 
         /// <summary>
@@ -915,11 +627,11 @@ namespace NumCIL.Bohrium
         public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, NdArray<T> op3)
         {
             if (IsScalar(op2))
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, PInvoke.bh_array_ptr.Null, CreateViewPtr<T>(type, op3).Pointer, new PInvoke.bh_constant(type, op2.DataAccessor[0]));
+                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), PInvoke.bh_view.EMPTY_VIEW, CreateView<T>(type, op3), new PInvoke.bh_constant(type, op2.DataAccessor[0]));
             else if (IsScalar(op3))
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, CreateViewPtr<T>(type, op2).Pointer, PInvoke.bh_array_ptr.Null, new PInvoke.bh_constant(type, op3.DataAccessor[0]));
+                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), PInvoke.bh_view.EMPTY_VIEW, new PInvoke.bh_constant(type, op3.DataAccessor[0]));
             else
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, CreateViewPtr<T>(type, op2).Pointer, CreateViewPtr<T>(type, op3).Pointer, new PInvoke.bh_constant());
+                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), CreateView<T>(type, op3), new PInvoke.bh_constant());
         }
 
         /// <summary>
@@ -935,7 +647,7 @@ namespace NumCIL.Bohrium
         /// <returns>The new instruction</returns>
         public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, NdArray<T> op3, PInvoke.bh_constant constant)
         {
-            return new PInvoke.bh_instruction(opcode, CreateViewPtr<T>(type, op1).Pointer, CreateViewPtr<T>(type, op2).Pointer, CreateViewPtr<T>(type, op3).Pointer, constant);
+            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), CreateView<T>(type, op3), constant);
         }
 
         /// <summary>
@@ -949,7 +661,7 @@ namespace NumCIL.Bohrium
         /// <returns>The new instruction</returns>
         public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, IEnumerable<NdArray<T>> operands, PInvoke.bh_constant constant)
         {
-            return new PInvoke.bh_instruction(opcode, operands.Select(x => CreateViewPtr<T>(type, x).Pointer), constant);
+            return new PInvoke.bh_instruction(opcode, operands.Select(x => CreateView(type, x)), constant);
         }
 
         /// <summary>
@@ -969,10 +681,10 @@ namespace NumCIL.Bohrium
                 if (!constantUsed && IsScalar(x))
                 {
                     constant = new PInvoke.bh_constant(type, x.DataAccessor[0]);
-                    return PInvoke.bh_array_ptr.Null;
+                    return PInvoke.bh_view.EMPTY_VIEW;
                 }
                 else
-                    return CreateViewPtr<T>(type, x).Pointer;
+                    return CreateView(type, x);
             }), constant);
         }
 
@@ -991,11 +703,11 @@ namespace NumCIL.Bohrium
         public IInstruction CreateConversionInstruction<Ta, Tb>(List<IInstruction> supported, NumCIL.Bohrium.bh_opcode opcode, PInvoke.bh_type typea, NdArray<Ta> output, NdArray<Tb> in1, NdArray<Tb> in2)
         {
             if (IsScalar(in1))
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<Ta>(typea, output).Pointer, new PInvoke.bh_constant(in1.DataAccessor[0]), in2 == null ? PInvoke.bh_array_ptr.Null : CreateViewPtr<Tb>(in2).Pointer);
+                return new PInvoke.bh_instruction(opcode, CreateView<Ta>(typea, output), new PInvoke.bh_constant(in1.DataAccessor[0]), in2 == null ? PInvoke.bh_view.EMPTY_VIEW : CreateView<Tb>(in2));
             else if (in2 != null && IsScalar(in2))
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<Ta>(typea, output).Pointer, CreateViewPtr<Tb>(in1).Pointer, new PInvoke.bh_constant(in2.DataAccessor[0]));
+                return new PInvoke.bh_instruction(opcode, CreateView<Ta>(typea, output), CreateView<Tb>(in1), new PInvoke.bh_constant(in2.DataAccessor[0]));
             else
-                return new PInvoke.bh_instruction(opcode, CreateViewPtr<Ta>(typea, output).Pointer, CreateViewPtr<Tb>(in1).Pointer, in2 == null ? PInvoke.bh_array_ptr.Null : CreateViewPtr<Tb>(in2).Pointer);
+                return new PInvoke.bh_instruction(opcode, CreateView<Ta>(typea, output), CreateView<Tb>(in1), in2 == null ? PInvoke.bh_view.EMPTY_VIEW : CreateView<Tb>(in2));
         }
 
         /// <summary>
@@ -1016,7 +728,7 @@ namespace NumCIL.Bohrium
             GCHandle gh = GCHandle.Alloc(
                 new PInvoke.bh_userfunc_random(
                     m_randomFunctionId,
-                    CreateViewPtr<T>(type, op1).Pointer.BaseArray
+                    CreateView<T>(type, op1)
                 ), 
                 GCHandleType.Pinned
             );
@@ -1048,9 +760,9 @@ namespace NumCIL.Bohrium
             GCHandle gh = GCHandle.Alloc(
                 new PInvoke.bh_userfunc_matmul(
                     m_matmulFunctionId,
-                    CreateViewPtr<T>(type, op1).Pointer,
-                    CreateViewPtr<T>(type, op2).Pointer,
-                    CreateViewPtr<T>(type, op3).Pointer
+                    CreateView(type, op1),
+                    CreateView(type, op2),
+                    CreateView(type, op3)
                 ),
                 GCHandleType.Pinned
             );
@@ -1090,13 +802,13 @@ namespace NumCIL.Bohrium
         public bool IsValidInstruction(IInstruction inst)
 		{
 			var i = (PInvoke.bh_instruction)inst;
-			var out_type = i.operand0.Type;
+			var out_type = i.operand0.basearray.Type;
 			var nops = PInvoke.bh_operands(inst.OpCode);
 			if (nops == 1)
 				return PInvoke.bh_validate_types(inst.OpCode, out_type, PInvoke.bh_type.BH_UNKNOWN, PInvoke.bh_type.BH_UNKNOWN, PInvoke.bh_type.BH_UNKNOWN);
 			
-			var input1 = i.operand1 == PInvoke.bh_array_ptr.Null ? PInvoke.bh_type.BH_UNKNOWN : i.operand1.Type;
-			var input2 = i.operand2 == PInvoke.bh_array_ptr.Null ? PInvoke.bh_type.BH_UNKNOWN : i.operand2.Type;
+			var input1 = i.operand1.basearray == PInvoke.bh_base_ptr.Null ? PInvoke.bh_type.BH_UNKNOWN : i.operand1.basearray.Type;
+			var input2 = i.operand2.basearray == PInvoke.bh_base_ptr.Null ? PInvoke.bh_type.BH_UNKNOWN : i.operand2.basearray.Type;
 			var scalar = i.constant.type;
 			
 			if (nops == 2 || nops == 3)
