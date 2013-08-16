@@ -61,16 +61,6 @@ typedef struct
     bh_index      stride[BH_MAXDIM];
 }bh_view;
 
-/** Create a new base array.
- *
- * @param type The type of data in the array
- * @param nelements The number of elements
- * @param new_base The handler for the newly created base
- * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
- */
-DLLEXPORT bh_error bh_create_base(bh_type    type,
-                                  bh_index   nelements,
-                                  bh_base**  new_base);
 
 #ifdef __cplusplus
 }
