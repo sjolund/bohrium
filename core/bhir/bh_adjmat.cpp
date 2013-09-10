@@ -106,9 +106,7 @@ bh_error bh_adjmat_create_from_instr(bh_adjmat *adjmat, bh_intp ninstr,
         }
     }
     //Lets compute the transposed matrix
-    bh_boolmat_transpose(&adjmat->m, &adjmat->mT);
-
-    return BH_SUCCESS;
+    return bh_boolmat_transpose(&adjmat->m, &adjmat->mT);
 }
 
 
@@ -129,8 +127,7 @@ void bh_adjmat_destroy(bh_adjmat *adjmat)
  * @adjmat    The adjacency matrix
  * @row       The index to the row
  * @ncol_idx  Number of column indexes (output)
- * @col_idx   List of column indexes (output)
- * @return    Error code (BH_SUCCESS, BH_ERROR)
+ * @return    List of column indexes (output)
  */
 const bh_intp *bh_adjmat_get_row(const bh_adjmat *adjmat, bh_intp row, bh_intp *ncol_idx)
 {
@@ -143,9 +140,8 @@ const bh_intp *bh_adjmat_get_row(const bh_adjmat *adjmat, bh_intp row, bh_intp *
  *
  * @adjmat    The adjacency matrix
  * @col       The index of the column
- * @nrow_idx  Number of column indexes (output)
- * @row_idx   List of column indexes (output)
- * @return    Error code (BH_SUCCESS, BH_ERROR)
+ * @nrow_idx  Number of row indexes (output)
+ * @return    List of row indexes (output)
  */
 const bh_intp *bh_adjmat_get_col(const bh_adjmat *adjmat, bh_intp col, bh_intp *nrow_idx)
 {

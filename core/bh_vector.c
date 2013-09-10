@@ -69,7 +69,7 @@ bh_intp bh_vector_elsize(const void *vector)
  *                It must be greater or equal to the initial size
  * @return        The new vector as a void pointer, or NULL if out of memory
  */
-void *bh_vector_create(void *vector, bh_intp elsize, bh_intp initial_size,
+void *bh_vector_create(bh_intp elsize, bh_intp initial_size,
                        bh_intp reserve_size)
 {
     assert(elsize > 0);
@@ -133,8 +133,6 @@ void *bh_vector_reserve(void *vector, bh_intp n)
  *
  * If n is greater than the current container size, the content is expanded
  * by inserting at the end as many elements as needed to reach a size of n.
- * If val is specified, the new elements are initialized as copies of val,
- * otherwise, they are value-initialized.
  *
  * If n is also greater than the current container capacity, an automatic
  * reallocation of the allocated storage space takes place.

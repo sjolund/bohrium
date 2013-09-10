@@ -77,23 +77,21 @@ DLLEXPORT void bh_adjmat_destroy(bh_adjmat *adjmat);
  * @adjmat    The adjacency matrix
  * @row       The index to the row
  * @ncol_idx  Number of column indexes (output)
- * @col_idx   List of column indexes (output)
- * @return    Error code (BH_SUCCESS, BH_ERROR)
+ * @return    List of column indexes (output)
  */
 DLLEXPORT const bh_intp *bh_adjmat_get_row(const bh_adjmat *adjmat, bh_intp row,
-                                     bh_intp *ncol_idx);
+                                           bh_intp *ncol_idx);
 
 /* Retrieves a reference to a column in the adjacency matrix, i.e retrieval of the
  * node indexes that the col'th node depend on.
  *
  * @adjmat    The adjacency matrix
- * @col       The index to the row
- * @nrow_idx  Number of column indexes (output)
- * @row_idx   List of column indexes (output)
- * @return    Error code (BH_SUCCESS, BH_ERROR)
+ * @col       The index of the column
+ * @nrow_idx  Number of row indexes (output)
+ * @return    List of row indexes (output)
  */
 DLLEXPORT const bh_intp *bh_adjmat_get_col(const bh_adjmat *adjmat, bh_intp col,
-                                     bh_intp *nrow_idx);
+                                           bh_intp *nrow_idx);
 
 #ifdef __cplusplus
 }

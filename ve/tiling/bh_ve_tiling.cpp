@@ -192,7 +192,6 @@ bh_error bh_ve_tiling_execute(bh_ir* bhir)
 
         res = bh_vcache_malloc(inst);       // Allocate memory for operands
         if (res != BH_SUCCESS) {
-            free(instruction_list);
             return res;
         }
         switch(inst->opcode) {              // Dispatch instruction
@@ -276,7 +275,6 @@ bh_error bh_ve_tiling_execute(bh_ir* bhir)
                     bin_end++;                                  // The "end" index
                     res = bh_vcache_malloc(binst);              // Allocate memory for operands
                     if (res != BH_SUCCESS) {
-                        free(instruction_list);
                         return res;
                     }
                 }
@@ -333,7 +331,6 @@ bh_error bh_ve_tiling_execute(bh_ir* bhir)
         }
     }
 
-    free(instruction_list);
 	return res;
 }
 

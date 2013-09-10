@@ -70,6 +70,7 @@ DLLEXPORT void bh_boolmat_destroy(bh_boolmat *boolmat);
  * @row       The index to the empty row
  * @ncol_idx  Number of column indexes
  * @col_idx   List of column indexes (see CSR documentation)
+ *            NB: this list will be sorted thus any order is acceptable
  * @return    Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
  */
 DLLEXPORT bh_error bh_boolmat_fill_empty_row(bh_boolmat *boolmat,
@@ -82,8 +83,7 @@ DLLEXPORT bh_error bh_boolmat_fill_empty_row(bh_boolmat *boolmat,
  * @boolmat   The boolean matrix
  * @row       The index to the row
  * @ncol_idx  Number of column indexes (output)
- * @col_idx   List of column indexes (output)
- * @return    Error code (BH_SUCCESS, BH_ERROR)
+ * @return    List of column indexes (output)
  */
 DLLEXPORT const bh_intp *bh_boolmat_get_row(const bh_boolmat *boolmat,
                                             bh_intp row,
