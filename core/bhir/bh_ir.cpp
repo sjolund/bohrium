@@ -75,28 +75,6 @@ void bh_ir_destroy(bh_ir *bhir)
     free(bhir->dag_list);
 }
 
-
-/* Allocates space for a bh_ir struct,
- * used to allow bridges to create the struct
- * without knowing the size of the struct
- *
- * @return An allocated pointer to a bh_ir struct
- */
-bh_ir* bh_ir_malloc()
-{
-    return (bh_ir*)malloc(sizeof(bh_ir));
-}
-
-/* Frees the memory allocated by a previous
- * call to bh_ir_malloc
- *
- * @bhir The BhIR handle
- */
-void bh_ir_free(bh_ir* bhir)
-{
-    free(bhir);
-}
-
 /* Resets the node to the first node in the BhIR (topologically).
  *
  * @node    The node to reset
