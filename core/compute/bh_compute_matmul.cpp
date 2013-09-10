@@ -75,6 +75,9 @@ bh_error bh_compute_matmul(bh_userfunc *arg, void* ve_arg)
         return BH_OUT_OF_MEMORY;
     if(bh_data_malloc(C->base) != BH_SUCCESS)
         return BH_OUT_OF_MEMORY;
+    
+    if (A->base == NULL || B->base == NULL || C->base == NULL)
+        return BH_ERROR;
 
     switch (bh_base_array(C)->type)
     {
