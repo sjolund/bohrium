@@ -22,7 +22,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
 namespace bh {
 
-bh_opcode reducible_to_opcode(reducible opcode)
+inline bh_opcode reducible_to_opcode(reducible opcode)
 {
     switch(opcode) {
         case ADD:
@@ -43,12 +43,19 @@ bh_opcode reducible_to_opcode(reducible opcode)
         case LOGICAL_OR:
             return BH_LOGICAL_OR_REDUCE;
             break;
+        case LOGICAL_XOR:
+            return BH_LOGICAL_XOR_REDUCE;
+            break;
         case BITWISE_AND:
             return BH_BITWISE_AND_REDUCE;
             break;
         case BITWISE_OR:
             return BH_BITWISE_OR_REDUCE;
             break;
+        case BITWISE_XOR:
+            return BH_BITWISE_XOR_REDUCE;
+            break;
+
         default:
             throw std::runtime_error("Error: Unsupported opcode for reduction.\n");
     }

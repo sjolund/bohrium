@@ -26,11 +26,6 @@ If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-enum bh_cpu_traverser {
-    FRUIT_LOOPS,
-    NAIVE
-};
-
 DLLEXPORT bh_error bh_ve_cpu_init(bh_component *self);
 
 DLLEXPORT bh_error bh_ve_cpu_execute(bh_ir* bhir);

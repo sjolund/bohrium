@@ -44,7 +44,7 @@ const float  PI   = 3.14159265358979f;
 template <typename T>   // Forward declaration
 class multi_array;
 
-int64_t unpack_shape(int64_t *shape, size_t index, size_t arg)
+inline int64_t unpack_shape(int64_t *shape, size_t index, size_t arg)
 {
     shape[index] = arg;
     return 0;
@@ -284,11 +284,6 @@ public:
 
     template <typename T, typename OtherT>
     multi_array<T>& temp(multi_array<OtherT>& input);
-
-    /*
-    template <typename T, typename ...Dimensions>
-    multi_array<T>& temp(int64_t shape0, Dimensions... shape);
-    */
 
     template <typename T>
     multi_array<T>& view(multi_array<T>& base);

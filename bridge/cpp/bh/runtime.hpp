@@ -25,24 +25,19 @@ If not, see <http://www.gnu.org/licenses/>.
 namespace bh {
 
 // Runtime : Definition
-Runtime& Runtime::instance()
+inline Runtime& Runtime::instance()
 {
     static Runtime instance;
     return instance;
 }
 
-void stop()
-{
-}
-
-Runtime::Runtime() : random_id(0), ext_in_queue(0), queue_size(0)
+inline Runtime::Runtime() : random_id(0), ext_in_queue(0), queue_size(0)
 {
     bh_error err;
     char err_msg[100];
 
     int64_t        component_count; // Bohrium Runtime / Bridge setup
     bh_component **components;          
-    bh_component  *bridge;
 
     bridge = bh_component_setup(NULL);
     bh_component_children(bridge, &component_count, &components);
@@ -79,20 +74,18 @@ Runtime::Runtime() : random_id(0), ext_in_queue(0), queue_size(0)
                         " (%ld).\n", (long)random_id);
         throw std::runtime_error(err_msg);
     }
-
-    bh_component_free(bridge);      // The bridge component is no longer
-                                    // needed
 }
 
-Runtime::~Runtime()
+inline Runtime::~Runtime()
 {
     flush();
 
     runtime->shutdown();
     bh_component_free(runtime);
+    bh_component_free(bridge);
 }
 
-size_t Runtime::get_queue_size()
+inline size_t Runtime::get_queue_size()
 {
     return queue_size;
 }
@@ -485,7 +478,7 @@ T scalar(multi_array<T>& op)
     return value;
 }
 
-void Runtime::trash(bh_base *base_ptr)
+inline void Runtime::trash(bh_base *base_ptr)
 {
     garbage.push_back(base_ptr);
 }
