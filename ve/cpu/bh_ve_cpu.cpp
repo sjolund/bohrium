@@ -22,7 +22,11 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <set>
 #include <stdexcept>
+#if defined __GNUC__ || defined __APPLE__
+#include <tr1/unordered_map>
+#else
 #include <unordered_map>
+#endif
 #include <errno.h>
 #include <unistd.h>
 #include <inttypes.h>
