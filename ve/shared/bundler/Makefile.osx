@@ -1,4 +1,4 @@
-ROOT=../..
+ROOT=../../..
 LIB=bh_bundler
 CXX?=g++
 WARNOPTS=-Wall
