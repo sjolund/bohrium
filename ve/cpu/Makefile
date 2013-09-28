@@ -6,7 +6,7 @@ WARNOPTS=-Wall
 #LCFLAGS= $(WARNOPTS) -g -O2 -fPIC -I$(ROOT)/include -I$(ROOT)/core -I$(ROOT)/traverse
 EXTRAS+=
 LCFLAGS= $(WARNOPTS) -std=c++0x -g -O2 -fPIC -I$(ROOT)/include -I$(ROOT)/core -I$(ROOT)/traverse $(EXTRAS)
-LDFLAGS=-L../../core -lbh -lrt -lctemplate -shared -Wl,-soname
+LDFLAGS=-L$(ROOT)/core -lbh -lrt -lctemplate -shared -Wl,-soname
 HEADER=./*.h $(ROOT)/include/*
 SRC= $(shell find -iname '*.cpp') $(shell find -iname '*.c')
 OBJTMP=$(SRC:.c=.o)
@@ -27,7 +27,7 @@ $(LIB): $(OBJ)
 		$(CXX) $(OBJ) -o $@ $(LDFLAGS),$(LIB) $(CFLAGS) -I$(ROOT)/include
 
 precompiler: precompiler.cpp
-	$(CXX)  $< -o $@ $(LIB) -I$(ROOT)/include -L../../core -lbh -lrt -ldl -ljansson -lctemplate $(LCFLAGS) $(CFLAGS)
+	$(CXX)  $< -o $@ $(LIB) -I$(ROOT)/include -L$(ROOT)/core -lbh -lrt -ldl -ljansson -lctemplate $(LCFLAGS) $(CFLAGS)
 
 precompile:
 		/usr/bin/time ./precompiler
