@@ -3,8 +3,8 @@ LIB=libbh_ve_cpu.dylib
 CXX?=g++
 WARNOPTS=-Wall
 ARCHOPTS?=-arch i386 -arch x86_64
-LCFLAGS= $(WARNOPTS) $(ARCHOPTS) -g -O2 -fPIC -I$(ROOT)/include
-LDFLAGS= $(ARCHOPTS) -L../../core -lbh -shared -Wl,-dylib_install_name,$(LIB)
+LCFLAGS= $(WARNOPTS) $(ARCHOPTS) -g -O2 -fPIC -I$(ROOT)/include -I$(ROOT)/traverse -I$(ROOT)/thirdparty/ctemplate/include
+LDFLAGS= $(ARCHOPTS) -L$(ROOT)/core -L$(ROOT)/thirdparty/ctemplate/osx-lib -lctemplate -lbh $(ROOT)/ve/shared/compute/*.o -shared -Wl,-dylib_install_name,$(LIB)
 HEADER=./*.h $(ROOT)/include/*
 SRC= $(shell find . -iname '*.cpp') $(shell find . -iname '*.c')
 OBJTMP=$(SRC:.c=.o)
@@ -22,7 +22,13 @@ all: $(LIB)
 		$(CXX) -c $< -o $@ $(LCFLAGS) $(CFLAGS)
 
 $(LIB): $(OBJ)
-		$(CXX) $(OBJ) -o $@ $(LDFLAGS),$(LIB) $(CFLAGS) -I$(ROOT)/include
+		$(CXX) $(OBJ) -o $@ $(LDFLAGS) $(CFLAGS) -I$(ROOT)/include
+
+precompiler: precompiler.cpp
+	$(CXX)  $< -o $@ $(LIB) -I$(ROOT)/include -L../../core -lbh -lrt -ldl -ljansson -lctemplate $(LCFLAGS) $(CFLAGS)
+
+precompile:
+		/usr/bin/time ./precompiler
 
 clean:
 		rm -rf *.o *~ *.so kernels/* objects/* core
