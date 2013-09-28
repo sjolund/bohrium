@@ -184,7 +184,7 @@ std::string symbolize(bh_instruction *instr) {
 
             dims = instr->operand[1].ndim;
             if (dims <= 2) {
-                sprintf(symbol_c, "%s_%ldD_DD_%s%s",
+                sprintf(symbol_c, "%s_%lldD_DD_%s%s",
                     bh_opcode_text(instr->opcode),
                     dims,
                     bhtype_to_shorthand(instr->operand[0].base->type),
@@ -225,7 +225,7 @@ std::string symbolize(bh_instruction *instr) {
 
             dims = instr->operand[0].ndim;
             if (dims <= 3) {
-                sprintf(dims_str, "%ldD", dims);
+                sprintf(dims_str, "%lldD", dims);
             } else {
                 sprintf(dims_str, "ND");
             }
@@ -289,7 +289,7 @@ std::string symbolize(bh_instruction *instr) {
 
             dims = instr->operand[0].ndim;
             if (dims <= 3) {
-                sprintf(dims_str, "%ldD", dims);
+                sprintf(dims_str, "%lldD", dims);
             } else {
                 sprintf(dims_str, "ND");
             }
@@ -360,7 +360,7 @@ std::string specialize(std::string symbol, bh_instruction *instr) {
 
             dims = instr->operand[1].ndim;
             if (dims <= 2) {
-                sprintf(template_fn, "%s/reduction.%ldd.tpl", template_path, dims);
+                sprintf(template_fn, "%s/reduction.%lldd.tpl", template_path, dims);
             } else {
                 sprintf(template_fn, "%s/reduction.nd.tpl", template_path);
             }
@@ -417,7 +417,7 @@ std::string specialize(std::string symbol, bh_instruction *instr) {
                 dict.ShowSection("a2_dense");
             }
             if (dims<=3) {
-                sprintf(template_fn, "%s/traverse.%ldd.tpl", template_path, dims);
+                sprintf(template_fn, "%s/traverse.%lldd.tpl", template_path, dims);
             } else {
                 sprintf(template_fn, "%s/traverse.nd.tpl", template_path);
             }
@@ -470,7 +470,7 @@ std::string specialize(std::string symbol, bh_instruction *instr) {
                 dict.ShowSection("a1_dense");
             } 
             if (dims<=3) {
-                sprintf(template_fn, "%s/traverse.%ldd.tpl", template_path, dims);
+                sprintf(template_fn, "%s/traverse.%lldd.tpl", template_path, dims);
             } else {
                 sprintf(template_fn, "%s/traverse.nd.tpl", template_path);
             }
