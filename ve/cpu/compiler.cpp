@@ -10,7 +10,11 @@
 #include <cstring>
 #include <stdexcept>
 #include <vector>
+#if defined __GNUC__ || defined __APPLE__
+#include <tr1/unordered_map>
+#else
 #include <unordered_map>
+#endif
 #include "dirent.h"
 #include <dlfcn.h>
 #include <unistd.h>
@@ -46,9 +50,13 @@ typedef void (*func)(int tool, ...);
 //typedef std::map<std::string, func> func_storage;
 //typedef std::map<std::string, void*> handle_storage;
 
+#if defined __GNUC__ || defined __APPLE__
+typedef std::tr1::unordered_map<std::string, func> func_storage;
+typedef std::tr1::unordered_map<std::string, void*> handle_storage;
+#else
 typedef std::unordered_map<std::string, func> func_storage;
 typedef std::unordered_map<std::string, void*> handle_storage;
-
+#endif
 /**
  *  TODO: Load existing objects at startup.
  *          Then pre-compilation and warmup rounds will be possible.
@@ -140,7 +148,11 @@ public:
                     std::string index_fn = lib_path(lib_fn.c_str(), "ind");
 
                     std::vector<std::string> symbols;
+#if defined __GNUC__ || defined __APPLE__                    
+                    std::ifstream symbol_file(index_fn.c_str());
+#else
                     std::ifstream symbol_file(index_fn);
+#endif
                     for(std::string symbol; getline(symbol_file, symbol);) {
                         symbols.push_back(symbol);
                     }
