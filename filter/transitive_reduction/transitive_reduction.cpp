@@ -19,6 +19,7 @@ If not, see <http://www.gnu.org/licenses/>.
 */
 #include <bh.h>
 #include <set>
+#include <vector>
 
 #include "transitive_reduction.h"
 
@@ -36,7 +37,7 @@ void transitive_reduction_filter(bh_ir *bhir)
 
         //Find redundant dependencies.
         //NB: will include dependencies that dosn't exist.
-        std::set<bh_intp> redundant[nnode];
+        std::vector<std::set<bh_intp> > redundant(nnode);
         for(bh_intp k=0; k<nnode; ++k)
         {
             bh_intp row_size, col_size;
@@ -71,7 +72,7 @@ void transitive_reduction_filter(bh_ir *bhir)
             e = bh_boolmat_fill_empty_row(&adjmat->m, k, size, new_row);
             if(e != BH_SUCCESS)
             {
-                printf("Filling of row %ld in the boolean matrix failed: %s\n", k, bh_error_text(e));
+                printf("Filling of row %lld in the boolean matrix failed: %s\n", k, bh_error_text(e));
                 throw std::exception();
             }
             e = bh_boolmat_transpose(&adjmat->mT, &adjmat->m);
