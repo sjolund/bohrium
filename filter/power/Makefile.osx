@@ -1,0 +1,32 @@
+ROOT=../..
+LIB=libbh_filter_power.dylib
+CXX?=g++
+WARNOPTS=-Wall
+EXTRAS+=
+TIMING+=
+ARCHOPTS?=-arch i386 -arch x86_64
+LCFLAGS= $(WARNOPTS) -g -O2 -fPIC -I$(ROOT)/include -I$(ROOT)/core -I$(ROOT)/traverse $(EXTRAS)
+LDFLAGS=-L../../core -lbh -shared -Wl,-dylib_install_name,$(LIB)
+HEADER=./*.h $(ROOT)/include/*
+SRC= $(shell find . -iname '*.cpp') $(shell find . -iname '*.c')
+OBJTMP=$(SRC:.c=.o)
+OBJ=$(OBJTMP:.cpp=.o)
+INSTALLDIR?=/opt/bohrium/
+
+all: $(LIB)
+
+%.o: %.c $(HEADER)
+	$(CXX) -c $< -o $@ $(LCFLAGS) $(CFLAGS) -I$(ROOT)/include
+
+%.o: %.cpp $(HEADER)
+	$(CXX) -c $< -o $@ $(LCFLAGS) $(CFLAGS) -I$(ROOT)/include
+
+$(LIB): $(OBJ)
+	$(CXX) $(OBJ) -o $@ $(LDFLAGS) $(CFLAGS) -I$(ROOT)/include
+
+clean:
+	rm -rf *.o *~ *.so
+
+install: all
+	cp $(LIB) $(INSTALLDIR)
+
