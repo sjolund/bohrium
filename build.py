@@ -160,6 +160,7 @@ if __name__ == "__main__":
                   ("INIPARSER","iniparser",True),\
                   ("CORE-BHIR", "core/bhir", True),\
                   ("CORE", "core", True),\
+                  ("INTEROP", "interop", True),\
                   ("VE-SHARED-COMPUTE", "ve/shared/compute", True),\
                   ("VE-SHARED-BUNDLER", "ve/shared/bundler", False),\
                   #("VE-GPU", "ve/gpu", False),\
