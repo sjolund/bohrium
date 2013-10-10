@@ -168,6 +168,7 @@ if __name__ == "__main__":
                   ("VE-MCORE",  "ve/static/mcore", False),\
                   ("VE-TILING", "ve/static/tiling", False),\
                   ("VEM-NODE", "vem/node", True),\
+                  ("VEM-INTRO", "vem/bh-intro", True),\
                   ("VEM-CLUSTER", "vem/cluster", False),\
                   #("FILTER-POWER", "filter/power", False),\
                   #("FILTER-FUSION", "filter/fusion", False),\
@@ -175,9 +176,9 @@ if __name__ == "__main__":
                   ("FILTER-PPRINT", "filter/pprint", True),\
                   ("FILTER-TRANSITIVE-REDUCTION", "filter/transitive_reduction", True),\
                   #("NumCIL", "bridge/NumCIL", False),\
-                  ("BRIDGE-NUMPY", "bridge/numpy", True),\
+                  #("BRIDGE-NUMPY", "bridge/numpy", True),\
                   #("USERFUNCS-ATLAS", "userfuncs/ATLAS", False),\
-                  ("BHNUMPY", "bohrium", True)
+                  #("BHNUMPY", "bohrium", True)
                  ]
 
     if cmd == "rebuild":
