@@ -160,7 +160,7 @@ static bool is_reduction(bh_opcode op)
 bh_error bh_vem_intro_execute(bh_intp count,
                               bh_minstruction inst_list[])
 {
-    printf("bh_vem_intro_execute\n");
+    printf("bh_vem_intro_execute -- count: %ld\n", count);
 
     if (count <= 0)
         return BH_SUCCESS;
@@ -172,12 +172,38 @@ bh_error bh_vem_intro_execute(bh_intp count,
         bh_minstruction* old_i = &inst_list[i];
         bh_instruction* new_i  = &new_inst[i];
         new_i->opcode = old_i->opcode;
-        for(bh_intp o=0; o<bh_operands(old_i->opcode); ++o)
+
+
+//        printf("opcode: %s\n", bh_opcode_text(new_i->opcode));
+
+        bh_intp nops;
+        if(old_i->opcode == BH_USERFUNC)//WE only support RANDOM
+        {
+            bh_userfunc *ufunc = (bh_userfunc*)malloc(sizeof(bh_random_type));
+            ufunc->id          = old_i->userfunc->id;
+            ufunc->nout        = old_i->userfunc->nout;
+            ufunc->nin         = old_i->userfunc->nin;
+            ufunc->struct_size = sizeof(bh_random_type);
+            new_i->userfunc = ufunc;
+            nops = 1;
+        }
+        else
+        {
+            nops = bh_operands(old_i->opcode);
+        }
+
+        for(bh_intp o=0; o<nops; ++o)
         {
             bh_array *old_o = old_i->operand[o];
             bh_view  *new_o = &new_i->operand[o];
+            if(old_i->opcode == BH_USERFUNC)
+            {
+                old_o = old_i->userfunc->operand[o];
+                new_o = &new_i->userfunc->operand[o];
+            }
             if(old_o == NULL)//is a constant
             {
+//                printf("CONSTANT!\n");
                 new_i->constant = old_i->constant;
                 bh_flag_constant(new_o);
                 continue;
@@ -210,6 +236,8 @@ bh_error bh_vem_intro_execute(bh_intp count,
             new_o->start = old_o->start;
             memcpy(new_o->shape, old_o->shape, sizeof(bh_intp) * old_o->ndim);
             memcpy(new_o->stride, old_o->stride, sizeof(bh_intp) * old_o->ndim);
+
+//            bh_pprint_array(new_o);
         }
         if(is_reduction(old_i->opcode))
         {
@@ -227,7 +255,8 @@ bh_error bh_vem_intro_execute(bh_intp count,
     assert(error == BH_SUCCESS);
     assert(bhir.ninstr == count);
     bh_instruction *ret_inst = bhir.instr_list;
-    bh_pprint_instr_list(ret_inst, count, "OUTPUT");
+
+//    bh_pprint_instr_list(ret_inst, count, "OUTPUT");
 
 
     for(bh_intp i=0; i<count; ++i)
@@ -250,10 +279,6 @@ bh_error bh_vem_intro_execute(bh_intp count,
         }
 
     }
-
-
     bh_ir_destroy(&bhir);
-
-
     return 0;
 }

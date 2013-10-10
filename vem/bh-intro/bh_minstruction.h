@@ -72,7 +72,7 @@ typedef struct
     //Constant included in the instruction (Used if one of the operands == NULL)
     bh_constant constant;
     //Points to the user-defined function when the opcode is BH_USERFUNC.
-    bh_userfunc *userfunc;
+    bh_muserfunc *userfunc;
 } bh_minstruction;
 
 #ifdef __cplusplus
