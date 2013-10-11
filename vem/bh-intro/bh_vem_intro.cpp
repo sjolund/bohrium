@@ -210,7 +210,7 @@ bh_error bh_vem_intro_execute(bh_intp count,
             }
             bh_array *old_b = (old_o->base == NULL)?old_o:old_o->base;
 
-            if(old_i->opcode == BH_DISCARD && old_b != old_o && 0)
+            if(old_i->opcode == BH_DISCARD && old_b != old_o)
             {
                 new_i->opcode = BH_NONE;
                 printf("DISCARD\n");
@@ -247,7 +247,6 @@ bh_error bh_vem_intro_execute(bh_intp count,
     }
     bh_pprint_instr_list(new_inst, count, "INPUT");
 
-
     bh_ir bhir;
     bh_error error = bh_ir_create(&bhir, count, new_inst);
     assert(error == BH_SUCCESS);
@@ -263,21 +262,14 @@ bh_error bh_vem_intro_execute(bh_intp count,
     {
         bh_instruction* new_i  = &ret_inst[i];
         bh_minstruction* old_i = &inst_list[i];
-
-        for(bh_intp o=0; o<bh_operands(old_i->opcode); ++o)
+        if(new_i->opcode == BH_SYNC)
         {
-            bh_view  *new_o = &new_i->operand[o];
-            bh_array *old_o = old_i->operand[o];
-            if(bh_is_constant(new_o))
-            {
-                assert(old_o == NULL);
-                continue;
-            }
+            bh_view  *new_o = &new_i->operand[0];
+            bh_array *old_o = old_i->operand[0];
             bh_array *old_b = (old_o->base == NULL)?old_o:old_o->base;
             error = bh_data_get(new_o,&old_b->data);
             assert(error == BH_SUCCESS);
         }
-
     }
     bh_ir_destroy(&bhir);
     return 0;
