@@ -66,16 +66,6 @@ namespace NumCIL.Bohrium
         private object m_releaselock = new object();
 
         /// <summary>
-        /// ID for the user-defined random operation
-        /// </summary>
-        private readonly long m_randomFunctionId;
-
-        /// <summary>
-        /// ID for the user-defined maxtrix multiplication operation
-        /// </summary>
-        private readonly long m_matmulFunctionId;
-
-        /// <summary>
         /// A reference to the Bohrium component for "self" aka the bridge
         /// </summary>
         private PInvoke.bh_component m_component;
@@ -91,19 +81,12 @@ namespace NumCIL.Bohrium
         /// The unmanaged copy of the childs array
         /// </summary>
         private IntPtr m_childsPtr;
+        
+        /// <summary>
+        /// The current list of instructions
+        /// </summary>
+        private InstructionList m_list;
 
-        /// <summary>
-        /// A list of cleanups not yet performed
-        /// </summary>
-        private List<IInstruction> m_cleanups = new List<IInstruction>();
-        /// <summary>
-        /// Flag that guards cleanup execution
-        /// </summary>
-        private bool m_preventCleanup = false;
-        /// <summary>
-        /// Lookup table for all created userfunc structures
-        /// </summary>
-        private Dictionary<IntPtr, GCHandle> m_allocatedUserfuncs = new Dictionary<IntPtr, GCHandle>();
         /// <summary>
         /// GC Handles for managed data
         /// </summary>
@@ -137,9 +120,6 @@ namespace NumCIL.Bohrium
             e = m_childs[0].init(ref m_childs[0]);
             if (e != PInvoke.bh_error.BH_SUCCESS)
                 throw new BohriumException(e);
-
-            m_randomFunctionId = GetUserFuncId("bh_random");
-            m_matmulFunctionId = GetUserFuncId("bh_matmul");
         }
 
         /// <summary>
@@ -163,113 +143,109 @@ namespace NumCIL.Bohrium
         }
 
         /// <summary>
-        /// Gets or sets a value that determines if cleanup execution is currently disabled
-        /// </summary>
-        public bool PreventCleanup
-        {
-            get { return m_preventCleanup; }
-            set
-            {
-                m_preventCleanup = value;
-                if (!m_preventCleanup)
-                    ExecuteCleanups();
-            }
-        }
-
-        /// <summary>
         /// Invokes garbage collection and flushes all pending cleanup messages
         /// </summary>
         public void Flush()
         {
             GC.Collect();
-            ExecuteCleanups();
+            Execute();
+        }
+        
+        /// <summary>
+        /// Executes a sync operation on the array
+        /// </summary>
+        /// <param name="array">The array to sync with</param>
+        /// <typeparam name="T">The data type of the element</typeparam>
+        public void Sync<T>(NdArray<T> array)
+        {
+            m_list.AddInstruction(bh_opcode.BH_SYNC, null, array);
         }
 
         /// <summary>
-        /// Executes a list of instructions
+        /// Executes a sync operation on the array
         /// </summary>
-        /// <param name="insts"></param>
-        public void Execute(params IInstruction[] insts)
+        /// <param name="array">The array to sync with</param>
+        /// <typeparam name="T">The data type of the element</typeparam>
+        public void Sync<T>(IDataAccessor<T> data)
         {
-            Execute((IEnumerable<IInstruction>)insts);
+            m_list.AddInstruction(bh_opcode.BH_SYNC, null, data);
+            Execute();
         }
 
         /// <summary>
-        /// Registers a release instruction for later execution, including a handle that must be disposed
+        /// Executes a sync operation on the array
         /// </summary>
-        /// <param name="array">The array to discard</param>
-        /// <param name="handle">The handle to dispose after discarding the array</param>
-        public void ExecuteRelease(PInvoke.bh_base_ptr array, GCHandle handle)
+        /// <param name="array">The array to sync with</param>
+        /// <param name="handle">The associated GC handle, if any</param>
+        /// <param name="synchronous">True if the free is executed immediately, false otherwise</param>
+        /// <typeparam name="T">The data type of the element</typeparam>
+        public void Free(PInvoke.bh_base_ptr ptr, GCHandle handle, bool synchronous = false)
         {
-            lock (m_releaselock)
-            {
-                if (handle.IsAllocated)
-                    m_managedHandles.Add(array, handle);
-                ExecuteRelease(new PInvoke.bh_instruction(bh_opcode.BH_DISCARD, array));
-            }
+            m_list.AddInstruction(bh_opcode.BH_FREE, null, ptr);
+            if (handle.IsAllocated)
+                m_list.AddHandle(handle);
+            if (synchronous)
+                Execute();
         }
 
         /// <summary>
-        /// Registers an instruction for later execution, usually destroy calls
+        /// Executes a sync operation on the array
         /// </summary>
-        /// <param name="inst">The instruction to queue</param>
-        public void ExecuteRelease(PInvoke.bh_instruction inst)
+        /// <param name="array">The array to sync with</param>
+        /// <param name="synchronous">True if the free is executed immediately, false otherwise</param>
+        /// <typeparam name="T">The data type of the element</typeparam>
+        public void Free<T>(IDataAccessor<T> data, bool synchronous = false)
         {
-            lock (m_releaselock)
-                m_cleanups.Add(inst);
+            m_list.AddInstruction(bh_opcode.BH_FREE, null, data);
+            if (synchronous)
+                Execute();
         }
-
+        
+        /// <summary>
+        /// Adds an instruction to the current list of instructions
+        /// </summary>
+        /// <param name="opcode">The opcode to add</param>
+        /// <param name="opcode">The constant to assign to the operation</param>
+        /// <param name="operands">The instruction operands</param>
+        public void AddInstruction<T>(bh_opcode opcode, PInvoke.bh_constant? constant, params NdArray<T>[] operands) 
+        {
+            m_list.AddInstruction(opcode, constant, operands);
+        }
+        
+        /// <summary>
+        /// Creates a new instruction that converts from Tb to Ta
+        /// </summary>
+        /// <typeparam name="Ta">The output element datatype</typeparam>
+        /// <typeparam name="Tb">The input element datatype</typeparam>
+        /// <param name="supported">A list of accumulated instructions</param>
+        /// <param name="opcode">The instruction opcode</param>
+        /// <param name="typea">The Bohrium datatype for the output</param>
+        /// <param name="output">The output operand</param>
+        /// <param name="in1">An input operand</param>
+        /// <param name="in2">Another input operand</param>
+        /// <returns>A new instruction</returns>
+        public void AddConversionInstruction<Ta, Tb>(NumCIL.Bohrium.bh_opcode opcode, PInvoke.bh_type typea, NdArray<Ta> output, NdArray<Tb> in1, NdArray<Tb> in2)
+        {
+            m_list.AddConversionInstruction(opcode, typea, output, in1, in2);
+        }
+        
 		/// <summary>
         /// Executes a list of instructions
         /// </summary>
         /// <param name="inst_list">The list of instructions to execute</param>
-        public void Execute(IEnumerable<IInstruction> inst_list)
+        public void Execute()
         {
-            var lst = inst_list;
-            List<IInstruction> cleanup_lst = null;
-            List<Tuple<long, PInvoke.bh_instruction, GCHandle>> handles = null;
-
-            if (!m_preventCleanup && m_cleanups.Count > 0)
-            {
-                lock (m_releaselock)
-                {
-                    cleanup_lst = System.Threading.Interlocked.Exchange(ref m_cleanups, new List<IInstruction>());
-
-                    GCHandle tmp;
-                    long ix = inst_list.LongCount();
-                    foreach (PInvoke.bh_instruction inst in cleanup_lst)
-                    {
-                        if (inst.opcode == bh_opcode.BH_DISCARD && m_managedHandles.TryGetValue(inst.operand0.basearray, out tmp))
-                        {
-                            if (handles == null)
-                                handles = new List<Tuple<long, PInvoke.bh_instruction, GCHandle>>();
-                            handles.Add(new Tuple<long, PInvoke.bh_instruction, GCHandle>(ix, inst, tmp));
-                        }
-                        ix++;
-                    }
-
-					lst = lst.Concat(cleanup_lst);
-                }
-            }
-
-            long errorIndex = -1;
+            var handles = m_managedHandles;
+            m_managedHandles = new Dictionary<PInvoke.bh_base_ptr, GCHandle>();
+            
+            var instructions = m_list;
+            m_list = new NumCIL.Bohrium.InstructionList();
 
             try
             {
                 lock (m_executelock)
-                    ExecuteWithoutLocks(lst, out errorIndex);
-            }
-            catch
-            {
-                //This catch handler protects against leaks that happen during execution
-                if (cleanup_lst != null)
-                    lock (m_releaselock)
-                    {
-                        cleanup_lst.AddRange(m_cleanups);
-                        System.Threading.Interlocked.Exchange(ref m_cleanups, cleanup_lst);
-                    }
-
-                throw;
+                    if (instructions != null)
+                        ExecuteWithoutLocks(instructions);
             }
             finally
             {
@@ -277,44 +253,8 @@ namespace NumCIL.Bohrium
                     lock (m_releaselock)
                     {
                         foreach (var kp in handles)
-                        {
-                            if (errorIndex == -1 || kp.Item1 < errorIndex)
-                            {
-                                m_managedHandles.Remove(kp.Item2.operand0.basearray);
-                                kp.Item3.Free();
-                            }
-                        }
+                            kp.Value.Free();
                     }
-            }
-        }
-
-        /// <summary>
-        /// Executes all pending cleanup instructions
-        /// </summary>
-        public void ExecuteCleanups()
-        {
-            if (!m_preventCleanup && m_cleanups.Count > 0)
-            {
-				//Atomically reset instruction list and get copy
-                List<IInstruction> lst;
-                lock (m_releaselock)
-				    lst = System.Threading.Interlocked.Exchange (ref m_cleanups, new List<IInstruction>());
-
-                long errorIndex = -1;
-                try
-                {
-                    lock (m_executelock)
-                        ExecuteWithoutLocks(lst, out errorIndex);
-                }
-                catch
-                {
-                    lock (m_releaselock)
-                    {
-                        lst.RemoveRange(0, (int)errorIndex);
-                        lst.AddRange(m_cleanups);
-                        System.Threading.Interlocked.Exchange(ref m_cleanups, lst);
-                    }
-                }
             }
         }
 
@@ -323,39 +263,30 @@ namespace NumCIL.Bohrium
         /// </summary>
         /// <param name="instList">The list of instructions to execute</param>
         /// <param name="errorIndex">A return value for the instruction that caused an error</param>
-        private void ExecuteWithoutLocks(IEnumerable<IInstruction> instList, out long errorIndex)
+        private void ExecuteWithoutLocks(InstructionList instructions)
         {
-            var cleanups = new List<GCHandle>();
-            long destroys = 0;
-            errorIndex = -1;
-
             try
             {
-                PInvoke.bh_instruction[] instrBuffer = instList.Select(x => (PInvoke.bh_instruction)x).ToArray();
-                //ReshuffleInstructions(instrBuffer);
-
-                foreach (var inst in instrBuffer)
-                {
-                    if (inst.opcode == bh_opcode.BH_DISCARD)
-                        destroys++;
-                    if (inst.userfunc != IntPtr.Zero)
-                    {
-                        cleanups.Add(m_allocatedUserfuncs[inst.userfunc]);
-                        m_allocatedUserfuncs.Remove(inst.userfunc);
-                    }
-                }
-                
-				using(IR batch = new IR(instrBuffer))
-					batch.Execute(m_childs[0]);
-
-                if (destroys > 0)
-                    foreach (var inst in instrBuffer.Where(x => x.opcode == bh_opcode.BH_DISCARD))
-                        PInvoke.bh_destroy_base(inst.operand0.basearray);
+                using (IR batch = new IR(instructions))
+                    batch.Execute(m_childs[0]);
             }
             finally
             {
-                foreach (var h in cleanups)
-                    h.Free();
+                for (var i = 0L; i < instructions.Length; i++)
+                {
+                    bh_opcode opcode;
+                    IntPtr userfunc;
+                    PInvoke.bh_interop_instructionlist_get_opcode(instructions.Pointer, i, out opcode);
+                    PInvoke.bh_interop_instructionlist_get_userfunc(instructions.Pointer, i, out userfunc);
+                    if (opcode == bh_opcode.BH_DISCARD)
+                    {
+                        PInvoke.bh_base_ptr basearray;
+                        PInvoke.bh_interop_instructionlist_get_operandbase(instructions.Pointer, i, 0, out basearray);
+                        PInvoke.bh_destroy_base(basearray);
+                    }
+                    if (userfunc != IntPtr.Zero)
+                        Marshal.FreeHGlobal(userfunc);                        
+                }                
             }
         }
         
@@ -419,7 +350,7 @@ namespace NumCIL.Bohrium
             // but keep it in case we go back
             // to allocating the data from Bohrium
             lock (m_executelock)
-                return PInvoke.bh_create_base(type, size);
+                return PInvoke.bh_create_base(type, size, IntPtr.Zero);
         }
 
 		/// <summary>
@@ -445,9 +376,6 @@ namespace NumCIL.Bohrium
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
             
-			m_preventCleanup = false;
-			ExecuteCleanups();
-			
 			//From here on, we no longer accept new discards
 			IsDisposed = true;
 			
@@ -492,298 +420,12 @@ namespace NumCIL.Bohrium
         }
 
         /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="operand">The output operand</param>
-        /// <param name="constant">An optional constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(bh_opcode opcode, NdArray<T> operand, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-        {
-            return CreateInstruction<T>(MapType(typeof(T)), opcode, operand);
-        }
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="op2">The input operand</param>
-        /// <param name="constant">An optional constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-        {
-            return CreateInstruction<T>(MapType(typeof(T)), opcode, op1, op2);
-        }
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="op2">An input operand</param>
-        /// <param name="op3">Another input operand</param>
-        /// <param name="constant">An optional constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, NdArray<T> op3, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-        {
-            return CreateInstruction<T>(MapType(typeof(T)), opcode, op1, op2, op3);
-        }
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="operands">A list of operands</param>
-        /// <param name="constant">An optional constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(bh_opcode opcode, IEnumerable<NdArray<T>> operands, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-        {
-            return CreateInstruction<T>(MapType(typeof(T)), opcode, operands);
-        }
-
-        public PInvoke.bh_view CreateView<T>(NdArray<T> array)
-        {
-            return CreateView(MapType(typeof(T)), array);
-        }
-
-        public PInvoke.bh_view CreateView<T>(PInvoke.bh_type type, NdArray<T> array)
-        {
-            return new PInvoke.bh_view(BaseArrayKeeper.CreateBaseArrayKeeper(array.DataAccessor).BasePointer, array.Shape);
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="operand">The output operand</param>
-        /// <param name="constant">An optional constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> operand, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-        {
-            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, operand), constant);
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="op2">The input operand</param>
-        /// <param name="constant">An optional constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-        {
-            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), constant);
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="op2">The input operand</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2)
-        {
-            if (IsScalar(op2))
-                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), PInvoke.bh_view.EMPTY_VIEW, new PInvoke.bh_constant(type, op2.DataAccessor[0]));
-            else
-                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), new PInvoke.bh_constant());
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="constant">An left-hand-side constant value</param>
-        /// <param name="op2">The input operand</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, PInvoke.bh_constant constant, NdArray<T> op2)
-        {
-            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), constant, CreateView<T>(type, op2));
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="op2">An input operand</param>
-        /// <param name="op3">Another input operand</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, NdArray<T> op3)
-        {
-            if (IsScalar(op2))
-                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), PInvoke.bh_view.EMPTY_VIEW, CreateView<T>(type, op3), new PInvoke.bh_constant(type, op2.DataAccessor[0]));
-            else if (IsScalar(op3))
-                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), PInvoke.bh_view.EMPTY_VIEW, new PInvoke.bh_constant(type, op3.DataAccessor[0]));
-            else
-                return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), CreateView<T>(type, op3), new PInvoke.bh_constant());
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="op2">An input operand</param>
-        /// <param name="op3">Another input operand</param>
-        /// <param name="constant">A constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, NdArray<T> op1, NdArray<T> op2, NdArray<T> op3, PInvoke.bh_constant constant)
-        {
-            return new PInvoke.bh_instruction(opcode, CreateView<T>(type, op1), CreateView<T>(type, op2), CreateView<T>(type, op3), constant);
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="operands">A list of operands</param>
-        /// <param name="constant">A constant value</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, IEnumerable<NdArray<T>> operands, PInvoke.bh_constant constant)
-        {
-            return new PInvoke.bh_instruction(opcode, operands.Select(x => CreateView(type, x)), constant);
-        }
-
-        /// <summary>
-        /// Creates a new instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data used in the instruction</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="operands">A list of operands</param>
-        /// <returns>The new instruction</returns>
-        public IInstruction CreateInstruction<T>(PInvoke.bh_type type, bh_opcode opcode, IEnumerable<NdArray<T>> operands)
-        {
-            bool constantUsed = false;
-            PInvoke.bh_constant constant = new PInvoke.bh_constant();
-
-            return new PInvoke.bh_instruction(opcode, operands.Select(x => {
-                if (!constantUsed && IsScalar(x))
-                {
-                    constant = new PInvoke.bh_constant(type, x.DataAccessor[0]);
-                    return PInvoke.bh_view.EMPTY_VIEW;
-                }
-                else
-                    return CreateView(type, x);
-            }), constant);
-        }
-
-        /// <summary>
-        /// Creates a new instruction that convers from Tb to Ta
-        /// </summary>
-        /// <typeparam name="Ta">The output element datatype</typeparam>
-        /// <typeparam name="Tb">The input element datatype</typeparam>
-        /// <param name="supported">A list of accumulated instructions</param>
-        /// <param name="opcode">The instruction opcode</param>
-        /// <param name="typea">The Bohrium datatype for the output</param>
-        /// <param name="output">The output operand</param>
-        /// <param name="in1">An input operand</param>
-        /// <param name="in2">Another input operand</param>
-        /// <returns>A new instruction</returns>
-        public IInstruction CreateConversionInstruction<Ta, Tb>(List<IInstruction> supported, NumCIL.Bohrium.bh_opcode opcode, PInvoke.bh_type typea, NdArray<Ta> output, NdArray<Tb> in1, NdArray<Tb> in2)
-        {
-            if (IsScalar(in1))
-                return new PInvoke.bh_instruction(opcode, CreateView<Ta>(typea, output), new PInvoke.bh_constant(in1.DataAccessor[0]), in2 == null ? PInvoke.bh_view.EMPTY_VIEW : CreateView<Tb>(in2));
-            else if (in2 != null && IsScalar(in2))
-                return new PInvoke.bh_instruction(opcode, CreateView<Ta>(typea, output), CreateView<Tb>(in1), new PInvoke.bh_constant(in2.DataAccessor[0]));
-            else
-                return new PInvoke.bh_instruction(opcode, CreateView<Ta>(typea, output), CreateView<Tb>(in1), in2 == null ? PInvoke.bh_view.EMPTY_VIEW : CreateView<Tb>(in2));
-        }
-
-        /// <summary>
-        /// Creates a new random userfunc instruction
-        /// </summary>
-        /// <typeparam name="T">The type of data to operate on</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="op1">The output operand</param>
-        /// <returns>A new instruction</returns>
-        public IInstruction CreateRandomInstruction<T>(PInvoke.bh_type type, NdArray<T> op1)
-        {
-            if (!SupportsRandom)
-                throw new BohriumException("The VEM/VE setup does not support the random function");
-
-            if (op1.Shape.Offset != 0 || !op1.Shape.IsPlain || op1.Shape.Elements != op1.DataAccessor.Length)
-                throw new Exception("The shape of the element that is sent to the random implementation must be a non-shape plain array");
-
-            GCHandle gh = GCHandle.Alloc(
-                new PInvoke.bh_userfunc_random(
-                    m_randomFunctionId,
-                    CreateView<T>(type, op1)
-                ), 
-                GCHandleType.Pinned
-            );
-
-            IntPtr adr = gh.AddrOfPinnedObject();
-
-            m_allocatedUserfuncs.Add(adr, gh);
-
-            return new PInvoke.bh_instruction(
-                bh_opcode.BH_USERFUNC,
-                adr                    
-            );
-        }
-
-        /// <summary>
-        /// Creats a new matmul userfunc
-        /// </summary>
-        /// <typeparam name="T">The type of data to operate on</typeparam>
-        /// <param name="type">The Bohrium datatype</param>
-        /// <param name="op1">The output operand</param>
-        /// <param name="op2">An input operand</param>
-        /// <param name="op3">Another input operand</param>
-        /// <returns>A new instruction</returns>
-        public IInstruction CreateMatmulInstruction<T>(PInvoke.bh_type type, NdArray<T> op1, NdArray<T> op2, NdArray<T> op3)
-        {
-            if (!SupportsMatmul)
-                throw new BohriumException("The VEM/VE setup does not support the matmul function");
-
-            GCHandle gh = GCHandle.Alloc(
-                new PInvoke.bh_userfunc_matmul(
-                    m_matmulFunctionId,
-                    CreateView(type, op1),
-                    CreateView(type, op2),
-                    CreateView(type, op3)
-                ),
-                GCHandleType.Pinned
-            );
-
-            IntPtr adr = gh.AddrOfPinnedObject();
-
-            m_allocatedUserfuncs.Add(adr, gh);
-
-            return new PInvoke.bh_instruction(
-                bh_opcode.BH_USERFUNC,
-                adr
-            );
-        }
-
-        /// <summary>
         /// Returns a value indicating if a value is a scalar
         /// </summary>
         /// <typeparam name="T">The type of data in the array</typeparam>
         /// <param name="ar">The array to examine</param>
         /// <returns>True if the alue can be represented as a Bohrium constant, false otherwise</returns>
-        private static bool IsScalar<T>(NdArray<T> ar)
+        internal static bool IsScalar<T>(NdArray<T> ar)
         {
             if (ar.DataAccessor.Length == 1)
                 if (ar.DataAccessor.GetType() == typeof(DefaultAccessor<T>))
@@ -799,22 +441,17 @@ namespace NumCIL.Bohrium
         /// </summary>
         /// <returns><c>true</c> if the instruction has valid types otherwise, <c>false</c>.</returns>
         /// <param name="inst">The instruction to validate</param>
-        public bool IsValidInstruction(IInstruction inst)
+        public bool IsValidInstruction(bh_opcode opcode, PInvoke.bh_type outputtype, PInvoke.bh_type input1, PInvoke.bh_type input2, PInvoke.bh_type constantType )
 		{
-			var i = (PInvoke.bh_instruction)inst;
-			var out_type = i.operand0.basearray.Type;
-			var nops = PInvoke.bh_operands(inst.OpCode);
+			var nops = PInvoke.bh_operands(opcode);
 			if (nops == 1)
-				return PInvoke.bh_validate_types(inst.OpCode, out_type, PInvoke.bh_type.BH_UNKNOWN, PInvoke.bh_type.BH_UNKNOWN, PInvoke.bh_type.BH_UNKNOWN);
+				return PInvoke.bh_validate_types(opcode, outputtype, PInvoke.bh_type.BH_UNKNOWN, PInvoke.bh_type.BH_UNKNOWN, PInvoke.bh_type.BH_UNKNOWN);
 			
-			var input1 = i.operand1.basearray == PInvoke.bh_base_ptr.Null ? PInvoke.bh_type.BH_UNKNOWN : i.operand1.basearray.Type;
-			var input2 = i.operand2.basearray == PInvoke.bh_base_ptr.Null ? PInvoke.bh_type.BH_UNKNOWN : i.operand2.basearray.Type;
-			var scalar = i.constant.type;
 			
 			if (nops == 2 || nops == 3)
-				return PInvoke.bh_validate_types(inst.OpCode, out_type, input1, input2, scalar);
+				return PInvoke.bh_validate_types(opcode, outputtype, input1, input2, constantType);
 
-			throw new Exception(string.Format("Unexpected number of operands for opcode {1}: {0}", inst.OpCode, nops));
+			throw new Exception(string.Format("Unexpected number of operands for opcode {1}: {0}", opcode, nops));
         }
         
         /*public IInstruction[] GetConversionSequence(IInstruction inst)
@@ -849,15 +486,5 @@ namespace NumCIL.Bohrium
 			
 			throw new Exception(string.Format("Unexpected number of operands for opcode {1}: {0}", inst.OpCode, nops));
 		}*/
-
-        /// <summary>
-        /// Gets a value indicating if the Random operation is supported
-        /// </summary>
-        public bool SupportsRandom { get { return m_randomFunctionId > 0; } }
-
-        /// <summary>
-        /// Gets a value indicating if the Matrix Multiplication operation is supported
-        /// </summary>
-        public bool SupportsMatmul { get { return m_matmulFunctionId > 0; } }
     }
 }

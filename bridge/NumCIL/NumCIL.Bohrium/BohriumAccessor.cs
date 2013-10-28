@@ -193,15 +193,12 @@ namespace NumCIL.Bohrium
             res[typeof(NumCIL.GenerateOp<T>)] = bh_opcode.BH_IDENTITY;
 			res[typeof(NumCIL.UFunc.LazyReduceOperation<T>)] = bh_opcode.BH_USERFUNC;
 			res[typeof(NumCIL.UFunc.LazyAggregateOperation<T>)] = bh_opcode.BH_USERFUNC;
-			if (VEM.Instance.SupportsRandom)
+			/*if (VEM.Instance.SupportsRandom)
 			{
                 res[typeof(NumCIL.Generic.IRandomGeneratorOp<T>)] = bh_opcode.BH_USERFUNC;
 				try { res[basic.Assembly.GetType("NumCIL.Generic.RandomGeneratorOp" + (typeof(T) == typeof(float) ? "Float" : typeof(T).Name))] = bh_opcode.BH_USERFUNC; }
 				catch {}
-			}
-            if (VEM.Instance.SupportsMatmul)
-                res[typeof(NumCIL.UFunc.LazyMatmulOperation<T>)] = bh_opcode.BH_USERFUNC;
-
+			}*/
 
             if (typeof(T) == typeof(NumCIL.Complex64.DataType))
             {
@@ -316,7 +313,7 @@ namespace NumCIL.Bohrium
 		/// <summary>
 		/// Gets the the generic template used to create conversion instructions
 		/// </summary>
-		protected static readonly System.Reflection.MethodInfo VEMConversionMethod = typeof(VEM).GetMethod("CreateConversionInstruction");
+		protected static readonly System.Reflection.MethodInfo VEMConversionMethod = typeof(VEM).GetMethod("AddConversionInstruction");
 
         /// <summary>
         /// Constructs a new data accessor for the given size
@@ -355,7 +352,7 @@ namespace NumCIL.Bohrium
                 base.Allocate();
 
             if (ExternalData != null)
-                VEM.Execute(new PInvoke.bh_instruction(bh_opcode.BH_SYNC, ExternalData.BasePointer));
+                VEM.Sync(this);
         }
 
         /// <summary>
@@ -587,7 +584,7 @@ namespace NumCIL.Bohrium
                                 throw new BohriumException(string.Format("Unexpected data type: {0}", typeof(T).FullName));
                         }
 
-                        VEM.Execute(new PInvoke.bh_instruction(bh_opcode.BH_FREE, ExternalData.BasePointer));
+                        VEM.Instance.Free(this);
                     }
                 }
 
@@ -688,7 +685,7 @@ namespace NumCIL.Bohrium
 		public override void DoExecute(IList<IPendingOperation> work)
 		{
 			var tmp = new List<IPendingOperation>();
-			var continuationList = new List<IInstruction>();
+			long queueSize = 0;
 			while (work.Count > 0)
 			{
 				var pendingOpType = typeof(PendingOperation<>).MakeGenericType(new Type[] { work[0].DataType });
@@ -703,14 +700,14 @@ namespace NumCIL.Bohrium
 				var typedEnum = typeof(LazyAccessorCollector).GetMethod("ConvertList", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.DeclaredOnly | System.Reflection.BindingFlags.Static, null, new Type[] { typeof(System.Collections.IEnumerable) }, null).MakeGenericMethod(new Type[] { pendingOpType }).Invoke(null, new object[] { tmp });
 				if (tmp[0].TargetOperandType.GetGenericTypeDefinition() == typeof(BohriumAccessor<>))
 				{
-					tmp[0].TargetOperandType.GetMethod("DoExecute", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance, null, new Type[] { enumType, typeof(List<IInstruction>) }, null ).Invoke(tmp[0].TargetAccessor, new object[] { typedEnum, continuationList });
+					tmp[0].TargetOperandType.GetMethod("DoExecute", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance, null, new Type[] { enumType, typeof(long) }, null ).Invoke(tmp[0].TargetAccessor, new object[] { typedEnum, queueSize });
 				}
 				else
 				{
-					if (continuationList.Count > 0)
+					if (queueSize > 0)
 					{
-						ExecuteWithFailureDetection(continuationList);
-						continuationList.Clear();
+						ExecuteWithFailureDetection();
+						queueSize = 0;
 					}
 					
 					tmp[0].TargetOperandType.GetMethod("DoExecute", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.FlattenHierarchy | System.Reflection.BindingFlags.Instance, null, new Type[] { enumType }, null ).Invoke(tmp[0].TargetAccessor, new object[] { typedEnum });
@@ -719,8 +716,8 @@ namespace NumCIL.Bohrium
 				tmp.Clear();
 			}
 			
-			if (continuationList.Count > 0)
-				ExecuteWithFailureDetection(continuationList);
+			if (queueSize > 0)
+				ExecuteWithFailureDetection();
 		}
 		
 		/// <summary>
@@ -760,28 +757,28 @@ namespace NumCIL.Bohrium
 			
 			return bh_opcode.BH_NONE;
 		}
-		
-		/// <summary>
-		/// Executes all pending operations in the list
-		/// </summary>
-		/// <param name="work">The list of operations to execute</param>
-		public override void DoExecute(IEnumerable<PendingOperation<T>> work)
-		{
-			DoExecute(work, null);
-		}
-		
+				
         /// <summary>
         /// Executes all pending operations in the list
         /// </summary>
         /// <param name="work">The list of operations to execute</param>
         /// <param name="supported">A list of supported instructions that is produced from another context</param>
-        private void DoExecute(IEnumerable<PendingOperation<T>> work, List<IInstruction> supported)
+        public override void DoExecute(IEnumerable<PendingOperation<T>> work)
+        {
+            DoExecute(work, 0);
+        }
+        
+        /// <summary>
+        /// Executes all pending operations in the list
+        /// </summary>
+        /// <param name="work">The list of operations to execute</param>
+        /// <param name="supported">A list of supported instructions that is produced from another context</param>
+        private void DoExecute(IEnumerable<PendingOperation<T>> work, long queueSize)
         {
             var unsupported = new List<PendingOperation<T>>();
-            bool isContinuation = supported != null;
-
-            if (supported == null)
-                supported = new List<IInstruction>();
+            var isContinuation = queueSize != 0;
+            
+            var datatype = VEM.MapType(typeof(T));
 
             foreach (var op in work)
             {
@@ -807,27 +804,31 @@ namespace NumCIL.Bohrium
                     {
 						isSupported = false;
 						
-						/*if (VEM.SupportsRandom && ops is NumCIL.Generic.IRandomGeneratorOp<T>)
+                        /* Currently extension methods are being redesigned
+						if (VEM.SupportsRandom && ops is NumCIL.Generic.IRandomGeneratorOp<T>)
                         {
-                            //Bohrium only supports random for plain arrays
                             if (operands[0].Shape.IsPlain && operands[0].Shape.Offset == 0 && operands[0].Shape.Elements == operands[0].DataAccessor.Length)
                             {
-                                supported.Add(VEM.CreateRandomInstruction<T>(BH_TYPE, operands[0]));
+                                VEM.Instance.AddRandomInstruction(operands[0]);
+                                queueSize++;
                                 isSupported = true;
                             }
                         }
                         else if (VEM.SupportsMatmul && ops is NumCIL.UFunc.LazyMatmulOperation<T>)
                         {
-                            supported.Add(VEM.CreateMatmulInstruction<T>(BH_TYPE, operands[0], operands[1], operands[2]));
+                            VEM.Instance.AddMatmulInstruction<T>(operands[0], operands[1], operands[2]);
+                            queueSize++;
                             isSupported = true;
                         }
-						else*/ if (ops is NumCIL.UFunc.LazyReduceOperation<T>)
+						else */ if (ops is NumCIL.UFunc.LazyReduceOperation<T>)
 						{
 							NumCIL.UFunc.LazyReduceOperation<T> lzop = (NumCIL.UFunc.LazyReduceOperation<T>)op.Operation;
 							bh_opcode rop = GetReduceOpCode(lzop.Operation);
 							if (rop != bh_opcode.BH_NONE)
 							{
-								supported.Add(VEM.CreateInstruction<T>(BH_TYPE, rop, operands[0], operands[1], new PInvoke.bh_constant(lzop.Axis)));
+                                
+								VEM.Instance.AddInstruction(rop, new PInvoke.bh_constant(lzop.Axis), operands[0], operands[1]);
+                                queueSize++;
 								isSupported = true;
 							}
 						} 
@@ -848,22 +849,24 @@ namespace NumCIL.Bohrium
 										Array.Copy(sourceOp.Shape.Dimensions, targetShape, targetShape.LongLength);
 										targetOp = new NumCIL.Generic.NdArray<T>(new Shape(targetShape));
 										
-										supported.Add(VEM.CreateInstruction<T>(BH_TYPE, rop, targetOp, sourceOp, new PInvoke.bh_constant(targetOp.Shape.Dimensions.LongLength)));
+										VEM.Instance.AddInstruction(rop, new PInvoke.bh_constant(targetOp.Shape.Dimensions.LongLength), targetOp, sourceOp);
+                                        queueSize++;
 										sourceOp = targetOp;
 										
 									} while(targetOp.Shape.Dimensions.LongLength > 1);
 								}
 								
-								supported.Add(VEM.CreateInstruction<T>(BH_TYPE, rop, operands[0], sourceOp, new PInvoke.bh_constant(0L)));
+								VEM.Instance.AddInstruction(rop, new PInvoke.bh_constant(0L), operands[0], sourceOp);
+                                queueSize++;
 								isSupported = true;
 							}
 						}
 												
 						if (!isSupported)
                         {
-                            if (supported.Count > 0)
-                                ExecuteWithFailureDetection(supported);
-
+                            if (queueSize > 0)
+                                ExecuteWithFailureDetection();
+                            queueSize = 0;
                             unsupported.Add(op);
                         }
                     }
@@ -875,9 +878,8 @@ namespace NumCIL.Bohrium
                             object unop = ((IPendingUnaryConversionOp)op).InputOperand;
 
                             Type inputType = unop.GetType().GetGenericArguments()[0];
-                            IInstruction inst = (IInstruction)VEMConversionMethod.MakeGenericMethod(typeof(T), inputType).Invoke(VEM, new object[] { supported, opcode,  BH_TYPE, operands[0], ((IPendingUnaryConversionOp)op).InputOperand, null });
-
-                            supported.Add(inst);
+                            VEMConversionMethod.MakeGenericMethod(typeof(T), inputType).Invoke(VEM, new object[] { opcode,  BH_TYPE, operands[0], ((IPendingUnaryConversionOp)op).InputOperand, null });
+                            queueSize++;
                         }
                         else if (op is IPendingBinaryConversionOp)
                         {
@@ -886,24 +888,18 @@ namespace NumCIL.Bohrium
                             object rhsop = ((IPendingBinaryConversionOp)op).InputOperand;
 
                             Type inputType = lhsop.GetType().GetGenericArguments()[0];
-                            IInstruction inst = (IInstruction)VEMConversionMethod.MakeGenericMethod(typeof(T), inputType).Invoke(VEM, new object[] { supported, opcode, BH_TYPE, operands[0], lhsop, rhsop });
+                            VEMConversionMethod.MakeGenericMethod(typeof(T), inputType).Invoke(VEM, new object[] { opcode, BH_TYPE, operands[0], lhsop, rhsop });
 
-                            supported.Add(inst);
+                            queueSize++;
                         } 
                         else
                         {
-                        	IInstruction inst;
-                            if (operands.Length == 1)
-								inst = VEM.CreateInstruction<T>(BH_TYPE, opcode, operands[0]);
-                            else if (operands.Length == 2)
-                                inst = VEM.CreateInstruction<T>(BH_TYPE, opcode, operands[0], operands[1]);
-                            else if (operands.Length == 3)
-                                inst = VEM.CreateInstruction<T>(BH_TYPE, opcode, operands[0], operands[1], operands[2]);
-                            else
-                                inst = VEM.CreateInstruction<T>(BH_TYPE, opcode, operands);
-                                
-                            if (VEM.IsValidInstruction(inst))
-                            	supported.Add(inst);
+                            //TODO: This should throw an exception?
+                            if (VEM.Instance.IsValidInstruction(opcode,  datatype, operands.Length > 1 ? datatype : PInvoke.bh_type.BH_UNKNOWN, operands.Length > 2 ? datatype : PInvoke.bh_type.BH_UNKNOWN, PInvoke.bh_type.BH_UNKNOWN))
+                            {
+                                VEM.Instance.AddInstruction(opcode, null, operands);
+                                queueSize++;
+                            }
                             else
                             {
 								/*var conv = VEM.GetConversionSequence(inst);
@@ -911,9 +907,10 @@ namespace NumCIL.Bohrium
 									supported.AddRange(conv);
 								else*/
 								{
-									if (supported.Count > 0)
-										ExecuteWithFailureDetection(supported);
-									
+									if (queueSize > 0)
+										ExecuteWithFailureDetection();
+                                        
+									queueSize = 0;
 									unsupported.Add(op);
 								}
                             }
@@ -922,14 +919,15 @@ namespace NumCIL.Bohrium
                 }
                 else
                 {
-                    if (supported.Count > 0)
-                        ExecuteWithFailureDetection(supported);
-
+                    if (queueSize > 0)
+                        ExecuteWithFailureDetection();
+                        
+                    queueSize = 0;
                     unsupported.Add(op);
                 }
             }
 
-            if (supported.Count > 0 && unsupported.Count > 0)
+            if (queueSize > 0 && unsupported.Count > 0)
                 throw new InvalidOperationException("Unexpected result, both supported and non-supported operations");
 
             if (unsupported.Count > 0)
@@ -940,9 +938,10 @@ namespace NumCIL.Bohrium
                 base.DoExecute(unsupported);
 			}
 
-            if (supported.Count > 0 && !isContinuation)
+            if (queueSize > 0 && !isContinuation)
             {
-                ExecuteWithFailureDetection(supported);
+                ExecuteWithFailureDetection();
+                queueSize = 0;
             }
         }
 
@@ -950,15 +949,13 @@ namespace NumCIL.Bohrium
         /// Performs GC-gen0 collection and then executes the instrucions in the list
         /// </summary>
         /// <param name="instructions">The list of instructions to execute</param>
-        protected static void ExecuteWithFailureDetection(List<IInstruction> instructions)
+        protected static void ExecuteWithFailureDetection()
         {
             //Yield to the GC
             GC.Collect();
 			GC.WaitForPendingFinalizers();
 			
-			VEM.Execute(instructions);
-            instructions.Clear();
-            return;
+			VEM.Execute();
         }
 
         /// <summary>

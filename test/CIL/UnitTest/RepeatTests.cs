@@ -112,7 +112,8 @@ namespace UnitTest
             var w = Generate.Arange(4, 2);
             var x = Generate.Arange(2, 3);
             var y = w.MatrixMultiply(x);
-            if (y.Sum() != 228)
+            var ysum = y.Sum();
+            if (ysum != 228)
                 throw new Exception("Failure in matrix multiply");
 
             var z = w.MatrixMultiply(new NdArray(new float[] {1,2}).Reshape(new Shape(new long[] {2})));

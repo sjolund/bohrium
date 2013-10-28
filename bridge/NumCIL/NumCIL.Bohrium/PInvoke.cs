@@ -82,22 +82,6 @@ namespace NumCIL.Bohrium
         /// The size of an int pointer
         /// </summary>
         public static readonly int INTP_SIZE = Marshal.SizeOf(typeof(bh_intp));
-        /// <summary>
-        /// The size of the largest userfunc struct
-        /// </summary>
-        public static readonly int USERFUNC_SIZE = Marshal.SizeOf(typeof(bh_userfunc_union));
-        /// <summary>
-        /// The size of the random userfunc struct
-        /// </summary>
-        public static readonly int RANDOMFUNC_SIZE = Marshal.SizeOf(typeof(bh_userfunc_random));
-        /// <summary>
-        /// The size of the matmul userfunc struct
-        /// </summary>
-        public static readonly int MATMULFUNC_SIZE = Marshal.SizeOf(typeof(bh_userfunc_matmul));
-        /// <summary>
-        /// The size of the plain userfunc struct
-        /// </summary>
-        public static readonly int PLAINFUNC_SIZE = Marshal.SizeOf(typeof(bh_userfunc_plain));
 
         /// <summary>
         /// The size of the bh_type type
@@ -107,10 +91,6 @@ namespace NumCIL.Bohrium
         /// The size of the bh_index type
         /// </summary>
         public static readonly int BH_INDEX_SIZE = Marshal.SizeOf(typeof(bh_index));
-        /// <summary>
-        /// The size of the bh_base type
-        /// </summary>
-        public static readonly int BH_BASE_SIZE = Marshal.SizeOf(typeof(bh_base));
 
         /// <summary>
         /// The known component types in Bohrium
@@ -231,34 +211,6 @@ namespace NumCIL.Bohrium
             /// The unknown datatype
             /// </summary>
             BH_UNKNOWN
-        }
-
-        /// <summary>
-        /// The configuration dictionary for a component
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        struct dictionary
-        {
-            /// <summary>
-            /// Number of entries in dictionary
-            /// </summary>
-            public int n;
-            /// <summary>
-            /// Storage size
-            /// </summary>
-            public int size;
-            /// <summary>
-            /// SList of string values
-            /// </summary>
-            public byte[][] val;
-            /// <summary>
-            /// List of string keys
-            /// </summary>
-            public byte[][] key;
-            /// <summary>
-            /// List of hash values for keys
-            /// </summary>
-            public uint[] hash;
         }
 
         /// <summary>
@@ -705,7 +657,7 @@ namespace NumCIL.Bohrium
 		/// Fake wrapper struct to keep a pointer to bh_ir typesafe
 		/// </summary>
 		[StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 0)]
-		    public struct bh_ir_ptr
+		public struct bh_ir_ptr
 		{
 			/// <summary>
 			/// The actual IntPtr value
@@ -713,6 +665,20 @@ namespace NumCIL.Bohrium
 			[FieldOffset(0)]
 			internal IntPtr m_ptr;
 			
+            /// <summary>
+            /// Accessor methods to read the number of instructions
+            /// </summary>
+            public bh_index InstructionCount
+            {
+                get
+                {
+                    if (m_ptr == IntPtr.Zero)
+                        throw new ArgumentNullException();
+
+                    return Marshal.ReadInt64(m_ptr, INTP_SIZE);
+                }
+            }
+            
 			/// <summary>
 			/// A value that represents a null pointer
 			/// </summary>
@@ -762,10 +728,77 @@ namespace NumCIL.Bohrium
 				return a.m_ptr != b.m_ptr;
 			}
 		}
+
+        /// <summary>
+        /// Fake wrapper struct to keep a pointer to bh_instruction typesafe
+        /// </summary>
+        [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 0)]
+        public struct bh_instruction_ptr
+        {
+            /// <summary>
+            /// The actual IntPtr value
+            /// </summary>
+            [FieldOffset(0)]
+            internal IntPtr m_ptr;
+            
+            internal bh_instruction_ptr(IntPtr ptr)
+            {
+                m_ptr = ptr;
+            }
+            
+            /// <summary>
+            /// A value that represents a null pointer
+            /// </summary>
+            public static readonly bh_instruction_ptr Null = new bh_instruction_ptr(IntPtr.Zero);
+            
+            /// <summary>
+            /// Custom equals functionality
+            /// </summary>
+            /// <param name="obj">The object to compare to</param>
+            /// <returns>True if the objects are equal, false otherwise</returns>
+            public override bool Equals(object obj)
+            {
+                if (obj is bh_instruction_ptr)
+                    return ((bh_instruction_ptr)obj).m_ptr == this.m_ptr;
+                else
+                    return base.Equals(obj);
+            }
+            
+            /// <summary>
+            /// Custom hashcode functionality
+            /// </summary>
+            /// <returns>The hash code for this instance</returns>
+            public override bh_int32 GetHashCode()
+            {
+                return m_ptr.GetHashCode();
+            }
+            
+            /// <summary>
+            /// Simple compare operator for pointer type
+            /// </summary>
+            /// <param name="a">One argument</param>
+            /// <param name="b">Another argument</param>
+            /// <returns>True if the arguments are the same, false otherwise</returns>
+            public static bool operator ==(bh_instruction_ptr a, bh_instruction_ptr b)
+            {
+                return a.m_ptr == b.m_ptr;
+            }
+            
+            /// <summary>
+            /// Simple compare operator for pointer type
+            /// </summary>
+            /// <param name="a">One argument</param>
+            /// <param name="b">Another argument</param>
+            /// <returns>False if the arguments are the same, true otherwise</returns>
+            public static bool operator !=(bh_instruction_ptr a, bh_instruction_ptr b)
+            {
+                return a.m_ptr != b.m_ptr;
+            }            
+        }
 			
 
         /// <summary>
-        /// Fake wrapper struct to keep a pointer to bh_array typesafe
+        /// Fake wrapper struct to keep a pointer to bh_base typesafe
         /// </summary>
         [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 0)]
         public struct bh_base_ptr
@@ -788,17 +821,17 @@ namespace NumCIL.Bohrium
             {
                 get
                 {
-                    if (m_ptr == IntPtr.Zero)
-                        throw new ArgumentNullException();
-
-                    return Marshal.ReadIntPtr(m_ptr, BH_TYPE_SIZE + BH_INDEX_SIZE);
+                    IntPtr v;
+                    var res = bh_interop_base_get_data(this, out v);
+                    if (res != bh_error.BH_SUCCESS)
+                        throw new BohriumException(res);
+                    return v;
                 }
                 set
                 {
-                    if (m_ptr == IntPtr.Zero)
-                        throw new ArgumentNullException();
-                        
-                    Marshal.WriteIntPtr(m_ptr, BH_TYPE_SIZE + BH_INDEX_SIZE, value);
+                    var res = bh_interop_base_set_data(this, value);
+                    if (res != bh_error.BH_SUCCESS)
+                        throw new BohriumException(res);
                 }
             }
 
@@ -809,17 +842,17 @@ namespace NumCIL.Bohrium
             {
             	get
             	{
-					if (m_ptr == IntPtr.Zero)
-						throw new ArgumentNullException();
-
-					return (bh_type)Marshal.ReadInt64(m_ptr, 0);
+                    bh_type v;
+                    var res = bh_interop_base_get_type(this, out v);
+                    if (res != bh_error.BH_SUCCESS)
+                        throw new BohriumException(res);
+                    return v;
             	}
                 set
                 {
-                    if (m_ptr == IntPtr.Zero)
-                        throw new ArgumentNullException();
-                        
-                    Marshal.WriteInt64(m_ptr, 0, (long)value);
+                    var res = bh_interop_base_set_type(this, value);
+                    if (res != bh_error.BH_SUCCESS)
+                        throw new BohriumException(res);
                 }
             }
 
@@ -830,17 +863,17 @@ namespace NumCIL.Bohrium
             {
                 get
                 {
-                    if (m_ptr == IntPtr.Zero)
-                        throw new ArgumentNullException ();
-
-                    return (bh_index)Marshal.ReadInt64 (m_ptr, BH_TYPE_SIZE);
+                    bh_index v;
+                    var res = bh_interop_base_get_nelem(this, out v);
+                    if (res != bh_error.BH_SUCCESS)
+                        throw new BohriumException(res);
+                    return v;
                 }
                 set
                 {
-                    if (m_ptr == IntPtr.Zero)
-                        throw new ArgumentNullException();
-                        
-                    Marshal.WriteInt64(m_ptr, BH_TYPE_SIZE, value);
+                    var res = bh_interop_base_set_nelem(this, value);
+                    if (res != bh_error.BH_SUCCESS)
+                        throw new BohriumException(res);
                 }
             }
 
@@ -864,7 +897,7 @@ namespace NumCIL.Bohrium
                 if (m_ptr == IntPtr.Zero)
                     return;
 
-                bh_component_free_ptr(m_ptr);
+                bh_interop_base_destroy(this);
                 m_ptr = IntPtr.Zero;
             }
 
@@ -922,560 +955,13 @@ namespace NumCIL.Bohrium
             }
         }
         
-        /// <summary>
-        /// Representation of a Bohrium view
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_view
+        public static bh_base_ptr bh_create_base(bh_type type, bh_index size, IntPtr data)
         {
-            /// <summary>
-            /// A pointer to the base array
-            /// </summary>
-            public bh_base_ptr basearray;
-            /// <summary>
-            /// The number of dimensions in the array
-            /// </summary>
-            public bh_intp ndim;
-            /// <summary>
-            /// The data offset
-            /// </summary>
-            public bh_index start;
-            /// <summary>
-            /// The dimension sizes
-            /// </summary>
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst=BH_MAXDIM)]
-            public bh_index[] shape;
-            /// <summary>
-            /// The dimension strides
-            /// </summary>
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst=BH_MAXDIM)]
-            public bh_index[] stride;
-            
-            /// <summary>
-            /// Initializes a new <see cref="NumCIL.Bohrium.PInvoke+bh_view"/> struct.
-            /// </summary>
-            /// <param name="ptr">Pointer to the base that this view represents</param>
-            /// <param name="shape">The shape that this view represents</param>
-            public bh_view(bh_base_ptr ptr, Shape shape)
-            {
-                this.basearray = ptr;
-                this.ndim = shape.Dimensions.Length;
-                this.start = shape.Offset;
-                this.shape = shape.Dimensions.Select(x => x.Length).ToArray();
-                this.stride = shape.Dimensions.Select(x => x.Stride).ToArray();
-            }
-            
-            /// <summary>
-            /// An empty view instance
-            /// </summary>
-            public static readonly bh_view EMPTY_VIEW = new bh_view();
-        }
-        
-        /// <summary>
-        /// Representation of a Bohrium base array
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_base
-        {
-            /// <summary>
-            /// The type of data in the array
-            /// </summary>
-            public bh_type type;
-            /// <summary>
-            /// The number of elements in the array
-            /// </summary>
-            public bh_intp nelem;
-            /// <summary>
-            /// The pointer to data
-            /// </summary>
-            public bh_data_ptr data;
-        }
-        /// <summary>
-        /// This struct is used to allow us to pass a pointer to different struct types,
-        /// because we cannot use inheritance for the bh_userfunc structure to
-        /// support the reduce structure. Downside is that the size of the struct
-        /// will always be the size of the largest one
-        /// </summary>
-        [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_userfunc_union
-        {
-            /// <summary>
-            /// The plain userfunc
-            /// </summary>
-            [FieldOffset(0)]
-            public bh_userfunc_plain plain;
-
-            /// <summary>
-            /// The random userfunc
-            /// </summary>
-            [FieldOffset(0)]
-            public bh_userfunc_random random;
-
-            /// <summary>
-            /// The matmul userfunc
-            /// </summary>
-            [FieldOffset(0)]
-            public bh_userfunc_matmul matmul;
-
-            /// <summary>
-            /// Constructs a new union representing a plain userfunc
-            /// </summary>
-            /// <param name="arg">The user defined function</param>
-            public bh_userfunc_union(bh_userfunc_plain arg) : this() { plain = arg; }
-            /// <summary>
-            /// Constructs a new union representing a random userfunc
-            /// </summary>
-            /// <param name="arg">The user defined function</param>
-            public bh_userfunc_union(bh_userfunc_random arg) : this() { random = arg; }
-            /// <summary>
-            /// Constructs a new union representing a matmul userfunc
-            /// </summary>
-            /// <param name="arg">The user defined function</param>
-            public bh_userfunc_union(bh_userfunc_matmul arg) : this() { matmul = arg; }
-
-            /// <summary>
-            /// Implicit operator for creating a union with a plain userfunc
-            /// </summary>
-            /// <param name="arg">The userfunc</param>
-            /// <returns>The union userfunc</returns>
-            public static implicit operator bh_userfunc_union(bh_userfunc_plain arg) { return new bh_userfunc_union(arg); }
-            /// <summary>
-            /// Implicit operator for creating a union with a random userfunc
-            /// </summary>
-            /// <param name="arg">The userfunc</param>
-            /// <returns>The union userfunc</returns>
-            public static implicit operator bh_userfunc_union(bh_userfunc_random arg) { return new bh_userfunc_union(arg); }
-            /// <summary>
-            /// Implicit operator for creating a union with a matmul userfunc
-            /// </summary>
-            /// <param name="arg">The userfunc</param>
-            /// <returns>The union userfunc</returns>
-            public static implicit operator bh_userfunc_union(bh_userfunc_matmul arg) { return new bh_userfunc_union(arg); }
-        }
-
-        /// <summary>
-        /// The random userfunc
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_userfunc_random
-        {
-            /// <summary>
-            /// The random function id
-            /// </summary>
-            public bh_intp id;
-            /// <summary>
-            /// The number of output elements
-            /// </summary>
-            public bh_intp nout;
-            /// <summary>
-            /// The number of input elements
-            /// </summary>
-            public bh_intp nin;
-            /// <summary>
-            /// The total size of this struct
-            /// </summary>
-            public bh_intp struct_size;
-            /// <summary>
-            /// The output operand
-            /// </summary>
-            public bh_view operand;
-
-            /// <summary>
-            /// Creates a new random userfunc
-            /// </summary>
-            /// <param name="func">The random function id</param>
-            /// <param name="op">The output operand</param>
-            public bh_userfunc_random(bh_intp func, bh_view op)
-            {
-                this.id = func;
-                this.nout = 1;
-                this.nin = 0;
-                this.struct_size = RANDOMFUNC_SIZE;
-                this.operand = op;
-            }
-        }
-
-        /// <summary>
-        /// The matmul userfunc
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_userfunc_matmul
-        {
-            /// <summary>
-            /// The matmul function id
-            /// </summary>
-            public bh_intp id;
-            /// <summary>
-            /// The number of output operands
-            /// </summary>
-            public bh_intp nout;
-            /// <summary>
-            /// The number of input operands
-            /// </summary>
-            public bh_intp nin;
-            /// <summary>
-            /// The total size of this struct
-            /// </summary>
-            public bh_intp struct_size;
-            /// <summary>
-            /// The output operand
-            /// </summary>
-            public bh_view operand0;
-            /// <summary>
-            /// An input operand
-            /// </summary>
-            public bh_view operand1;
-            /// <summary>
-            /// Another input operand
-            /// </summary>
-            public bh_view operand2;
-
-            /// <summary>
-            /// Constructs a new matmul userfunc
-            /// </summary>
-            /// <param name="func">The matmul function id</param>
-            /// <param name="op1">The output operand</param>
-            /// <param name="op2">An input operand</param>
-            /// <param name="op3">Another input operand</param>
-            public bh_userfunc_matmul(bh_intp func, bh_view op1, bh_view op2, bh_view op3)
-            {
-                this.id = func;
-                this.nout = 1;
-                this.nin = 2;
-                this.struct_size = MATMULFUNC_SIZE;
-                this.operand0 = op1;
-                this.operand1 = op2;
-                this.operand2 = op3;
-            }
-        }
-
-        /// <summary>
-        /// A plain userfunc
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_userfunc_plain
-        {
-            /// <summary>
-            /// The function id
-            /// </summary>
-            public bh_intp id;
-            /// <summary>
-            /// The number of output operands
-            /// </summary>
-            public bh_intp nout;
-            /// <summary>
-            /// The number of input operands
-            /// </summary>
-            public bh_intp nin;
-            /// <summary>
-            /// The total size of the struct
-            /// </summary>
-            public bh_intp struct_size;
-            /// <summary>
-            /// The output operand
-            /// </summary>
-            public bh_view operand0;
-            /// <summary>
-            /// An input operand
-            /// </summary>
-            public bh_view operand1;
-            /// <summary>
-            /// Another input operand
-            /// </summary>
-            public bh_view operand2;
-
-            /// <summary>
-            /// Creates a new plain userfunc
-            /// </summary>
-            /// <param name="func">The function id</param>
-            /// <param name="op">The output operand</param>
-            public bh_userfunc_plain(bh_intp func, bh_view op)
-            {
-                this.id = func;
-                this.nout = 1;
-                this.nin = 0;
-                this.struct_size = PLAINFUNC_SIZE;
-                this.operand0 = op;
-                this.operand1 = bh_view.EMPTY_VIEW;
-                this.operand2 = bh_view.EMPTY_VIEW;
-            }
-
-            /// <summary>
-            /// Creates a new plain userfunc
-            /// </summary>
-            /// <param name="func">The function id</param>
-            /// <param name="op1">The output operand</param>
-            /// <param name="op2">The input operand</param>
-            public bh_userfunc_plain(bh_intp func, bh_view op1, bh_view op2)
-            {
-                this.id = func;
-                this.nout = 1;
-                this.nin = 0;
-                this.struct_size = PLAINFUNC_SIZE;
-                this.operand0 = op1;
-                this.operand1 = op2;
-                this.operand2 = bh_view.EMPTY_VIEW;
-            }
-
-            /// <summary>
-            /// Creates a new plain userfunc
-            /// </summary>
-            /// <param name="func">The function id</param>
-            /// <param name="op1">The output operand</param>
-            /// <param name="op2">An input operand</param>
-            /// <param name="op3">Another input operand</param>
-            public bh_userfunc_plain(bh_intp func, bh_view op1, bh_view op2, bh_view op3)
-            {
-                this.id = func;
-                this.nout = 1;
-                this.nin = 0;
-                this.struct_size = PLAINFUNC_SIZE;
-                this.operand0 = op1;
-                this.operand1 = op2;
-                this.operand2 = op3;
-            }
-        }
-
-        /// <summary>
-        /// Represents a Bohrium instruction
-        /// </summary>
-        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 0)]
-        public struct bh_instruction : IInstruction
-        {
-            /// <summary>
-            /// The instruction opcode
-            /// </summary>
-            public bh_opcode opcode;
-            /// <summary>
-            /// The output operand
-            /// </summary>
-            public bh_view operand0;
-            /// <summary>
-            /// An input operand
-            /// </summary>
-            public bh_view operand1;
-            /// <summary>
-            /// Another input operand
-            /// </summary>
-            public bh_view operand2;
-            /// <summary>
-            /// A constant value assigned to the instruction
-            /// </summary>
-            public bh_constant constant;
-            /// <summary>
-            /// Points to the user-defined function when the opcode is BH_USERFUNC
-            /// </summary>
-            public IntPtr userfunc;
-
-            /// <summary>
-            /// Creates a new instruction
-            /// </summary>
-            /// <param name="opcode">The opcode for the operation</param>
-            /// <param name="operand">The output operand</param>
-            /// <param name="constant">An optional constant</param>
-            public bh_instruction(bh_opcode opcode, bh_base_ptr operand)
-            {
-                this.opcode = opcode;
-                this.operand0 = new bh_view(operand, new Shape(operand.Length));
-                this.operand1 = bh_view.EMPTY_VIEW;
-                this.operand2 = bh_view.EMPTY_VIEW;
-                this.userfunc = IntPtr.Zero;
-                this.constant = new bh_constant();
-            }
-            
-            /// <summary>
-            /// Creates a new instruction
-            /// </summary>
-            /// <param name="opcode">The opcode for the operation</param>
-            /// <param name="operand">The output operand</param>
-            /// <param name="constant">An optional constant</param>
-            public bh_instruction(bh_opcode opcode, bh_view operand, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-            {
-                this.opcode = opcode;
-                this.operand0 = operand;
-                this.operand1 = bh_view.EMPTY_VIEW;
-                this.operand2 = bh_view.EMPTY_VIEW;
-                this.userfunc = IntPtr.Zero;
-                this.constant = constant;
-            }
-
-            /// <summary>
-            /// Creates a new instruction
-            /// </summary>
-            /// <param name="opcode">The opcode for the operation</param>
-            /// <param name="operand1">The output operand</param>
-            /// <param name="constant">A left-hand-side constant</param>
-            /// <param name="operand2">An input operand</param>
-            public bh_instruction(bh_opcode opcode, bh_view operand1, PInvoke.bh_constant constant, bh_view operand2)
-            {
-                this.opcode = opcode;
-                this.operand0 = operand1;
-                this.operand1 = bh_view.EMPTY_VIEW;
-                this.operand2 = operand2;
-                this.userfunc = IntPtr.Zero;
-                this.constant = constant;
-            }
-
-            /// <summary>
-            /// Creates a new instruction
-            /// </summary>
-            /// <param name="opcode">The opcode for the operation</param>
-            /// <param name="operand1">The output operand</param>
-            /// <param name="operand2">An input operand</param>
-            /// <param name="constant">A right-hand-side constant</param>
-            public bh_instruction(bh_opcode opcode, bh_view operand1, bh_view operand2, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-            {
-                this.opcode = opcode;
-                this.operand0 = operand1;
-                this.operand1 = operand2;
-                this.operand2 = bh_view.EMPTY_VIEW;
-                this.userfunc = IntPtr.Zero;
-                this.constant = constant;
-            }
-
-            /// <summary>
-            /// Creates a new instruction
-            /// </summary>
-            /// <param name="opcode">The opcode for the operation</param>
-            /// <param name="operand1">The output operand</param>
-            /// <param name="operand2">An input operand</param>
-            /// <param name="operand3">Another input operand</param>
-            /// <param name="constant">A right-hand-side constant</param>
-            public bh_instruction(bh_opcode opcode, bh_view operand1, bh_view operand2, bh_view operand3, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-            {
-                this.opcode = opcode;
-                this.operand0 = operand1;
-                this.operand1 = operand2;
-                this.operand2 = operand3;
-                this.userfunc = IntPtr.Zero;
-                this.constant = constant;
-            }
-
-            /// <summary>
-            /// Creates a new instruction
-            /// </summary>
-            /// <param name="opcode">The opcode for the operation</param>
-            /// <param name="operands">A list of operands</param>
-            /// <param name="constant">A constant</param>
-            public bh_instruction(bh_opcode opcode, IEnumerable<bh_view> operands, PInvoke.bh_constant constant = new PInvoke.bh_constant())
-            {
-                this.opcode = opcode;
-                var en = operands.GetEnumerator();
-                if (en.MoveNext())
-                {
-                    this.operand0 = en.Current;
-                    if (en.MoveNext())
-                    {
-                        this.operand1 = en.Current;
-                        if (en.MoveNext())
-                            this.operand2 = en.Current;
-                        else
-                            this.operand2 = bh_view.EMPTY_VIEW;
-                    }
-                    else
-                    {
-                        this.operand1 = bh_view.EMPTY_VIEW;
-                        this.operand2 = bh_view.EMPTY_VIEW;
-                    }
-                }
-                else
-                {
-                    this.operand0 = bh_view.EMPTY_VIEW;
-                    this.operand1 = bh_view.EMPTY_VIEW;
-                    this.operand2 = bh_view.EMPTY_VIEW;
-                }
-                this.userfunc = IntPtr.Zero;
-                this.constant = constant;
-            }
-
-            /// <summary>
-            /// Constructs a userdefined instruction
-            /// </summary>
-            /// <param name="opcode">The opcode BH_USERFUNC</param>
-            /// <param name="userfunc">A pointer to the userfunc struct</param>
-            public bh_instruction(bh_opcode opcode, IntPtr userfunc)
-            {
-                this.opcode = opcode;
-                this.userfunc = userfunc;
-                this.operand0 = bh_view.EMPTY_VIEW;
-                this.operand1 = bh_view.EMPTY_VIEW;
-                this.operand2 = bh_view.EMPTY_VIEW;
-                this.constant = new bh_constant();
-            }
-
-            /// <summary>
-            /// Returns a human readable representation of the instruction
-            /// </summary>
-            /// <returns>A human readable representation of the instruction</returns>
-            public override string ToString()
-            {
-                return string.Format("{0}({1}, {2}, {3})", this.opcode, operand0, operand1, operand2);
-            }
-
-			/// <summary>
-			/// Gets the opcode.
-			/// </summary>
-            bh_opcode IInstruction.OpCode
-            {
-                get { return opcode; }
-            }
-
-            /// <summary>
-            /// Gets the userfunc id, number of output operands and number of input operands
-            /// </summary>
-            public Tuple<long, long, long> UserfuncIdNOutNIn
-            {
-            	get
-            	{
-            		if (this.userfunc == IntPtr.Zero)
-            			return null;
-
-            		if (Is64Bit)
-            		{
-            			return new Tuple<long, long, long>(
-            				Marshal.ReadInt64(this.userfunc, 0),
-							Marshal.ReadInt64(this.userfunc, 8),
-							Marshal.ReadInt64(this.userfunc, 16)
-						);
-            		}
-            		else
-            		{
-						return new Tuple<long, long, long>(
-							Marshal.ReadInt32(this.userfunc, 0),
-							Marshal.ReadInt32(this.userfunc, 4),
-							Marshal.ReadInt32(this.userfunc, 8)
-							);
-					}
-            	}
-            }
-
-            /// <summary>
-            /// Gets the userfunc arrays.
-            /// </summary>
-            public bh_base_ptr[] UserfuncArrays
-            {
-            	get
-            	{
-            		var tp = this.UserfuncIdNOutNIn;
-            		if (tp == null)
-            			return null;
-
-            		var nops = tp.Item2 + tp.Item3;
-            		var arrays = new bh_base_ptr[nops];
-            		for(var i = 0; i < nops; i++)
-            			arrays[i].m_ptr = Marshal.ReadIntPtr(this.userfunc, (4 + i) * IntPtr.Size);
-
-            		return arrays;
-            	}
-            }
-        }
-        
-        public static bh_base_ptr bh_create_base(bh_type type, bh_index size)
-        {
-            var ptr = new bh_base_ptr(Marshal.AllocHGlobal(BH_BASE_SIZE));
-            ptr.Type = type;
-            ptr.Length = size;
-            ptr.Data = IntPtr.Zero;
+            bh_base_ptr ptr;
+            var res = bh_interop_base_create(type, size, data, out ptr);
+            if (res != bh_error.BH_SUCCESS)
+                throw new BohriumException(res);
+                
             return ptr;
         }
 
@@ -1667,35 +1153,205 @@ namespace NumCIL.Bohrium
 		/// </summary>
 		/// <param name="inst">The instruction to examine</param>
 		[DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-		public extern static int bh_operands_in_instruction(bh_instruction inst);
+		public extern static int bh_operands_in_instruction(bh_instruction_ptr inst);
 
+
+        /// <summary>
+        /// Creates a bh_base entry
+        /// </summary>
+        /// <param name="type">The type of the data array</param>
+        /// <param name="nelem">The number of elements in the array</param>
+        /// <param name="data">The number of data elements</param>
+        /// <param name="data">A reference to storage where the pointer will be stored</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_create(bh_type type, bh_index nelem, bh_data_ptr data, out bh_base_ptr @base);
+        
+        /// <summary>
+        /// Gets the type value of the bh_base
+        /// </summary>
+        /// <param name="base">The base pointer</param>
+        /// <param name="type">A pointer to storage for the returned type value</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_get_type(bh_base_ptr @base, out bh_type type);
+        
+        /// <summary>
+        /// Sets the type value of the bh_base
+        /// </summary>
+        /// <param name="base">The base pointer</param>
+        /// <param name="type">The new type value</param>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_set_type(bh_base_ptr @base, bh_type type);
+        
+        /// <summary>
+        /// Gets the number of elements in the bh_base
+        /// </summary>
+        /// <param name="base">The base pointer</param>
+        /// <param name="nelem">A pointer to storage for the returned nelem value</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_get_nelem(bh_base_ptr @base, out bh_index nelem);
+        
+        /// <summary>
+        /// Sets the number of elements in the bh_base
+        /// </summary>
+        /// <param name="base">The base pointer</param>
+        /// <param name="nelem">The new nelem value</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_set_nelem(bh_base_ptr @base, bh_index nelem);
+        
+        /// <summary>
+        /// Gets the data value of the bh_base
+        /// </summary>
+        /// <param name="base">The base pointer</param>
+        /// <param name="data">A pointer to storage for the returned data value</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_get_data(bh_base_ptr @base, out bh_data_ptr data);
+
+        /// <summary>
+        /// Sets the data value of the bh_base
+        /// </summary>
+        /// <param name="base">The base pointer</param>
+        /// <param name="data">The new data value</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_set_data(bh_base_ptr @base, bh_data_ptr data);
+        
+        /// <summary>
+        /// Destroys an allocated base pointer obtained by
+        /// a previous call to bh_interop_base_create
+        /// </summary>
+        /// <param name="base">The base pointer</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_base_destroy(bh_base_ptr @base);
+
+        /// <summary>
+        /// Creates a new instruction list
+        /// </summary>
+        /// <param name="nelem">The number of instructions in the list</param>
+        /// <param name="instructions">A pointer to storage for the returned list</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_instructionlist_create(bh_index nelem, ref bh_instruction_ptr instructions);
+
+        /// <summary>
+        /// Resizes an instruction list previously created with
+        /// bh_interop_instructionlist_create
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="nelem">The new number of instructions in the list</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_instructionlist_resize(ref bh_instruction_ptr instructions, bh_index nelem);
+
+        /// <summary>
+        /// Destroys an instruction list previously created with
+        /// bh_interop_instructionlist_create
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_instructionlist_destroy(bh_instruction_ptr instructions);
+
+        /// <summary>
+        /// Sets the values for an instruction
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="instr">The instruction to modify</param>
+        /// <param name="opcode">The instruction opcode</param>
+        /// <param name="constant">The instruction constant</param>
+        /// <param name="userfunc">The userfunc pointer or NULL</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_instructionlist_set(bh_instruction_ptr instructions, bh_index instr, bh_opcode opcode, bh_constant constant, IntPtr userfunc);
+        
+        /// <summary>
+        /// Gets the opcode for an instruction
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="instr"The instruction to retrieve></param>
+        /// <param name="opcode">The returned instruction opcode</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static  bh_error bh_interop_instructionlist_get_opcode(bh_instruction_ptr instructions, bh_index instr, out bh_opcode opcode);
+
+        /// <summary>
+        /// Gets the userfunc for an instruction
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="instr"The instruction to retrieve></param>
+        /// <param name="userfunc">The returned instruction userfunc</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static  bh_error bh_interop_instructionlist_get_userfunc(bh_instruction_ptr instructions, bh_index instr, out IntPtr userfunc);
+
+        /// <summary>
+        /// Sets the operand values for an instruction
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="instr">The instruction to modify</param>
+        /// <param name="operand">The operand to set allowed range is [0 - BH_MAX_NO_OPERANDS[</param>
+        /// <param name="base">The operand base pointer</param>
+        /// <param name="ndim">The number of dimensions in the view</param>
+        /// <param name="start">The data offset</param>
+        /// <param name="shape">The shape sizes</param>
+        /// <param name="stride">The stride sizes</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_instructionlist_set_view(bh_instruction_ptr instructions, bh_index instr, bh_index operand, bh_base_ptr @base, bh_intp ndim, bh_index start, bh_index[] shape, bh_index[] stride);
+
+        /// <summary>
+        /// Sets the constant value for an instruction
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="instr">The instruction to modify</param>
+        /// <param name="operand">The operand to set allowed range is [0 - BH_MAX_NO_OPERANDS[</param>
+        /// <param name="constant">The constant value to use</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_instructionlist_set_constant(bh_instruction_ptr instructions, bh_index instr, bh_index operand, bh_constant constant);        
+
+        /// <summary>
+        /// Gets the operand base for an instruction
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="instr">The instruction to modify</param>
+        /// <param name="operand">The operand to set allowed range is [0 - BH_MAX_NO_OPERANDS[</param>
+        /// <param name="base">The base value to return</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static bh_error bh_interop_instructionlist_get_operandbase(bh_instruction_ptr instructions, bh_index instr, bh_index operand, out bh_base_ptr @base);
+
+        /// <summary>
+        /// Sets the operand to an empty view for an instruction
+        /// </summary>
+        /// <param name="instructions">A pointer to the list of instructions</param>
+        /// <param name="instr">The instruction to modify</param>
+        /// <param name="operand">The operand to set allowed range is [0 - BH_MAX_NO_OPERANDS[</param>
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+        [DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public static extern bh_error bh_interop_instructionlist_set_view_empty(bh_instruction_ptr instructions, bh_index instr, bh_index operand);
+        
 		/// <summary>
 		/// Creates a new graph storage element
  		/// </summary>
 		/// <param name="bhir">A pointer to the result</param>
 		/// <param name="instructions">The initial instruction list, can be null if instruction_count is 0</param>
  		/// <param name="instruction_count">The number of instructions in the list</param>
-		[DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-		public extern static bh_error bh_ir_create(bh_ir_ptr bhir, bh_intp instruction_count, bh_instruction[] instructions);
-		
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+		[DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+		public extern static bh_error bh_interop_ir_create(out bh_ir_ptr bhir, bh_intp instruction_count, bh_instruction_ptr instructions);
+		        
 		/// <summary>
 		/// Destroys the instance and releases all resources
 		/// </summary>
 		/// <param name="bhir">The bh_ir instance to destroy</param>
-		[DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-		public extern static void bh_ir_destroy(bh_ir_ptr bhir);
-        
-        /// <summary>
-        /// Allocates space for a bh_ir struct, used to allow bridges to create the struct without knowing the size of the struct
-        /// </summary>        
-        [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-        public extern static bh_ir_ptr bh_ir_malloc();      
-
-        /// <summary>
-        /// Allocates space for a bh_ir struct, used to allow bridges to create the struct without knowing the size of the struct
-        /// </summary>
-        /// <param name="bhir">The pointer to free</param>>
-        [DllImport("libbh", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
-        public extern static void bh_ir_free(bh_ir_ptr bhir);
+        /// <returns>BH_SUCCESS if the operation succeeded, any other value indicates error</returns>
+		[DllImport("libbh_interop", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+		public extern static void bh_interop_ir_destroy(bh_ir_ptr bhir);        
 	}
 }

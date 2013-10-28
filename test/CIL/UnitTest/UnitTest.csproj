@@ -25,8 +25,8 @@
     <Optimize>False</Optimize>
     <EnvironmentVariables>
       <EnvironmentVariables>
-        <Variable name="BH_CONFIG" value="/Users/kenneth/Udvikler/bohrium/config.osx.ini" />
-        <Variable name="DYLD_LIBRARY_PATH" value="/Users/kenneth/Udvikler/bohrium/core" />
+        <Variable name="DYLD_LIBRARY_PATH" value="/Users/kenneth/.local" />
+        <Variable name="BH_VE_CPU_DUMPSRC" value="1" />
       </EnvironmentVariables>
     </EnvironmentVariables>
     <Commandlineparameters>--bohrium-only</Commandlineparameters>

@@ -22,7 +22,7 @@
     <ConsolePause>false</ConsolePause>
     <EnvironmentVariables>
       <EnvironmentVariables>
-        <Variable name="LD_LIBRARY_PATH" value="/home/madsbk/.local" />
+        <Variable name="DYLD_LIBRARY_PATH" value="/Users/kenneth/.local" />
       </EnvironmentVariables>
     </EnvironmentVariables>
   </PropertyGroup>

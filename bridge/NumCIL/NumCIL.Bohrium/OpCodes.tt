@@ -42,7 +42,7 @@ namespace NumCIL.Bohrium
 	///<summary>
 	/// Defines all the opcodes found in Bohrium
 	///</summary>
-	public enum bh_opcode
+	public enum bh_opcode : long
 	{
 <#
 		string path = null; 

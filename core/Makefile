@@ -4,7 +4,7 @@ CC=g++
 WARNOPTS=-Wall
 LCFLAGS= $(WARNOPTS) -g -O2 -fPIC -std=c++98 -I$(ROOT)/include
 LDFLAGS=-shared -ldl -Wl,-soname,$(LIB)
-SRC=bh.c bh_opcode.c bh_type.c bh_error.c bh_component.c bh_pprint.c bh_memory.c bh_vcache.c bh_timing.c bh_vector.c
+SRC=bh.c bh_opcode.c bh_type.c bh_typeutil.c bh_error.c bh_component.c bh_pprint.c bh_memory.c bh_vcache.c bh_timing.c bh_vector.c
 OBJ=$(SRC:.c=.o) $(ROOT)/core/bhir/*.o $(ROOT)/iniparser/libiniparser.a
 
 INSTALLDIR?=/opt/bohrium/

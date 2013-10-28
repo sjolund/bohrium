@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 
 namespace NumCIL.Bohrium
 {
@@ -24,20 +25,33 @@ namespace NumCIL.Bohrium
 		/// Creates a new IR instance
 		/// </summary>
 		/// <param name="instructions">The initial instruction list in the IR batch</param>
-		public IR(PInvoke.bh_instruction[] instructions)
+		public IR(InstructionList instructions)
         {
             try
             {
-                m_ptr = PInvoke.bh_ir_malloc ();
-                var res = PInvoke.bh_ir_create (m_ptr, instructions == null ? 0 : instructions.Length, instructions);
+                if (instructions == null)
+                    throw new NullReferenceException ("intstructions");
+            
+                Console.WriteLine ("Instr count: {0}", instructions.Length);
+                if (instructions.Length == 3)
+                    Console.Write("");
+
+                var res = PInvoke.bh_interop_ir_create (out m_ptr, instructions.Length, instructions.Pointer);
                 if (res != PInvoke.bh_error.BH_SUCCESS)
                     throw new BohriumException (res);
+                    
+                var ic = (instructions == null ? 0 : instructions.Length);
+                if (m_ptr.InstructionCount != ic)
+                    throw new Exception (string.Format ("Wrong count: {0} vs {1}", m_ptr.InstructionCount, ic));
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Console.WriteLine (ex);
                 if (m_ptr != PInvoke.bh_ir_ptr.Null)
-                    PInvoke.bh_ir_free(m_ptr);
+                {
+                    PInvoke.bh_interop_ir_destroy (m_ptr);
+                    m_ptr = PInvoke.bh_ir_ptr.Null;
+                }
             }
 		}
 				
@@ -65,8 +79,7 @@ namespace NumCIL.Bohrium
 			
 			try
 			{
-				PInvoke.bh_ir_destroy(m_ptr);
-                PInvoke.bh_ir_free(m_ptr);
+				PInvoke.bh_interop_ir_destroy(m_ptr);
 			}
 			finally
 			{

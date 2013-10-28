@@ -39,7 +39,6 @@
   <ItemGroup>
     <Compile Include="BohriumAccessor.cs" />
     <Compile Include="BohriumException.cs" />
-    <Compile Include="IInstruction.cs" />
     <Compile Include="OpCodes.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -51,6 +50,7 @@
     <Compile Include="VEM.cs" />
     <Compile Include="IR.cs" />
     <Compile Include="BaseArrayKeeper.cs" />
+    <Compile Include="InstructionList.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NumCIL\NumCIL.csproj">
