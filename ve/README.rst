@@ -2,6 +2,8 @@
 Brief Description of Vector Engines
 ===================================
 
+The branch holds the static "legacy" engines.
+
 Here goes::
 
     gpu - GPU vector engine.
