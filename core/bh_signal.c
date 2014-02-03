@@ -37,14 +37,16 @@ static void sighandler(int signal_number,
                        siginfo_t *info,
                        void *context)
 {
-    signal(signal_number, SIG_IGN);
+    //signal(signal_number, SIG_IGN);
     int memarea = search((uintptr_t)info->si_addr);
     if (memarea == -1)
     {
+        printf("defaulting to segfault\n");
         signal(signal_number, SIG_DFL);
     }
     else
     {
+        printf("Found a memory area of interest!\n");
         mSpace m = mspaces[memarea];
         m.callback(m.idx, (uintptr_t)info->si_addr);
     }
@@ -76,7 +78,7 @@ int init_signal(void){
     sact.sa_flags = SA_SIGINFO | SA_ONSTACK;
     sact.sa_sigaction = sighandler;
     sigaction(SIGSEGV, &sact, &sact);
-    if (idssorted == 0)
+    if (init == 0)
     {
         mspaceid = 0;
         spacesize = 0;
@@ -119,12 +121,12 @@ int attach_signal(signed long idx, // id to execute call back function with
     mSpace m = {idx, start, end, callback};
     int ret = addspace(m);
     // Setup mprotect for the area
-    if (mprotect((void *)start, size, PROT_NONE) == -1)
-    {
-        int errsv = errno;
-        printf("Could not not mprotect array, error: %s.\n", strerror(errsv));
-        return -1;
-    }
+    //if (mprotect((void *)start, size, PROT_NONE) == -1)
+    //{
+    //    int errsv = errno;
+    //    printf("Could not not mprotect array, error: %s.\n", strerror(errsv));
+    //    return -1;
+    //}
     return 0;
 }
 
