@@ -1169,6 +1169,7 @@ def range(size, dtype=uint64):
     else:
         return A
 
+
 def visualize(a, mode, colormap, min, max):
     if not (a.ndim == 2 or a.ndim == 3):
         raise ValueError("Input must be 2-D or 3-D.")
@@ -1186,7 +1187,35 @@ def visualize(a, mode, colormap, min, max):
             flat = False
             cube = True
     else:
-        raise ValueError("Unknown mode '%s'"%mode)
+        raise ValueError("Unknown mode '%s'" % mode)
 
     args = array([float(colormap), float(flat), float(cube), float(min), float(max)], bohrium=True)
-    bridge.extmethod_exec("visualizer",a,args,a)
+    bridge.extmethod_exec("visualizer", a, args, a)
+
+
+def memmap(filename, dtype=uint8, mode="r+", offset=0, shape=None, order='C'):
+    '''
+        memmap file extension method.
+
+        @param: filename, path and filename of the input file.
+        @param: dtype, array type
+        @param: mode, filemode choices: r', 'r+', 'w+', 'c'
+        @param: offset, file offset(int)
+        @param: shape, tuple, shape of the array
+        @param: order, memory layout, row-major or column-major('C' or 'F')
+        @return: memory mapped bohrium array
+    '''
+    modes = {'r': 0,
+             'r+': 1,
+             'w+': 2,
+             'c': 3}
+    orders = {'C': 0,
+              'F': 1}
+
+    path = array([int8(ord(char)) for char in filename], bohrium=True)
+    args = array([int64(modes[mode]),
+                  int64(offset),
+                  int64(orders[order])], bohrium=True)
+    mapped = empty(shape, dtype=dtype, bohrium=True)
+    bridge.extmethod_exec("memmap", path, args, mapped)
+    return mapped

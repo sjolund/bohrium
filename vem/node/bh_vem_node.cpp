@@ -22,6 +22,7 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <cstring>
 #include <iostream>
 #include <bh.h>
+#include <bh_memmap.h>
 #include <set>
 #include <bh_timing.hpp>
 
@@ -106,14 +107,40 @@ bh_error bh_vem_node_shutdown(void)
 /* Component interface: extmethod (see bh_component.h) */
 bh_error bh_vem_node_extmethod(const char *name, bh_opcode opcode)
 {
-    return child->extmethod(name, opcode);
+    if (strcmp("memmap", name) == 0)
+    {
+        // The memmap method has been registered.
+        // The opcode needs to be associated with the memmap function for
+        // future use.
+        BH_MEMMAP_OPCODE = opcode;
+        return bh_init_memmap();
+    }
+    else
+    {
+        return child->extmethod(name, opcode);
+    }
 }
 
 //Inspect one instruction
 static bh_error inspect(bh_instruction *instr)
 {
+
     int nop = bh_operands_in_instruction(instr);
     bh_view *operands = bh_inst_operands(instr);
+
+    printf("ARRY:  %li %p \n", instr->opcode, operands[0].base->data);
+    if (instr->opcode == BH_MEMMAP_OPCODE)
+    {
+        // MEMMAP file method.
+        // Attaches array to file handler
+        printf("MEMMAP OPCODE:  %li\n", BH_MEMMAP_OPCODE);
+        if (bh_create_memmap(instr) != BH_SUCCESS)
+        {
+            return BH_ERROR;
+        }
+        instr->opcode = BH_NONE;
+    }
+
 
     //Save all new base arrays
     for(bh_intp o=0; o<nop; ++o)
@@ -129,11 +156,13 @@ static bh_error inspect(bh_instruction *instr)
             total_execution_size += bh_nelements(a->ndim, a->shape);
         }
     #endif
-
     //And remove discared arrays
     if(instr->opcode == BH_DISCARD)
     {
         bh_base *base = operands[0].base;
+
+        // Making sure that the file mapped areas are writeable so they can be discarded
+        mprotect(base->data, base->nelem, PROT_WRITE | PROT_READ); 
         if(allocated_bases.erase(base) != 1)
         {
             fprintf(stderr, "[NODE-VEM] discarding unknown base array (%p)\n", base);
