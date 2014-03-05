@@ -5,7 +5,7 @@ file(GLOB SRC *.cpp bhir/*.cpp)
 
 add_library(bh SHARED ${SRC})
 
-add_custom_command(TARGET bh PRE_BUILD COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/codegen/gen_opcodes.py)
+#add_custom_command(TARGET bh PRE_BUILD COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/codegen/gen_opcodes.py)
 
 #We depend on iniparser
 add_subdirectory(iniparser)

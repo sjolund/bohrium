@@ -42,8 +42,6 @@ test/cpp/bin/*
 bridge/cpp/codegen/output/*
 bridge/cpp/bin/*
 benchmark/cpp/bin/*
-include/bh_opcode.h
-core/bh_opcode.cpp
 core/compute/codegen/out
 bohrium/build
 OpCodes.cs
