@@ -126,7 +126,5 @@ int main()
                 MPI_Abort(MPI_COMM_WORLD,BH_ERROR);
         }
     }
-
-    timing_finalize();
     return BH_SUCCESS;
 }

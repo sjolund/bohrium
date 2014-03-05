@@ -67,9 +67,7 @@ bh_error bh_vem_cluster_shutdown(void)
     dispatch_send(BH_CLUSTER_DISPATCH_SHUTDOWN);
 
     //Execute our self
-    bh_error err = exec_shutdown();
-    timing_finalize();
-    return err;
+    return exec_shutdown();
 }
 
 

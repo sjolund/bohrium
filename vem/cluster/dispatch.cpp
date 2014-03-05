@@ -231,7 +231,7 @@ void dispatch_recv(dispatch_msg **message)
     int e;
     const int dms = BH_CLUSTER_DISPATCH_DEFAULT_MSG_SIZE;
 
-    bh_uint64 stime = bh_timer_stamp();
+    bh_uint64 stime = bh_timing();
 
     //Get header of the message
     if((e = MPI_Bcast(msg, dms, MPI_BYTE, 0, MPI_COMM_WORLD)) != MPI_SUCCESS)
@@ -258,7 +258,7 @@ void dispatch_recv(dispatch_msg **message)
             EXCEPT_MPI(e);
     }
     *message = msg;
-    bh_timer_add(timing_dispatch, stime, bh_timer_stamp());
+    bh_timing_save(timing_dispatch, stime, bh_timing());
 }
 
 
@@ -269,7 +269,7 @@ void dispatch_recv(dispatch_msg **message)
 */
 void dispatch_array_data(std::stack<bh_base*> &arys)
 {
-    bh_uint64 stime = bh_timer_stamp();
+    bh_uint64 stime = bh_timing();
 
     while (!arys.empty())
     {
@@ -282,7 +282,7 @@ void dispatch_array_data(std::stack<bh_base*> &arys)
         }
         arys.pop();
     }
-    bh_timer_add(timing_dispatch_array_data, stime, bh_timer_stamp());
+    bh_timing_save(timing_dispatch_array_data, stime, bh_timing());
 }
 
 
@@ -293,7 +293,7 @@ void dispatch_bhir(const bh_ir *bhir)
 {
     dispatch_reset();
 
-    bh_uint64 stime = bh_timer_stamp();
+    bh_uint64 stime = bh_timing();
 
     /* The execution message has the form:
      * 1   x bh_ir bhir  //serialized BhIR
@@ -352,5 +352,5 @@ void dispatch_bhir(const bh_ir *bhir)
     //Dispath the array data
     dispatch_array_data(base_darys);
 
-    bh_timer_add(timing_dispatch, stime, bh_timer_stamp());
+    bh_timing_save(timing_dispatch, stime, bh_timing());
 }
