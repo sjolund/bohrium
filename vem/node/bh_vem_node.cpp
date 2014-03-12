@@ -128,19 +128,13 @@ static bh_error inspect(bh_instruction *instr)
     int nop = bh_operands_in_instruction(instr);
     bh_view *operands = bh_inst_operands(instr);
 
-    printf("ARRY:  %li %p \n", instr->opcode, operands[0].base->data);
-    if (instr->opcode == BH_MEMMAP_OPCODE)
+    printf("INSPECT OPCODE: %i | ", instr->opcode);
+    for(bh_intp o=0; o<nop; ++o)
     {
-        // MEMMAP file method.
-        // Attaches array to file handler
-        printf("MEMMAP OPCODE:  %li\n", BH_MEMMAP_OPCODE);
-        if (bh_create_memmap(instr) != BH_SUCCESS)
-        {
-            return BH_ERROR;
-        }
-        instr->opcode = BH_NONE;
+        if(!bh_is_constant(&operands[o]))
+           printf("%p->%p, ", &operands[o].base, &operands[o].base->data);
     }
-
+    printf("\n");
 
     //Save all new base arrays
     for(bh_intp o=0; o<nop; ++o)
@@ -148,6 +142,18 @@ static bh_error inspect(bh_instruction *instr)
         if(!bh_is_constant(&operands[o]))
             allocated_bases.insert(operands[o].base);
     }
+    if (instr->opcode == BH_MEMMAP_OPCODE)
+    {
+        // MEMMAP file method.
+        // Attaches array to file handler
+        //printf("MEMMAP OPCODE:  %li\n", BH_MEMMAP_OPCODE);
+        if (bh_create_memmap(instr) != BH_SUCCESS)
+        {
+            return BH_ERROR;
+        }
+        instr->opcode = BH_NONE;
+    }
+
 
     #ifdef BH_TIMING
         if(operands[nop-1] != NULL)
@@ -160,9 +166,10 @@ static bh_error inspect(bh_instruction *instr)
     if(instr->opcode == BH_DISCARD)
     {
         bh_base *base = operands[0].base;
+        //printf("DISCARD BASE: %p \n", base->data);
 
         // Making sure that the file mapped areas are writeable so they can be discarded
-        mprotect(base->data, base->nelem, PROT_WRITE | PROT_READ); 
+        //mprotect(base->data, base->nelem, PROT_WRITE | PROT_READ); 
         if(allocated_bases.erase(base) != 1)
         {
             fprintf(stderr, "[NODE-VEM] discarding unknown base array (%p)\n", base);

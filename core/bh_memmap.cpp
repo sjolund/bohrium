@@ -46,10 +46,10 @@ bh_error bh_init_memmap(void)
 bh_error bh_create_memmap(bh_instruction *instr)
 {
     bh_view *operands = bh_inst_operands(instr);
-    bh_int64* fargs = (bh_int64*)(operands[1].base->data);
+    bh_int64* fargs = (bh_int64*)(operands[2].base->data);
 
     // Parse file arguments
-    char* fpath = (char*)(operands[0].base->data);
+    char* fpath = (char*)(operands[1].base->data);
     bh_int64 mode = fargs[0];
     bh_intp offset = (bh_intp)fargs[1];
     bh_int64 order = fargs[2];
@@ -63,7 +63,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
     else if (mode == 2) {
         fileflag |= O_TRUNC;
     }
-    bh_intp size_in_bytes = bh_base_size(operands[2].base);
+    bh_intp size_in_bytes = bh_base_size(operands[0].base);
     // Open file with the right parameters
     int fd = open(fpath, fileflag | O_CREAT, (mode_t)0600);
     struct stat sb;
@@ -80,13 +80,15 @@ bh_error bh_create_memmap(bh_instruction *instr)
         fprintf(stderr, "bh_create_memmap() could not write to file \"%s\"\n", fpath);
         return BH_ERROR;
     }
-    printf("BEFORE: %p \n", operands[2].base->data);
     // mmap virtual address space for array data
-    operands[2].base->data = bh_memory_malloc(size_in_bytes);
-    printf("AFTER: %p \n", operands[2].base->data);
+    operands[0].base->data = bh_memory_malloc(size_in_bytes);
+    printf("bh_memmap: addr = %p - %p\n", operands[0].base->data, reinterpret_cast<unsigned char *>(operands[0].base->data) + size_in_bytes);
     // Attach fd and together with address space to the signal handler
+    attach_signal(fd, (uintptr_t)operands[0].base->data, size_in_bytes, bh_sighandler_memmap);
     // mprotect base->data, to make sure that future access to the array will be handled by custom signal handler
-    mprotect((void *)operands[2].base->data, size_in_bytes, PROT_NONE);
+    mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
+    fids[fd] = operands[0].base;
+    printf("Finished mmap\n");
     return BH_SUCCESS;
 }
 
@@ -101,6 +103,7 @@ bh_error bh_destroy_memmap(bh_base ary)
 }
 
 /** Sync the content of the filemapped array to disk
+ *  Guarantees that the changes to a array has been written to disk
  *
  * @param ary bh_array file mapped array.
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
@@ -109,6 +112,7 @@ bh_error bh_sync_memmap(bh_base ary)
 {
     return BH_SUCCESS;
 }
+
 
 /** Adds a hint to the I/O queue in form of a execution list.
  *
@@ -128,6 +132,13 @@ bh_error bh_hint_memmap()
 void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
 {
     // First iteration; Idx will be the file handler.
+    //printf("Signal handler?APAGE: %p \n", (void*)PAGE_ALIGN(addr));
+    mprotect((void*)PAGE_ALIGN(addr), PAGE_SIZE, PROT_READ| PROT_WRITE);
+    bh_base* base = fids[idx];
+    bh_index offset = (PAGE_ALIGN(addr) - (uintptr_t)base->data);
+    //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);
+    //printf("Reading from disk into: %p ' %li %i'\n", (void*)PAGE_ALIGN(addr), offset, PAGE_SIZE);
+    ssize_t err = pread(idx, (void *)PAGE_ALIGN(addr), PAGE_SIZE, offset);
 
-
+    //exit(-1);
 }

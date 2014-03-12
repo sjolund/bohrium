@@ -1217,5 +1217,5 @@ def memmap(filename, dtype=uint8, mode="r+", offset=0, shape=None, order='C'):
                   int64(offset),
                   int64(orders[order])], bohrium=True)
     mapped = empty(shape, dtype=dtype, bohrium=True)
-    bridge.extmethod_exec("memmap", path, args, mapped)
+    bridge.extmethod_exec("memmap", mapped, path, args)
     return mapped

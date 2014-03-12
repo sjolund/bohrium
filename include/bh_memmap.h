@@ -21,29 +21,34 @@ If not, see <http://www.gnu.org/licenses/>.
 #ifndef __BH_MEMMAP_H
 #define __BH_MEMMAP_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/mman.h>
 #include <string.h>
 #include <fcntl.h>
+#include <map>
 #include "bh.h"
 #include "bh_type.h"
 #include "bh_array.h"
 #include "bh_instruction.h"
 #include "bh_error.h"
+#include "bh_signal.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define PAGE_SIZE getpagesize()
-#define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr    _t)(PAGE_SIZE-1)))))
+#define BLOCK_SIZE PAGE_SIZE
+#define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
 
 long int BH_MEMMAP_OPCODE = -1;
+static std::map<int, bh_base*> fids;
 
 
 /** Initialize the memmap module.

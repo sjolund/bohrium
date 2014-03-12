@@ -25,6 +25,17 @@ If not, see <http://www.gnu.org/licenses/>.
 
 #define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
 
+
+void print_spaces()
+{
+    printf("MSPACES |");
+    for (int i =0; i < spacesize; i+=2)
+    {
+        mSpace c = mspaces[idssorted[i]];
+        printf("%p <-> %p|", (void*)c.start, (void*)c.end);
+    }
+    printf("\n");
+}
 /** Signal handler.
  *  Executes appropriate callback function associated with memory segment.
  *
@@ -39,14 +50,15 @@ static void sighandler(int signal_number,
 {
     //signal(signal_number, SIG_IGN);
     int memarea = search((uintptr_t)info->si_addr);
+    //printf("SEGF Address: %p\n", info->si_addr);
+    //print_spaces();
     if (memarea == -1)
     {
-        printf("defaulting to segfault\n");
+        printf("bh_signal: Defaulting to segfaul at addr: %p\n", info->si_addr);
         signal(signal_number, SIG_DFL);
     }
     else
     {
-        printf("Found a memory area of interest!\n");
         mSpace m = mspaces[memarea];
         m.callback(m.idx, (uintptr_t)info->si_addr);
     }
@@ -119,6 +131,7 @@ int attach_signal(signed long idx, // id to execute call back function with
     }
     // Add area to mspaces
     mSpace m = {idx, start, end, callback};
+    //printf("Attaching Signal (%p, %p)\n", (void*)start, (void*)end);
     int ret = addspace(m);
     // Setup mprotect for the area
     //if (mprotect((void *)start, size, PROT_NONE) == -1)
@@ -127,6 +140,8 @@ int attach_signal(signed long idx, // id to execute call back function with
     //    printf("Could not not mprotect array, error: %s.\n", strerror(errsv));
     //    return -1;
     //}
+
+    //print_spaces();
     return 0;
 }
 
@@ -158,6 +173,7 @@ static int removespace(int id)
 {
     mSpace m = mspaces[id];
     int midx = binarysearch(m.start, ptssorted, spacesize-1);
+    //printf("Detaching Signal: (%p, %p), %i\n", (void*)m.start, (void *)m.end, midx);
     if ((midx % 2) == 0)
     {
         printf("Could not remove signal, wrong signal id, %i.\n", id);
