@@ -102,6 +102,7 @@ bh_error bh_destroy_memmap(bh_base ary)
     return BH_SUCCESS;
 }
 
+
 /** Sync the content of the filemapped array to disk
  *  Guarantees that the changes to a array has been written to disk
  *
