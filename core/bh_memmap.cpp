@@ -46,8 +46,15 @@ bh_error bh_init_memmap(void)
 bh_error bh_create_memmap(bh_instruction *instr)
 {
     bh_view *operands = bh_inst_operands(instr);
+    printf("MMAP OPCODE: %li  |   ", instr->opcode);
+    for (bh_intp o=0; o<3; ++o)
+    {
+        printf("%p.%p->%p, ", &operands[o], operands[o].base, &operands[0].base->data);
+    }
+    printf("\n");
     bh_int64* fargs = (bh_int64*)(operands[2].base->data);
 
+    printf("mmap base: %p\n", operands[0].base);
     // Parse file arguments
     char* fpath = (char*)(operands[1].base->data);
     bh_int64 mode = fargs[0];
@@ -64,6 +71,8 @@ bh_error bh_create_memmap(bh_instruction *instr)
         fileflag |= O_TRUNC;
     }
     bh_intp size_in_bytes = bh_base_size(operands[0].base);
+    printf("mmap base: %p\n", operands[0].base);
+    printf("SIZE IN BYTES: %li \n", size_in_bytes);
     // Open file with the right parameters
     int fd = open(fpath, fileflag | O_CREAT, (mode_t)0600);
     struct stat sb;
@@ -81,7 +90,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
         return BH_ERROR;
     }
     // mmap virtual address space for array data
-    bh_intp errv = bh_memory_free(operands[0].base->data, size_in_bytes);
+    //bh_intp errv = bh_memory_free(operands[0].base->data, size_in_bytes);
     operands[0].base->data = bh_memory_malloc(size_in_bytes);
     printf("bh_memmap: addr = %p - %p \n", operands[0].base->data, reinterpret_cast<unsigned char *>(operands[0].base->data) + size_in_bytes);
     // Attach fd and together with address space to the signal handler
@@ -89,6 +98,8 @@ bh_error bh_create_memmap(bh_instruction *instr)
     // mprotect base->data, to make sure that future access to the array will be handled by custom signal handler
     mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
     fids[fd] = operands[0].base;
+    memmap_bases[operands[0].base] = fd;
+    printf("mmap base: %p\n", operands[0].base);
     printf("Finished mmap\n");
     return BH_SUCCESS;
 }
@@ -137,14 +148,48 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
     bh_base* base = fids[idx];
     bh_intp filesize = bh_base_size(base);
     bh_index offset = PAGE_ALIGN(addr) - (uintptr_t)base->data;
-    size_t pagesize = PAGE_SIZE;
-    if (filesize < (PAGE_SIZE+offset)){
+    size_t pagesize = BLOCK_SIZE;
+    if (filesize < (BLOCK_SIZE+offset)){
         pagesize = filesize - offset;
     }
     mprotect((void*)PAGE_ALIGN(addr), pagesize, PROT_READ| PROT_WRITE);
     //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);
-    printf("Reading from disk into: %p ' %li %li'\n", (void*)PAGE_ALIGN(addr), offset, pagesize);
+    //printf("Reading from disk into: %p ' %li %li'\n", (void*)PAGE_ALIGN(addr), offset, pagesize);
     ssize_t err = pread(idx, (void *)PAGE_ALIGN(addr), pagesize, offset);
-
     //exit(-1);
+}
+/** 
+ * 
+ */
+int bh_memmap_contains(bh_base *ary)
+{
+
+    return memmap_bases.count(ary);
+}
+/** Will read an entire file mapped array into memory
+ *
+ *  Is primarily used for BH_SYNC's
+ */
+bh_error bh_mmap_read(bh_view view)
+{
+    printf("view->%li \n", view.ndim);
+    for (int i=0; i < view.ndim; i++){
+        printf("shape->%li | stride->%li \n", view.shape[i], view.stride[i]);
+    }
+    return BH_SUCCESS;
+}
+
+
+bh_error bh_mmap_read_all(bh_base *ary)
+{
+
+    printf("READING ALL FROM FILE!!! AUCH..\n");
+    int fid = memmap_bases[ary];
+    bh_index size = bh_base_size(ary);
+    mprotect(ary->data, size, PROT_WRITE);
+    //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);
+    //printf("Reading from disk into: %p ' %li %li'\n", (void*)PAGE_ALIGN(addr), offset, pagesize);
+    ssize_t err = pread(fid, ary->data, size, 0);
+    mprotect(ary->data, size, PROT_READ| PROT_WRITE);
+    return BH_SUCCESS;
 }

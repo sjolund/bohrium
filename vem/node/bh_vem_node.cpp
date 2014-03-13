@@ -109,11 +109,14 @@ bh_error bh_vem_node_extmethod(const char *name, bh_opcode opcode)
 {
     if (strcmp("memmap", name) == 0)
     {
-        // The memmap method has been registered.
-        // The opcode needs to be associated with the memmap function for
-        // future use.
-        BH_MEMMAP_OPCODE = opcode;
-        return bh_init_memmap();
+        if (BH_MEMMAP_OPCODE == -1){
+            // The memmap method has been registered.
+            // The opcode needs to be associated with the memmap function for
+            // future use.
+            BH_MEMMAP_OPCODE = opcode;
+            return bh_init_memmap();
+        }
+        return BH_SUCCESS;
     }
     else
     {
@@ -128,20 +131,7 @@ static bh_error inspect(bh_instruction *instr)
     int nop = bh_operands_in_instruction(instr);
     bh_view *operands = bh_inst_operands(instr);
 
-    printf("INSPECT OPCODE: %i | ", instr->opcode);
-    for(bh_intp o=0; o<nop; ++o)
-    {
-        if(!bh_is_constant(&operands[o]))
-           printf("%p->%p, ", &operands[o].base, &operands[o].base->data);
-    }
-    printf("\n");
 
-    //Save all new base arrays
-    for(bh_intp o=0; o<nop; ++o)
-    {
-        if(!bh_is_constant(&operands[o]))
-            allocated_bases.insert(operands[o].base);
-    }
     if (instr->opcode == BH_MEMMAP_OPCODE)
     {
         // MEMMAP file method.
@@ -153,6 +143,18 @@ static bh_error inspect(bh_instruction *instr)
         }
         instr->opcode = BH_NONE;
     }
+    //Save all new base arrays
+    for(bh_intp o=0; o<nop; ++o)
+    {
+        if(!bh_is_constant(&operands[o]))
+            allocated_bases.insert(operands[o].base);
+    }
+
+    if (instr->opcode == BH_SYNC && bh_memmap_contains(operands[0].base) == 1)
+    {
+        bh_mmap_read(operands[0]);
+        bh_mmap_read_all(operands[0].base);
+    }
 
 
     #ifdef BH_TIMING
@@ -162,6 +164,24 @@ static bh_error inspect(bh_instruction *instr)
             total_execution_size += bh_nelements(a->ndim, a->shape);
         }
     #endif
+
+    printf("INSPECT 0PCODE: %li | ", instr->opcode);
+    for(bh_intp o=0; o<nop; ++o)
+    {
+        if(!bh_is_constant(&operands[o])){
+            if (bh_memmap_contains(operands[o].base) == 1)
+                printf("(mmap)");
+            printf("%p.%p->%p, ", &operands[o], operands[o].base, operands[o].base->data);
+        }
+    }
+    printf("\n");
+    for(bh_intp o=0; o<nop; ++o)
+    {
+        if(!bh_is_constant(&operands[o])){
+            if (bh_memmap_contains(operands[o].base) == 1)
+                bh_mmap_read(operands[o]);
+        }
+    }
     //And remove discared arrays
     if(instr->opcode == BH_DISCARD)
     {

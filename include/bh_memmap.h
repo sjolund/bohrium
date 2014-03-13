@@ -44,11 +44,12 @@ extern "C" {
 #endif
 
 #define PAGE_SIZE getpagesize()
-#define BLOCK_SIZE PAGE_SIZE
+#define BLOCK_SIZE PAGE_SIZE*2
 #define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
 
 long int BH_MEMMAP_OPCODE = -1;
 static std::map<int, bh_base*> fids;
+static std::map<bh_base*, int> memmap_bases;
 
 
 /** Initialize the memmap module.
@@ -104,6 +105,9 @@ bh_error bh_hint_memmap();
  */
 void bh_sighandler_memmap(unsigned long idx, uintptr_t addr);
 
+bh_error bh_mmap_read(bh_view);
+bh_error bh_mmap_read_all(bh_base *ary);
+int bh_memmap_contains(bh_base *ary);
 
 #ifdef __cplusplus
 }
