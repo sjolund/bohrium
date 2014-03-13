@@ -81,8 +81,9 @@ bh_error bh_create_memmap(bh_instruction *instr)
         return BH_ERROR;
     }
     // mmap virtual address space for array data
+    bh_intp errv = bh_memory_free(operands[0].base->data, size_in_bytes);
     operands[0].base->data = bh_memory_malloc(size_in_bytes);
-    printf("bh_memmap: addr = %p - %p\n", operands[0].base->data, reinterpret_cast<unsigned char *>(operands[0].base->data) + size_in_bytes);
+    printf("bh_memmap: addr = %p - %p \n", operands[0].base->data, reinterpret_cast<unsigned char *>(operands[0].base->data) + size_in_bytes);
     // Attach fd and together with address space to the signal handler
     attach_signal(fd, (uintptr_t)operands[0].base->data, size_in_bytes, bh_sighandler_memmap);
     // mprotect base->data, to make sure that future access to the array will be handled by custom signal handler
@@ -133,13 +134,17 @@ bh_error bh_hint_memmap()
 void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
 {
     // First iteration; Idx will be the file handler.
-    //printf("Signal handler?APAGE: %p \n", (void*)PAGE_ALIGN(addr));
-    mprotect((void*)PAGE_ALIGN(addr), PAGE_SIZE, PROT_READ| PROT_WRITE);
     bh_base* base = fids[idx];
-    bh_index offset = (PAGE_ALIGN(addr) - (uintptr_t)base->data);
+    bh_intp filesize = bh_base_size(base);
+    bh_index offset = PAGE_ALIGN(addr) - (uintptr_t)base->data;
+    size_t pagesize = PAGE_SIZE;
+    if (filesize < (PAGE_SIZE+offset)){
+        pagesize = filesize - offset;
+    }
+    mprotect((void*)PAGE_ALIGN(addr), pagesize, PROT_READ| PROT_WRITE);
     //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);
-    //printf("Reading from disk into: %p ' %li %i'\n", (void*)PAGE_ALIGN(addr), offset, PAGE_SIZE);
-    ssize_t err = pread(idx, (void *)PAGE_ALIGN(addr), PAGE_SIZE, offset);
+    printf("Reading from disk into: %p ' %li %li'\n", (void*)PAGE_ALIGN(addr), offset, pagesize);
+    ssize_t err = pread(idx, (void *)PAGE_ALIGN(addr), pagesize, offset);
 
     //exit(-1);
 }
