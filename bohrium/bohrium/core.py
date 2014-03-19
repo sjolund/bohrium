@@ -1197,7 +1197,7 @@ def memmap(filename, dtype=uint8, mode="r+", offset=0, shape=None, order='C'):
     '''
         memmap file extension method.
 
-        @param: filename, path and filename of the input file.
+        @param: path and filename of the input file.
         @param: dtype, array type
         @param: mode, filemode choices: r', 'r+', 'w+', 'c'
         @param: offset, file offset(int)
@@ -1219,3 +1219,19 @@ def memmap(filename, dtype=uint8, mode="r+", offset=0, shape=None, order='C'):
     mapped = empty(shape, dtype=dtype, bohrium=True)
     bridge.extmethod_exec("memmap", mapped, path, args)
     return mapped
+
+
+def flush(A):
+    '''
+        Flush the content of a file mapped array to disk
+        @param A, memmaped array with write access.
+    '''
+    bridge.extmethod_exec("memmap_flush", A, A, A)
+
+
+def close(A):
+    '''
+        Close the file which A is associated with
+        @param A, memmaped array with write access.
+    '''
+    bridge.extmethod_exec("memmap_close", A, A, A)

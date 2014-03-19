@@ -48,6 +48,8 @@ extern "C" {
 #define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
 
 long int BH_MEMMAP_OPCODE = -1;
+long int BH_MEMMAP_FLUSH_OPCODE = -1;
+long int BH_MEMMAP_CLOSE_OPCODE = -1;
 static std::map<int, bh_base*> fids;
 static std::map<bh_base*, int> memmap_bases;
 
@@ -74,12 +76,12 @@ bh_error bh_create_memmap(bh_instruction *instr);
 
 
 
-/** Destroy a virtual mapping of a file to array.
+/** Close a file descriptor for a file mapped array
  *
  * @param ary bh_array file mapped array.
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
  */
-bh_error bh_destroy_memmap();
+bh_error bh_close_memmap(bh_base* ary);
 
 
 /** Sync the content of the filemapped array to disk.
@@ -87,7 +89,7 @@ bh_error bh_destroy_memmap();
  * @param ary bh_array file mapped array.
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
  */
-bh_error bh_sync_memmap();
+bh_error bh_flush_memmap(bh_base* ary);
 
 
 /** Adds a hint to the I/O queue in form of a execution list.
@@ -105,9 +107,9 @@ bh_error bh_hint_memmap();
  */
 void bh_sighandler_memmap(unsigned long idx, uintptr_t addr);
 
-bh_error bh_mmap_read(bh_view);
-bh_error bh_mmap_read_all(bh_base *ary);
-int bh_memmap_contains(bh_base *ary);
+bh_error bh_memmap_read_view(bh_view);
+bh_error bh_memmap_read_base(bh_base *ary);
+int bh_is_memmap(bh_base *ary);
 
 #ifdef __cplusplus
 }

@@ -54,7 +54,6 @@ bh_error bh_create_memmap(bh_instruction *instr)
     printf("\n");
     bh_int64* fargs = (bh_int64*)(operands[2].base->data);
 
-    printf("mmap base: %p\n", operands[0].base);
     // Parse file arguments
     char* fpath = (char*)(operands[1].base->data);
     bh_int64 mode = fargs[0];
@@ -71,8 +70,6 @@ bh_error bh_create_memmap(bh_instruction *instr)
         fileflag |= O_TRUNC;
     }
     bh_intp size_in_bytes = bh_base_size(operands[0].base);
-    printf("mmap base: %p\n", operands[0].base);
-    printf("SIZE IN BYTES: %li \n", size_in_bytes);
     // Open file with the right parameters
     int fd = open(fpath, fileflag | O_CREAT, (mode_t)0600);
     struct stat sb;
@@ -99,30 +96,45 @@ bh_error bh_create_memmap(bh_instruction *instr)
     mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
     fids[fd] = operands[0].base;
     memmap_bases[operands[0].base] = fd;
-    printf("mmap base: %p\n", operands[0].base);
-    printf("Finished mmap\n");
     return BH_SUCCESS;
 }
 
-/** Destroy a virtual mapping of a file to 
+/** Close a file descriptor for a file mapped array
  *
  * @param ary bh_array file mapped array.
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
  */
-bh_error bh_destroy_memmap(bh_base ary)
+bh_error bh_close_memmap(bh_base* ary)
 {
+    int fid = memmap_bases.at(ary);
+    if (close(fid) == -1)
+    {
+        fprintf(stderr, "bh_memmap could not close file handler\n");
+        return BH_ERROR;
+    }
+    memmap_bases.erase(ary);
+    fids.erase(fid);
     return BH_SUCCESS;
 }
 
 
-/** Sync the content of the filemapped array to disk
+/** Flush the content of the filemapped array to disk
  *  Guarantees that the changes to a array has been written to disk
  *
  * @param ary bh_array file mapped array.
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
  */
-bh_error bh_sync_memmap(bh_base ary)
+bh_error bh_flush_memmap(bh_base* ary)
 {
+    printf("IN FLUSH\n");
+    printf("FLUSH| %p->%p\n", ary, ary->data);
+    int fd = memmap_bases.at(ary);
+    printf("Flush fd(%i)\n", fd);
+    if (pwrite(fd, ary->data, bh_base_size(ary), 0) == -1)
+    {
+        fprintf(stderr, "bh_memmap could not write content to file, error message: %s\n", strerror(errno));
+        return BH_ERROR;
+    }
     return BH_SUCCESS;
 }
 
@@ -158,21 +170,24 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
     ssize_t err = pread(idx, (void *)PAGE_ALIGN(addr), pagesize, offset);
     //exit(-1);
 }
+
+
 /** 
- * 
+ * Returns 1 if the 
  */
-int bh_memmap_contains(bh_base *ary)
+int bh_is_memmap(bh_base *ary)
 {
 
     return memmap_bases.count(ary);
 }
-/** Will read an entire file mapped array into memory
+
+/** Will read an entire file mapped base array into memory
  *
  *  Is primarily used for BH_SYNC's
  */
-bh_error bh_mmap_read(bh_view view)
+bh_error bh_memmap_read_view(bh_view view)
 {
-    printf("view->%li \n", view.ndim);
+    printf("dim->%li \n", view.ndim);
     for (int i=0; i < view.ndim; i++){
         printf("shape->%li | stride->%li \n", view.shape[i], view.stride[i]);
     }
@@ -180,11 +195,15 @@ bh_error bh_mmap_read(bh_view view)
 }
 
 
-bh_error bh_mmap_read_all(bh_base *ary)
+/** Will read an entire file mapped base array into memory
+ *
+ *  Is primarily used for BH_SYNC's
+ */
+bh_error bh_memmap_read_base(bh_base *ary)
 {
 
     printf("READING ALL FROM FILE!!! AUCH..\n");
-    int fid = memmap_bases[ary];
+    int fid = memmap_bases.at(ary);
     bh_index size = bh_base_size(ary);
     mprotect(ary->data, size, PROT_WRITE);
     //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);
