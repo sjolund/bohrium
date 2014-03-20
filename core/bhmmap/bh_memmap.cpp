@@ -95,7 +95,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
     // mprotect base->data, to make sure that future access to the array will be handled by custom signal handler
     mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
     fids[fd] = operands[0].base;
-    memmap_bases[operands[0].base] = fd;
+    memmap_bases[operands[0].base->data] = fd;
     return BH_SUCCESS;
 }
 
@@ -106,13 +106,13 @@ bh_error bh_create_memmap(bh_instruction *instr)
  */
 bh_error bh_close_memmap(bh_base* ary)
 {
-    int fid = memmap_bases.at(ary);
+    int fid = memmap_bases.at(ary->data);
     if (close(fid) == -1)
     {
         fprintf(stderr, "bh_memmap could not close file handler\n");
         return BH_ERROR;
     }
-    memmap_bases.erase(ary);
+    memmap_bases.erase(ary->data);
     fids.erase(fid);
     return BH_SUCCESS;
 }
@@ -128,7 +128,7 @@ bh_error bh_flush_memmap(bh_base* ary)
 {
     printf("IN FLUSH\n");
     printf("FLUSH| %p->%p\n", ary, ary->data);
-    int fd = memmap_bases.at(ary);
+    int fd = memmap_bases.at(ary->data);
     printf("Flush fd(%i)\n", fd);
     if (pwrite(fd, ary->data, bh_base_size(ary), 0) == -1)
     {
@@ -178,7 +178,7 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
 int bh_is_memmap(bh_base *ary)
 {
 
-    return memmap_bases.count(ary);
+    return memmap_bases.count(ary->data);
 }
 
 /** Will read an entire file mapped base array into memory
@@ -203,7 +203,7 @@ bh_error bh_memmap_read_base(bh_base *ary)
 {
 
     printf("READING ALL FROM FILE!!! AUCH..\n");
-    int fid = memmap_bases.at(ary);
+    int fid = memmap_bases.at(ary->data);
     bh_index size = bh_base_size(ary);
     mprotect(ary->data, size, PROT_WRITE);
     //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);

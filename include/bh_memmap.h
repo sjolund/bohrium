@@ -47,11 +47,17 @@ extern "C" {
 #define BLOCK_SIZE PAGE_SIZE*2
 #define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
 
+struct mmapfile{
+    uintptr_t start;
+    uintptr_t end;
+    int fd;
+};
+
 long int BH_MEMMAP_OPCODE = -1;
 long int BH_MEMMAP_FLUSH_OPCODE = -1;
 long int BH_MEMMAP_CLOSE_OPCODE = -1;
 static std::map<int, bh_base*> fids;
-static std::map<bh_base*, int> memmap_bases;
+static std::map<bh_data_ptr, int> memmap_bases;
 
 
 /** Initialize the memmap module.
