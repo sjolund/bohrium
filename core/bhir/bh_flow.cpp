@@ -332,7 +332,7 @@ void bh_flow::sub_dag_clustering(void)
     {
         auto fni = base.second.begin();
         auto instr1 = fni->instr;
-        
+        get_sub_dag_id(instr1);
         for (++fni; fni != base.second.end(); ++fni)
         {
             auto instr2 = fni->instr;
@@ -340,6 +340,13 @@ void bh_flow::sub_dag_clustering(void)
             instr1 = instr2;
         }
     }
+    // vector<flow_instr>::iterator i;
+    // bh_intp id = 10001;
+    // for(i=flow_instr_list.begin(); i!=flow_instr_list.end(); i++)
+    // {
+    //     if (i->sub_dag == -1) 
+    //     i->sub_dag = id++;
+    // }
 }
 
 // Write the flow object in the DOT format.
