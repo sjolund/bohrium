@@ -152,7 +152,7 @@ static bh_error inspect(bh_instruction *instr)
     {
         if(!bh_is_constant(&operands[o])){
             if (bh_is_memmap(operands[o].base) == 1)
-                printf("(mmap)");
+                printf("(\033[1mmmap\033[0m)");
             printf("%p.%p->%p, ", &operands[o], operands[o].base, operands[o].base->data);
         }
     }
@@ -199,16 +199,19 @@ static bh_error inspect(bh_instruction *instr)
     #endif
 
 
-    for(bh_intp o=0; o<nop; ++o)
+    if (instr->opcode != BH_NONE)
     {
-        if(!bh_is_constant(&operands[o])){
-            //if (bh_is_memmap(operands[o].base) == 1)
-                //bh_memmap_read_view(operands[o]);
+        for(bh_intp o=0; o<nop; ++o)
+        {
+            if(!bh_is_constant(&operands[o])){
+                if (bh_is_memmap(operands[o].base) == 1)
+                    bh_hint_memmap(&operands[o]);
+            }
         }
     }
 
     //And remove discared arrays
-    if(instr->opcode == BH_DISCARD)
+    if(instr->opcode == BH_DISCARD and bh_is_memmap(operands[0].base) == 0)
     {
         bh_base *base = operands[0].base;
 

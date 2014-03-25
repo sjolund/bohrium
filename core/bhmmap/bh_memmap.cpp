@@ -28,8 +28,9 @@ If not, see <http://www.gnu.org/licenses/>.
  */
 bh_error bh_init_memmap(void)
 {
-    printf("bh_memmap : Init of library\n");
-
+    printf("bh_memmap : \033[1mInit of library\033[0m \n");
+    num_segfaults = 0;
+    pthread_create( &iothread, NULL, &bh_ioconsumer, NULL);
     return BH_SUCCESS;
 }
 
@@ -46,12 +47,6 @@ bh_error bh_init_memmap(void)
 bh_error bh_create_memmap(bh_instruction *instr)
 {
     bh_view *operands = bh_inst_operands(instr);
-    printf("MMAP OPCODE: %li  |   ", instr->opcode);
-    for (bh_intp o=0; o<3; ++o)
-    {
-        printf("%p.%p->%p, ", &operands[o], operands[o].base, &operands[0].base->data);
-    }
-    printf("\n");
     bh_int64* fargs = (bh_int64*)(operands[2].base->data);
 
     // Parse file arguments
@@ -89,10 +84,9 @@ bh_error bh_create_memmap(bh_instruction *instr)
     // mmap virtual address space for array data
     //bh_intp errv = bh_memory_free(operands[0].base->data, size_in_bytes);
     operands[0].base->data = bh_memory_malloc(size_in_bytes);
-    printf("bh_memmap: addr = %p - %p \n", operands[0].base->data, reinterpret_cast<unsigned char *>(operands[0].base->data) + size_in_bytes);
     // Attach fd and together with address space to the signal handler
     attach_signal(fd, (uintptr_t)operands[0].base->data, size_in_bytes, bh_sighandler_memmap);
-    // mprotect base->data, to make sure that future access to the array will be handled by custom signal handler
+    // -rw@base->data, to make sure that future access to the array will be handled by custom signal handler
     mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
     fids[fd] = operands[0].base;
     memmap_bases[operands[0].base->data] = fd;
@@ -143,8 +137,13 @@ bh_error bh_flush_memmap(bh_base* ary)
  *
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
  */
-bh_error bh_hint_memmap()
+bh_error bh_hint_memmap(bh_view* view)
 {
+    pthread_mutex_lock( &queue_mutex );
+    printf("bh_hint: inserting element in I/O Queue\n");
+    ioqueue.push( view );
+    pthread_mutex_unlock( &queue_mutex );
+    pthread_cond_signal( &wakeup_condition );
     return BH_SUCCESS;
 }
 
@@ -168,25 +167,29 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
     //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);
     //printf("Reading from disk into: %p ' %li %li'\n", (void*)PAGE_ALIGN(addr), offset, pagesize);
     ssize_t err = pread(idx, (void *)PAGE_ALIGN(addr), pagesize, offset);
+    num_segfaults += 1;
+    //printf("bh_sighandler_memmap: segfaults -  %i \n", num_segfaults);
     //exit(-1);
 }
 
 
-/** 
- * Returns 1 if the 
+/** Function for determining if a base array is associated with a 
+ *  memmory mapped file.
+ *
+ *  @return 1=true 0=false
  */
 int bh_is_memmap(bh_base *ary)
 {
-
     return memmap_bases.count(ary->data);
 }
 
-/** Will read an entire file mapped base array into memory
+/** Interprets a bh_view
+ *  and reads the page sized block into memory from disk
  *
- *  Is primarily used for BH_SYNC's
  */
 bh_error bh_memmap_read_view(bh_view view)
 {
+    printf("read_view :: (%p) ", view);
     printf("dim->%li \n", view.ndim);
     for (int i=0; i < view.ndim; i++){
         printf("shape->%li | stride->%li \n", view.shape[i], view.stride[i]);
@@ -206,9 +209,25 @@ bh_error bh_memmap_read_base(bh_base *ary)
     int fid = memmap_bases.at(ary->data);
     bh_index size = bh_base_size(ary);
     mprotect(ary->data, size, PROT_WRITE);
-    //printf("%p - %p = %li \n", (void*)PAGE_ALIGN(addr), base->data, offset);
-    //printf("Reading from disk into: %p ' %li %li'\n", (void*)PAGE_ALIGN(addr), offset, pagesize);
     ssize_t err = pread(fid, ary->data, size, 0);
     mprotect(ary->data, size, PROT_READ| PROT_WRITE);
     return BH_SUCCESS;
+}
+
+
+void* bh_ioconsumer(void * args)
+{
+    for (;;){
+        pthread_mutex_lock( &wakeup_mutex );
+        pthread_cond_wait( &wakeup_condition, &wakeup_mutex );
+        while (!ioqueue.empty())
+        {
+            pthread_mutex_lock( &queue_mutex );
+            bh_view* view = ioqueue.front();
+            ioqueue.pop();
+            pthread_mutex_unlock( &queue_mutex );
+            bh_memmap_read_view( *view );
+        }
+        pthread_mutex_unlock( &wakeup_mutex );
+    }
 }
