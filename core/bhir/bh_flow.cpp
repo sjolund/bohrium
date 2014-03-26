@@ -29,7 +29,6 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <string>
 #include <stdexcept>
-#include <algorithm>
 
 //Create a new flow_node. Use this function for creating flow nodes exclusively
 bh_flow::flow_node &bh_flow::create_node(bool readonly, flow_instr *instr, const bh_view *view)
@@ -143,13 +142,13 @@ struct topological_sort
         const set<bh_intp> &deps = dag_deps[i];
         if(map[i] == -2)
             throw runtime_error("The root DAG, where each node is a sub-dag, contains cycles!");
+        if(map[i] != -1)
+            return;//Visited already
+
         map[i] = -2; //temporary mark for cycle detection
 
         for(set<bh_intp>::const_iterator d=deps.begin(); d != deps.end(); ++d)
-        {
-            if(map[*d] == -1)
-                visit(*d);
-        }
+            visit(*d);
         map[i] = count++;
     }
     vector<bh_intp> get_map(void)
@@ -232,11 +231,12 @@ void bh_flow::bhir_fill(bh_ir *bhir)
     {
         topological_sort top = topological_sort(dag_deps);
         vector<bh_intp> sorted = top.get_map();
+        const vector<set<bh_intp> > t_deps(dag_deps);
+        const vector<set<flow_instr *> > t_nodes(dag_nodes);
         for(vector<bh_intp>::size_type i=0; i<sorted.size(); ++i)
         {
-            auto t1 = dag_deps[i];
-            swap(dag_deps[i], dag_deps[sorted[i]]);
-            swap(dag_nodes[i], dag_nodes[sorted[i]]);
+            dag_deps[i] = t_deps[sorted[i]];
+            dag_nodes[i] = t_nodes[sorted[i]];
         }
     }
 
