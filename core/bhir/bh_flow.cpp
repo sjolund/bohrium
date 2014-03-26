@@ -22,6 +22,7 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <bh_vector.h>
 #include <assert.h>
 #include <iostream>
+#include <algorithm>
 #include <string>
 #include <iomanip>
 #include <sstream>
@@ -118,6 +119,38 @@ bh_flow::bh_flow(bh_intp ninstr, const bh_instruction *instr_list):
     sub_dag_clustering();
 }
 
+//Private class for sorting the 'dag_deps' and 'dag_deps'
+struct topological_sort
+{
+    const vector<set<bh_intp> > &dag_deps;
+    vector<bh_intp> map;
+    bh_intp count;
+    topological_sort(const vector<set<bh_intp> > &deps): dag_deps(deps), map(dag_deps.size(),-1), count(0){};
+
+    void visit(bh_intp i)
+    {
+        const set<bh_intp> &deps = dag_deps[i];
+        if(map[i] == -2)
+            throw runtime_error("The root DAG, where each node is a sub-dag, contains cycles!");
+        map[i] = -2; //temporary mark for cycle detection
+
+        for(set<bh_intp>::const_iterator d=deps.begin(); d != deps.end(); ++d)
+        {
+            if(map[*d] == -1)
+                visit(*d);
+        }
+        map[i] = count++;
+    }
+    vector<bh_intp> get_map(void)
+    {
+        for(vector<set<bh_intp> >::size_type i=0; i<dag_deps.size(); ++i)
+        {
+            if(map[i] == -1)
+                visit(i);
+        }
+        return map;
+    }
+};
 
 //Fill the uninitialized 'bhir' based on the flow object
 void bh_flow::bhir_fill(bh_ir *bhir)
@@ -183,6 +216,18 @@ void bh_flow::bhir_fill(bh_ir *bhir)
     bhir->dag_list = (bh_dag*) bh_vector_create(sizeof(bh_dag), bhir->ndag, bhir->ndag);
     if(bhir->dag_list == NULL)
         throw std::bad_alloc();
+
+    //Lets sort the sub-dags topologically
+    {
+        topological_sort top = topological_sort(dag_deps);
+        vector<bh_intp> sorted = top.get_map();
+        for(vector<bh_intp>::size_type i=0; i<sorted.size(); ++i)
+        {
+            auto t1 = dag_deps[i];
+            swap(dag_deps[i], dag_deps[sorted[i]]);
+            swap(dag_nodes[i], dag_nodes[sorted[i]]);
+        }
+    }
 
     //Create the root DAG where all nodes a sub-DAGs
     {
