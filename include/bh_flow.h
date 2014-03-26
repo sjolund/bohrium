@@ -90,7 +90,7 @@ private:
     vector<flow_instr> flow_instr_list;
 
     //Collection of vectors that contains nodes that all access the same
-    //base array in topological order
+    //base array in timestep order
     map<const bh_base *, vector<flow_node> > bases;
 
     vector<const bh_base*> base_list; // List of base arrays to maintain chronological order.
@@ -109,6 +109,8 @@ private:
 
     //Cluster the flow object into sub-DAGs suitable as kernels
     void sub_dag_clustering(void);
+
+    static bool flow_node_comp(const flow_node& n, const flow_node& m); 
 
 public:
     //Create a new flow object based on an instruction list

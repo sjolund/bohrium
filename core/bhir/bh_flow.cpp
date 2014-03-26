@@ -28,8 +28,7 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <string>
 #include <stdexcept>
-//using namespace std;
-
+#include <algorithm>
 
 //Create a new flow_node. Use this function for creating flow nodes exclusively
 bh_flow::flow_node &bh_flow::create_node(bool readonly, flow_instr *instr, const bh_view *view)
@@ -82,6 +81,11 @@ set<bh_flow::flow_node> bh_flow::get_conflicting_access(const flow_node &node)
     return conflicts;
 }
 
+bool bh_flow::flow_node_comp(const flow_node& n, const flow_node& m) 
+{ 
+    return (n.instr->timestep < m.instr->timestep); 
+}
+
 //Create a new flow object based on an instruction list
 bh_flow::bh_flow(bh_intp ninstr, const bh_instruction *instr_list):
                  ninstr(ninstr), instr_list(instr_list), flow_instr_list(ninstr), nnodes(0)
@@ -117,6 +121,11 @@ bh_flow::bh_flow(bh_intp ninstr, const bh_instruction *instr_list):
         }
         timesteps[instr.timestep].push_back(&instr);
     }
+    for (auto &base: bases)
+    {
+        std::sort(base.second.begin(), base.second.end(), flow_node_comp);
+    }
+
     sub_dag_clustering();
 }
 
@@ -268,7 +277,6 @@ bh_intp bh_flow::get_sub_dag_id(flow_instr* instr)
     if (instr->sub_dag == -1)
     {
         instr->sub_dag = instr->idx;
-        std::cout << "New sub_dag: " << instr->sub_dag << std::endl;
         assert(sub_dags.insert(std::make_pair(instr->sub_dag,std::vector<flow_instr*>(1,instr))).second);
     } else {
         assert(sub_dags.find(instr->sub_dag) != sub_dags.end());
@@ -340,8 +348,7 @@ void bh_flow::sub_dag_clustering(void)
         for (++fni; fni != nodes.end(); ++fni)
         {
             auto instr2 = fni->instr;
-            std::cout << "Merging "  << sub_dag_merge(get_sub_dag_id(instr1), get_sub_dag_id(instr2)) << " " <<
-                instr1->idx << " and " << instr2->idx << std::endl;
+            sub_dag_merge(get_sub_dag_id(instr1), get_sub_dag_id(instr2));
             instr1 = instr2;
         }
     }
