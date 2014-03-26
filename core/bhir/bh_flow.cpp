@@ -29,12 +29,13 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <fstream>
 #include <string>
 #include <stdexcept>
-//using namespace std;
-
+#include <algorithm>
 
 //Create a new flow_node. Use this function for creating flow nodes exclusively
 bh_flow::flow_node &bh_flow::create_node(bool readonly, flow_instr *instr, const bh_view *view)
 {
+    if (bases.find(view->base) == bases.end())
+        base_list.push_back(view->base);
     //Create the new node at the base it accesses
     bases[view->base].push_back(flow_node(nnodes++, readonly, instr, view));
     flow_node &ret = bases[view->base].back();
@@ -81,6 +82,11 @@ set<bh_flow::flow_node> bh_flow::get_conflicting_access(const flow_node &node)
     return conflicts;
 }
 
+bool bh_flow::flow_node_comp(const flow_node& n, const flow_node& m) 
+{ 
+    return (n.instr->timestep < m.instr->timestep); 
+}
+
 //Create a new flow object based on an instruction list
 bh_flow::bh_flow(bh_intp ninstr, const bh_instruction *instr_list):
                  ninstr(ninstr), instr_list(instr_list), flow_instr_list(ninstr), nnodes(0)
@@ -116,6 +122,11 @@ bh_flow::bh_flow(bh_intp ninstr, const bh_instruction *instr_list):
         }
         timesteps[instr.timestep].push_back(&instr);
     }
+    for (auto &base: bases)
+    {
+        std::sort(base.second.begin(), base.second.end(), flow_node_comp);
+    }
+
     sub_dag_clustering();
 }
 
@@ -373,25 +384,19 @@ bool bh_flow::sub_dag_merge(bh_intp sub_dag_id1, bh_intp sub_dag_id2)
 //Cluster the flow object into sub-DAGs suitable as kernals
 void bh_flow::sub_dag_clustering(void)
 {
-    for (auto &base: bases)
+    for (const bh_base* base: base_list)
     {
-        auto fni = base.second.begin();
+        vector<flow_node> nodes = bases[base];
+        auto fni = nodes.begin();
         auto instr1 = fni->instr;
         get_sub_dag_id(instr1);
-        for (++fni; fni != base.second.end(); ++fni)
+        for (++fni; fni != nodes.end(); ++fni)
         {
             auto instr2 = fni->instr;
             sub_dag_merge(get_sub_dag_id(instr1), get_sub_dag_id(instr2));
             instr1 = instr2;
         }
     }
-    // vector<flow_instr>::iterator i;
-    // bh_intp id = 10001;
-    // for(i=flow_instr_list.begin(); i!=flow_instr_list.end(); i++)
-    // {
-    //     if (i->sub_dag == -1) 
-    //     i->sub_dag = id++;
-    // }
 }
 
 // Write the flow object in the DOT format.
@@ -489,16 +494,14 @@ void bh_flow::html(const char* filename)
 
     //Fill 'table'
     uint64_t ncol=0;
-    map<const bh_base *, set<const bh_view*, view_compare> >::const_iterator b;
-    for(b=view_in_base.begin(); b != view_in_base.end(); b++)
+    for (const bh_base* base: base_list)
     {
-        set<const bh_view*, view_compare>::const_iterator v;
-        for(v=b->second.begin(); v!= b->second.end(); v++, ncol++)
+        for (auto v: view_in_base[base])
         {
             vector<flow_node>::const_iterator n;
-            for(n=bases[b->first].begin(); n != bases[b->first].end(); n++)
+            for(n=bases[base].begin(); n != bases[base].end(); n++)
             {
-                if(bh_view_identical(n->view, *v))
+                if(bh_view_identical(n->view, v))
                 {
                     char str[100];
                     if(n->readonly)
@@ -508,39 +511,39 @@ void bh_flow::html(const char* filename)
                     table[n->instr->timestep][ncol] += str;
                 }
             }
+            ncol++;
         }
     }
 
     //Write base header
     fs << "<tr>" << endl;
-    for(b=view_in_base.begin(); b != view_in_base.end(); b++)
+    for (const bh_base* base: base_list)
     {
-        fs << "\t<td colspan=\"" << b->second.size() << "\">" << b->first << "<br>";
-        fs << " (#elem: " << b->first->nelem << ", dtype: " << bh_type_text(b->first->type);
+        fs << "\t<td colspan=\"" <<view_in_base[base].size() << "\">" << base << "<br>";
+        fs << " (#elem: " << base->nelem << ", dtype: " << bh_type_text(base->type);
         fs << ")</td>" << endl;
     }
     fs << "</tr>" << endl;
 
     //Write view header
     fs << "<tr>" << endl;
-    for(b=view_in_base.begin(); b != view_in_base.end(); b++)
+    for (const bh_base* base: base_list)
     {
-        set<const bh_view*, view_compare>::const_iterator v;
-        for(v=b->second.begin(); v!= b->second.end(); v++)
+        for (auto v: view_in_base[base])
         {
             fs << "\t<td>";
-            fs << (*v)->start << "(";
-            for(bh_intp i=0; i<(*v)->ndim; ++i)
+            fs << v->start << "(";
+            for(bh_intp i=0; i < v->ndim; ++i)
             {
-                fs << (*v)->shape[i];
-                if(i < (*v)->ndim-1)
+                fs << v->shape[i];
+                if(i < v->ndim-1)
                     fs << ",";
             }
             fs << ")(";
-            for(bh_intp i=0; i<(*v)->ndim; ++i)
+            for(bh_intp i=0; i < v->ndim; ++i)
             {
-                fs << (*v)->stride[i];
-                if(i < (*v)->ndim-1)
+                fs << v->stride[i];
+                if(i < v->ndim-1)
                     fs << ",";
             }
             fs << ")</td>" << endl;
