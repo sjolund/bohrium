@@ -93,6 +93,7 @@ private:
     //base array in topological order
     map<const bh_base *, vector<flow_node> > bases;
 
+    vector<const bh_base*> base_list; // List of base arrays to maintain chronological order.
     map<bh_intp, vector<flow_instr*> > sub_dags;
     bh_intp get_sub_dag_id(flow_instr* instr);
     bool sub_dag_merge(bh_intp sub_dag_id1, bh_intp sub_dag_id2);
