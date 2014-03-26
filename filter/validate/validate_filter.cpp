@@ -18,7 +18,7 @@ GNU Lesser General Public License along with Bohrium.
 If not, see <http://www.gnu.org/licenses/>.
 */
 #include <bh.h>
-#include <bh_flow.h>
+#include <bh_flow.hpp>
 #include <stdio.h>
 
 bh_error validate_instruction(bh_instruction* instr)

@@ -26,10 +26,10 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include "bh_ir.h"
-#include "bh_vector.h"
-#include "bh_adjlist.h"
-#include "bh_flow.h"
+#include <bh_ir.h>
+#include <bh_vector.h>
+#include <bh_adjlist.h>
+#include <bh_flow.hpp>
 
 /* Returns the total size of the BhIR including overhead (in bytes).
  *
@@ -71,8 +71,15 @@ bh_error bh_ir_create(bh_ir *bhir, bh_intp ninstr,
     bhir->dag_list = NULL;
     bhir->self_allocated = true;
 
-    bh_flow flow = bh_flow(ninstr, instr_list);
-    flow.bhir_fill(bhir);
+    //bh::Flow flow(ninstr, instr_list);
+    
+    //Create an adjacency list based on the instruction list
+    bh_adjlist adjlist;
+    bh_adjlist_create_from_instr(adjlist, ninstr, instr_list);
+    //Fill the bhir based on the adjacency list
+    bh_adjlist_fill_bhir(adjlist, bhir);
+
+//    flow.bhir_fill(bhir);
 
     return BH_SUCCESS;
 }
