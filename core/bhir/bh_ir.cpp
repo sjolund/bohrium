@@ -71,15 +71,8 @@ bh_error bh_ir_create(bh_ir *bhir, bh_intp ninstr,
     bhir->dag_list = NULL;
     bhir->self_allocated = true;
 
-    //bh::Flow flow(ninstr, instr_list);
-    
-    //Create an adjacency list based on the instruction list
-    bh_adjlist adjlist;
-    bh_adjlist_create_from_instr(adjlist, ninstr, instr_list);
-    //Fill the bhir based on the adjacency list
-    bh_adjlist_fill_bhir(adjlist, bhir);
-
-//    flow.bhir_fill(bhir);
+    bh::Flow flow(ninstr, instr_list);
+    flow.bhir_fill(bhir);
 
     return BH_SUCCESS;
 }

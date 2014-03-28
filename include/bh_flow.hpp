@@ -24,6 +24,7 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <bh.h>
 #include <vector>
 #include <map>
+#include <set>
 
 namespace bh
 {
@@ -40,7 +41,7 @@ namespace bh
             bool operator!=(const Node& rhs) const
             { return !(*this == rhs); }
             bool operator<(const Node& rhs) const
-            { return (instr < rhs.instr); }
+            { return (instr*3+op < rhs.instr*3+op); }
             bool write() const { return (op == 0); }
         };
         struct Instruction
@@ -51,7 +52,7 @@ namespace bh
             //The sub-DAG index this instruction is part of (-1 means none)
             bh_intp subDAG;
             Instruction(bh_intp index, const bh_instruction* instr) : 
-                index(index), instr(instr), timestep(0), subDAG(-1) {}  
+                index(index), instr(instr), timestep(0), subDAG(-1) {}
         };
         // Original instruction list
         const bh_instruction* bh_instructions; 
@@ -63,15 +64,34 @@ namespace bh
         std::map<const bh_base*, std::vector<Node> > bases;
         // List of instruction ids in each timestep
         std::vector< std::vector< bh_intp > > timesteps;
-        
-        const bh_base* base(const Node node) const;
-        const bh_view* view(const Node node) const;
-        Instruction& instruction(const Node node);
-        std::vector<Node> conflicts(const Node& node);
+        // Main subDAG container: mapping subDAG id's to a list of instruction id's
+        std::map<bh_intp, std::vector<bh_intp> > subDAGs;
 
+        // Get the bh_base accessed by the Node
+        const bh_base* base(const Node node) const;
+        // Get the bh_view accessed by the Node
+        const bh_view* view(const Node node) const;
+        // Get the Instruction the Node belongs to
+        const Instruction& instruction(const Node node);
+        // Get the list of Nodes with conflicting access
+        std::vector<Node> conflicts(const Node& node) const;
+        // Set of conflicting Instruction id's
+        std::set<bh_intp> conflicts(const Instruction& instr) const; 
+
+        // Get the subDAG the Instruction with iid belongs to. 
+        // Creating a subDAG if needed.
+        bh_intp subDAG(bh_intp iid);
+
+        // Try to merge the two subDAGs idenfied by (id1,id2) 
+        // If merged reutrn true, subDAGs[id2] will no longer exist.
+        bool merge(bh_intp id1, bh_intp id2);
+        
+        //Cluster the flow object into sub-DAGs suitable for kernels
+        void clustering();
     public:
         Flow(bh_intp ninstr, const bh_instruction* instr_list);
         void html(const char* filename);
+        void bhir_fill(bh_ir *bhir);
     };
 }
 #endif
