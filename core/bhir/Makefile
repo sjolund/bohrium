@@ -1,6 +1,6 @@
 ROOT=../..
 include $(ROOT)/platform.mk
-CXX=clang++ -D__float128=void 
+CXX=g++
 WARNOPTS=-Wall
 LCFLAGS= $(WARNOPTS) $(ARCH_OPTS) -g -O2 -std=gnu++0x -fPIC -I$(ROOT)/include
 HEADER=$(ROOT)/include/*

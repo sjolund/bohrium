@@ -74,23 +74,39 @@ namespace bh
         }
         for (auto &base: bases)
         {
-            std::sort(base.second.begin(), base.second.end());
+            std::sort(base.second.begin(), base.second.end(), [&](const Node& n1, const Node& n2) 
+                      { return instructions[n1.instr].timestep < instructions[n2.instr].timestep; });
+            for (size_t ni = 0; ni < base.second.size(); ++ni)
+            {
+                const Node n = base.second[ni];
+                instructions[n.instr].baseIndices[n.op] = ni;
+            }
         }
         clustering();
     }
     
     void Flow::clustering()
     {
-        for (const bh_base* base: baseList)
+        for (bh_intp iid: timesteps[0])
+            subDAG(iid);
+        for (size_t t = 1; t < timesteps.size(); ++t)
         {
-            std::vector<Node> nodes = bases[base];
-            auto fni = nodes.begin();
-            bh_intp sdid1 = subDAG(fni->instr);
-            for (++fni; fni != nodes.end(); ++fni)
+            const std::vector<bh_intp> iids = timesteps[t];
+            for (bh_intp iid: iids)
             {
-                bh_intp sdid2 = subDAG(fni->instr);
-                merge(sdid1, sdid2);
-                sdid1 = subDAG(fni->instr);
+                const bh_instruction *bh_instr = &bh_instructions[iid];
+                for(bh_intp o = 0; o < bh_operands_in_instruction(bh_instr); ++o)
+                {
+                    const bh_view* op = &(bh_instr->operand[o]);
+                    if(bh_is_constant(op))
+                        continue;
+                    const std::vector<Node>& nodes = bases[op->base];
+                    bh_intp nid = instructions[iid].baseIndices[o] - 1;
+                    while(nid >= 0 && instructions[nodes[nid].instr].timestep >= instructions[iid].timestep - 1)
+                    {
+                        merge(subDAG(iid),subDAG(nodes[nid--].instr));
+                    }
+                }
             }
         }
     }
@@ -300,17 +316,17 @@ namespace bh
             throw std::bad_alloc();
 
         //Lets sort the sub-dags topologically
-        {
-            topological_sort top = topological_sort(dag_deps);
-            std::vector<bh_intp> sorted = top.get_map();
-            const std::vector<std::set<bh_intp> > t_deps(dag_deps);
-            const std::vector<std::set<bh_intp> > t_nodes(dag_nodes); // flow_instr* -> bh_intp
-            for(size_t i=0; i<sorted.size(); ++i)
-            {
-                dag_deps[i] = t_deps[sorted[i]];
-                dag_nodes[i] = t_nodes[sorted[i]];
-            }
-        }
+        // {
+        //     topological_sort top = topological_sort(dag_deps);
+        //     std::vector<bh_intp> sorted = top.get_map();
+        //     const std::vector<std::set<bh_intp> > t_deps(dag_deps);
+        //     const std::vector<std::set<bh_intp> > t_nodes(dag_nodes); // flow_instr* -> bh_intp
+        //     for(size_t i=0; i<sorted.size(); ++i)
+        //     {
+        //         dag_deps[i] = t_deps[sorted[i]];
+        //         dag_nodes[i] = t_nodes[sorted[i]];
+        //     }
+        // }
 
         //Create the root DAG where all nodes are sub-DAGs
         {
@@ -443,12 +459,8 @@ namespace bh
                     if(bh_view_identical(view(n), v))
                     {
                         char str[100];
-                        if(n.write())
-                            snprintf(str, 100, "%ld<sub>W</sub><sup>%ld</sup>", 
-                                     (long) n.instr, (long) instruction(n).subDAG);
-                        else
-                            snprintf(str, 100, "%ld<sub>R</sub><sup>%ld</sup>", 
-                                     (long) n.instr, (long) instruction(n).subDAG);
+                        snprintf(str, 100, "%ld<sub>%s(%ld)</sub><sup>%ld</sup>", 
+                                 (long) n.instr,n.write()?"W":"R", instruction(n).baseIndices[n.op],(long) instruction(n).subDAG);
                         table[instruction(n).timestep][ncol] += str;
                     }
                 }

@@ -26,6 +26,8 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <set>
 
+#define MAX_NO_OPS 3 // Max number of operands in an instruction
+
 namespace bh
 {
     class Flow
@@ -41,7 +43,7 @@ namespace bh
             bool operator!=(const Node& rhs) const
             { return !(*this == rhs); }
             bool operator<(const Node& rhs) const
-            { return (instr*3+op < rhs.instr*3+op); }
+            { return (instr*MAX_NO_OPS+op < rhs.instr*MAX_NO_OPS+op); }
             bool write() const { return (op == 0); }
         };
         struct Instruction
@@ -51,6 +53,7 @@ namespace bh
             bh_intp timestep;
             //The sub-DAG index this instruction is part of (-1 means none)
             bh_intp subDAG;
+            bh_intp baseIndices[MAX_NO_OPS]; // 
             Instruction(bh_intp index, const bh_instruction* instr) : 
                 index(index), instr(instr), timestep(0), subDAG(-1) {}
         };
