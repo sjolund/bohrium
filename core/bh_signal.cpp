@@ -20,10 +20,44 @@ If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "bh_signal.h"
-
+#include <pthread.h>
 #define PAGE_SIZE getpagesize()
 
 #define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
+
+
+struct mSpace
+{
+    unsigned long idx;
+    uintptr_t start;
+    uintptr_t end;
+    void (*callback)(unsigned long, uintptr_t);
+};
+pthread_mutex_t mspace_mutex = PTHREAD_MUTEX_INITIALIZER;
+static long mspaceid;
+static int init;
+static int spacesize;
+static int spacesmax;
+static int used;
+
+static mSpace *mspaces;
+static long *idssorted;
+static uintptr_t *ptssorted;
+
+static void sighandler(int signal_number, siginfo_t *info, void *context);
+
+static void expandarrays(void);
+
+static int addspace(mSpace m);
+static int removespace(int idx);
+
+void quicksort(uintptr_t arr[], int low, int high, long idarr[]);
+
+int search(uintptr_t start);
+static int searchinterval(uintptr_t start, uintptr_t end);
+static int binarysearch(uintptr_t value, uintptr_t arr[], int high);
+
+static int findid(signed long id, void (*callback));
 
 
 void print_spaces()
@@ -49,17 +83,20 @@ static void sighandler(int signal_number,
                        void *context)
 {
     //signal(signal_number, SIG_IGN);
+    pthread_mutex_lock(&mspace_mutex);
     int memarea = search((uintptr_t)info->si_addr);
     //printf("SEGF Address: %p\n", info->si_addr);
     //print_spaces();
     if (memarea == -1)
     {
+        pthread_mutex_unlock(&mspace_mutex);
         printf("bh_signal: Defaulting to segfaul at addr: %p\n", info->si_addr);
         signal(signal_number, SIG_DFL);
     }
     else
     {
         mSpace m = mspaces[memarea];
+        pthread_mutex_unlock(&mspace_mutex);
         m.callback(m.idx, (uintptr_t)info->si_addr);
     }
 }
@@ -119,9 +156,11 @@ int attach_signal(signed long idx, // id to execute call back function with
                   void (*callback)(unsigned long, uintptr_t))
 {
     // Check if the memory area is already present
+    pthread_mutex_lock(&mspace_mutex);
     uintptr_t end = start + size - 1;
     if (searchinterval(start, end) != -1)
     {
+        pthread_mutex_unlock(&mspace_mutex);
         printf("Could not attach signal, memory segment is in conflict with already attached signal\n");
         return -1;
     }
@@ -133,6 +172,7 @@ int attach_signal(signed long idx, // id to execute call back function with
     mSpace m = {idx, start, end, callback};
     //printf("Attaching Signal (%p, %p)\n", (void*)start, (void*)end);
     int ret = addspace(m);
+    pthread_mutex_unlock(&mspace_mutex);
     // Setup mprotect for the area
     //if (mprotect((void *)start, size, PROT_NONE) == -1)
     //{
@@ -153,13 +193,16 @@ int attach_signal(signed long idx, // id to execute call back function with
  * @return - error code
  */
 int detach_signal(signed long id, void (*callback)){
+    pthread_mutex_lock(&mspace_mutex);
     int idx = findid(id, callback);
     if (idx == -1)
     {
+        pthread_mutex_unlock(&mspace_mutex);
         printf("Could not detach signal with unique id (%li, %p)\n", id, callback);
         return -1;
     }
     removespace(idx);
+    pthread_mutex_unlock(&mspace_mutex);
     return 0;
 }
 

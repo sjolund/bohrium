@@ -35,39 +35,6 @@ If not, see <http://www.gnu.org/licenses/>.
 extern "C" {
 #endif
 
-struct mspace
-{
-    unsigned long idx;
-    uintptr_t start;
-    uintptr_t end;
-    void (*callback)(unsigned long, uintptr_t);
-};
-typedef struct mspace mSpace;
-
-static long mspaceid;
-static int init;
-static int spacesize;
-static int spacesmax;
-static int used;
-
-static mSpace *mspaces;
-static long *idssorted;
-static uintptr_t *ptssorted;
-
-static void sighandler(int signal_number, siginfo_t *info, void *context);
-
-static void expandarrays(void);
-
-static int addspace(mSpace m);
-static int removespace(int idx);
-
-void quicksort(uintptr_t arr[], int low, int high, long idarr[]);
-
-int search(uintptr_t start);
-static int searchinterval(uintptr_t start, uintptr_t end);
-static int binarysearch(uintptr_t value, uintptr_t arr[], int high);
-
-static int findid(signed long id, void (*callback));
 
 int init_signal(void);
 

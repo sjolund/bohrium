@@ -46,32 +46,21 @@ extern "C" {
 #endif
 
 #define PAGE_SIZE getpagesize()
-#define BLOCK_SIZE PAGE_SIZE*2
+#define BLOCK_SIZE PAGE_SIZE
 #define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
 
 
 long int BH_MEMMAP_OPCODE = -1;
 long int BH_MEMMAP_FLUSH_OPCODE = -1;
 long int BH_MEMMAP_CLOSE_OPCODE = -1;
-static std::map<int, bh_base*> fids;
-static std::map<bh_data_ptr, int> memmap_bases;
-
-/** I/O Queue
- */
-static std::queue<bh_view*> ioqueue;
-/** I/O Queue synchronization variables
- */
-static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t wakeup_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t  wakeup_condition = PTHREAD_COND_INITIALIZER;
-static pthread_t iothread;
-static int num_segfaults;
 
 /** Initialize the memmap module.
  *
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
  */
 bh_error bh_init_memmap(void);
+
+void bh_memmap_shutdown();
 
 
 /** Create a virtual memory area mapped to a file.
@@ -104,7 +93,6 @@ bh_error bh_close_memmap(bh_base* ary);
  */
 bh_error bh_flush_memmap(bh_base* ary);
 
-
 /** Adds a hint to the I/O queue in form of a execution list.
  *
  * @return Error code (BH_SUCCESS, BH_OUT_OF_MEMORY)
@@ -120,10 +108,11 @@ bh_error bh_hint_memmap(bh_view* view);
  */
 void bh_sighandler_memmap(unsigned long idx, uintptr_t addr);
 
-bh_error bh_memmap_read_view(bh_view);
 bh_error bh_memmap_read_base(bh_base *ary);
 int bh_is_memmap(bh_base *ary);
 void* bh_ioconsumer(void * args);
+
+void bh_memmap_stats();
 
 #ifdef __cplusplus
 }
