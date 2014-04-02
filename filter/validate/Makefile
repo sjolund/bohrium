@@ -5,7 +5,7 @@ CXX?=g++
 WARNOPTS=-Wall
 EXTRAS+=
 TIMING+=
-LCFLAGS= $(WARNOPTS) $(ARCH_OPTS) -g -O2 -fPIC -I$(ROOT)/include -I$(ROOT)/core -I$(ROOT)/traverse $(EXTRAS)
+LCFLAGS= $(WARNOPTS) $(ARCH_OPTS) -g -O2 -std=gnu++0x -fPIC -I$(ROOT)/include -I$(ROOT)/core -I$(ROOT)/traverse $(EXTRAS)
 LDFLAGS= $(ARCH_OPTS) -L$(ROOT)/core -lbh $(EXTRA_LIBS) -shared -Wl,$(LD_LIB_COMMAND)
 HEADER=./*.h $(ROOT)/include/*
 SRC=$(ALL_CPP_FILES) $(ALL_C_FILES)
