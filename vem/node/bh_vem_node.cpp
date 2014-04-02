@@ -149,16 +149,6 @@ static bh_error inspect(bh_instruction *instr)
     int nop = bh_operands_in_instruction(instr);
     bh_view *operands = bh_inst_operands(instr);
 
-    //printf("INSPECT 0PCODE: %li | ", instr->opcode);
-    //for(bh_intp o=0; o<nop; ++o)
-    //{
-    //    if(!bh_is_constant(&operands[o])){
-    //        if (bh_is_memmap(operands[o].base) == 1)
-    //            printf("(\033[1mmmap\033[0m)");
-    //        printf("(%p).%p->%p, ", operands[o], operands[o].base, operands[o].base->data);
-    //    }
-    //}
-    //printf("\n");
     if (instr->opcode == BH_MEMMAP_OPCODE)
     {
         // MEMMAP file method.

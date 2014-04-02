@@ -316,14 +316,6 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
 
         }
     }
-    //for (std::vector<bh_index>::const_iterator it = pages.begin(), end = pages.end(); it != end; ++it) {
-    //    printf("%lx\n", *it);
-    //}
-
-    //printf("dim->%li | start-> %li\n", item.view.ndim, item.view.start);
-    //for (int i=0; i < item.view.ndim; i++){
-    //    printf("shape->%li | stride->%li \n", item.view.shape[i], item.view.stride[i]);
-    //}
     return BH_SUCCESS;
 }
 

@@ -1243,3 +1243,11 @@ def sleep(A, msec):
         @param A, memmaped array with write access.
     '''
     bridge.extmethod_exec("sleep", A, array([msec], dtype=int64, bohrium=True), A)
+
+
+def work(A, msec):
+    '''
+        Close the file which A is associated with
+        @param A, memmaped array with write access.
+    '''
+    bridge.extmethod_exec("work", A, array([msec], dtype=int64, bohrium=True), A)
