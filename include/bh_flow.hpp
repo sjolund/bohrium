@@ -54,9 +54,9 @@ namespace bh
 
         struct Node 
         { 
-            Instruction& instr;
+            const Instruction& instr;
             bh_intp op;    // index op the operand
-            Node(Instruction& instr, bh_intp op) : instr(instr), op(op) {}
+            Node(const Instruction& instr, bh_intp op) : instr(instr), op(op) {}
             bool operator==(const Node& rhs) const
             { return (instr == rhs.instr && op == rhs.op); }
             bool operator!=(const Node& rhs) const
@@ -86,27 +86,29 @@ namespace bh
         // List of instruction ids in each timestep
         std::map<bh_intp, std::vector< std::vector< bh_intp > > > timestepTables;
         // Main subDAG container: mapping subDAG id's to a list of instruction id's
-//        std::map<bh_intp, std::vector<bh_intp> > subDAGs;
+        std::map<bh_intp, std::vector<bh_intp> > subDAGs;
 
         // Get the list of Nodes with conflicting access
-//        std::vector<Node> conflicts(const Node& node) const;
+        std::multiset<Node> conflicts(const Node& node) const;
         // Set of conflicting Instruction id's
         std::set<bh_intp> conflicts(const Instruction& instr) const; 
 
         // Get the subDAG the Instruction with iid belongs to. 
         // Creating a subDAG if needed.
-//        bh_intp subDAG(bh_intp iid);
+        bh_intp subDAG(bh_intp iid);
 
         // Try to merge the two subDAGs idenfied by (id1,id2) 
         // If merged reutrn true, subDAGs[id2] will no longer exist.
-//        bool merge(bh_intp id1, bh_intp id2);
+        bool merge(bh_intp id1, bh_intp id2);
         
         //Cluster the flow object into sub-DAGs suitable for kernels
-//        void clustering();
+        void clustering();
+
+        const bh_view* view(bh_intp i, bh_intp o) const;
     public:
         Flow(bh_intp ninstr, const bh_instruction* instr_list);
         void html(const char* filename);
-//        void bhir_fill(bh_ir *bhir);
+        void bhir_fill(bh_ir *bhir);
     };
 }
 #endif
