@@ -142,6 +142,8 @@ bh_error bh_vem_node_extmethod(const char *name, bh_opcode opcode)
     }
 }
 
+static std::vector<bh_instruction> batch;
+
 //Inspect one instruction
 static bh_error inspect(bh_instruction *instr)
 {
@@ -159,11 +161,18 @@ static bh_error inspect(bh_instruction *instr)
         }
         instr->opcode = BH_NONE;
     }
-    if (instr->opcode == BH_MEMMAP_FLUSH_OPCODE)
-    {
-        bh_flush_memmap(operands[0].base);
-        instr->opcode = BH_NONE;
-    }
+
+    //printf("INSPECT 0PCODE: %li | ", instr->opcode);
+    //for(bh_intp o=0; o<nop; ++o)
+    //{
+    //    if(!bh_is_constant(&operands[o])){
+    //        if (bh_is_memmap(operands[o].base) == 1)
+    //            printf("(\033[1mmmap\033[0m)");
+    //        printf("(%p).%p->%p, ", operands[o], operands[o].base, operands[o].base->data);
+    //    }
+    //}
+    //printf("\n");
+
     if (instr->opcode == BH_MEMMAP_CLOSE_OPCODE)
     {
         bh_close_memmap(operands[0].base);
@@ -193,7 +202,8 @@ static bh_error inspect(bh_instruction *instr)
 
     if (instr->opcode != BH_NONE &&
         instr->opcode != BH_FREE &&
-        instr->opcode != BH_DISCARD)
+        instr->opcode != BH_DISCARD &&
+        instr->opcode != BH_MEMMAP_FLUSH_OPCODE)
     {
         for(bh_intp o=1; o<nop; ++o)
         {
@@ -216,6 +226,30 @@ static bh_error inspect(bh_instruction *instr)
             return BH_ERROR;
         }
     }
+
+    if (instr->opcode == BH_MEMMAP_FLUSH_OPCODE)
+    {
+        if (batch.size() > 0)
+        {
+            for (int i =0; i < (int)batch.size(); i++)
+                printf("BATCH: %i %i, ", i, batch[i].opcode);
+            // Create a new bhir to make flush instructions
+            bh_ir new_bhir;
+            bh_error e = bh_ir_create(&new_bhir, (bh_intp)batch.size(), &batch[0]);
+            if(e != BH_SUCCESS)
+                return e;
+            //e = child->execute(&new_bhir);
+            //if(e != BH_SUCCESS)
+            //    return e;
+            bh_ir_destroy(&new_bhir);
+            batch.clear();
+            printf("After read\n");
+        }
+
+        //bh_flush_memmap(operands[0].base);
+        instr->opcode = BH_NONE;
+    }
+    batch.push_back(*instr);
     return BH_SUCCESS;
 }
 
@@ -223,10 +257,9 @@ static bh_error inspect(bh_instruction *instr)
 bh_error bh_vem_node_execute(bh_ir* bhir)
 {
     bh_uint64 start = bh_timer_stamp();
-
     //Inspect the BhIR for new base arrays starting at the root DAG
     bh_ir_map_instr(bhir, &bhir->dag_list[0], &inspect);
-
+    //bh_ir_create(bhir, batch.size(), &batch[0]);
     bh_error ret = child->execute(bhir);
 
     bh_timer_add(exec_timing, start, bh_timer_stamp());

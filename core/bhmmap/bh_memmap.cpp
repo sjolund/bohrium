@@ -19,9 +19,21 @@ If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <bh_memmap.h>
-
+#include <time.h>
+#include <sys/time.h>
 /** I/O Queue
  */
+
+typedef unsigned long long timestamp_t;
+
+static timestamp_t get_timestamp ()
+{
+    struct timeval now;
+    gettimeofday (&now, NULL);
+    return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
+}
+
+
 
 struct ioqueue_item {
     bh_view     view;
@@ -36,15 +48,19 @@ struct ioqueue_item {
 static std::queue<ioqueue_item> ioqueue;
 /** I/O Queue synchronization variables
  */
+pthread_t iothread;
+
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  queue_not_empty_condition = PTHREAD_COND_INITIALIZER;
-pthread_t iothread;
+
+
 int num_segfaults;
 int num_segfaults_reads;
 int num_prefetch;
+double prefetch_timing;
 
 pthread_mutex_t read_mutex = PTHREAD_MUTEX_INITIALIZER;
-std::map<uint32_t, bool> pages_map;
+std::map<int, std::map<bh_index, bool>> pages_map;
 
 
 pthread_mutex_t fids_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -142,6 +158,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
 bh_error bh_close_memmap(bh_base* ary)
 {
     int fid = memmap_bases.at(ary->data);
+    pages_map.erase(fid);
 
     memmap_bases.erase(ary->data);
     pthread_mutex_lock(&fids_mutex);
@@ -166,14 +183,19 @@ bh_error bh_close_memmap(bh_base* ary)
  */
 bh_error bh_flush_memmap(bh_base* ary)
 {
-    //printf("IN FLUSH\n");
+    printf("IN FLUSH\n");
     //printf("FLUSH| %p->%p\n", ary, ary->data);
     int fd = memmap_bases.at(ary->data);
-    printf("Flush fd(%i)\n", fd);
-    if (pwrite(fd, ary->data, bh_base_size(ary), 0) == -1)
+
+    for (std::map<bh_index, bool>::iterator iter  = pages_map[fd].begin(); iter != pages_map[fd].end(); iter++)
     {
-        fprintf(stderr, "bh_memmap could not write content to file, error message: %s\n", strerror(errno));
-        return BH_ERROR;
+        printf("iter->first = %p (%li)\n", iter->first, ary->data);
+        const long int offset = iter->first - (const long int)ary->data;
+        if (pwrite(fd, (void*)iter->first, BLOCK_SIZE, offset) == 0)
+        {
+            fprintf(stderr, "bh_memmap could not write content to file, error message: %s\n", strerror(errno));
+            return BH_ERROR;
+        }
     }
     return BH_SUCCESS;
 }
@@ -192,7 +214,6 @@ void ioqueue_add_item(const ioqueue_item& item)
             return;
         }
     }
-    //printf("bh_hint: inserting element in I/O Queue: %p\n", &item.view);
 
     ioqueue.push(item);
     pthread_cond_signal( &queue_not_empty_condition );
@@ -207,7 +228,13 @@ void ioqueue_add_item(const ioqueue_item& item)
  */
 bh_error bh_hint_memmap(bh_view* view)
 {
-    ioqueue_add_item(*view);
+    // Determine if the full data array is already read from disk.
+    bh_index num_pages = (bh_base_size(view->base)/BLOCK_SIZE);
+    int fd = memmap_bases.at(view->base->data);
+    if (num_pages > pages_map[fd].size())
+    {
+        ioqueue_add_item(*view);
+    }
     return BH_SUCCESS;
 }
 
@@ -247,10 +274,10 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
     bh_index offset = PAGE_ALIGN(addr) - (uintptr_t)base->data;
     pthread_mutex_unlock(&fids_mutex);
     pthread_mutex_lock(&read_mutex);
-    if (pages_map.count(PAGE_ALIGN(addr)) == 0)
+    if (pages_map[idx].count(PAGE_ALIGN(addr)) == 0)
     {
         bh_read_page(addr, filesize, base->data, idx);
-        pages_map[addr] = true;
+        pages_map[idx][addr] = true;
         __sync_fetch_and_add(&num_segfaults_reads, 1);
     }
     pthread_mutex_unlock(&read_mutex);
@@ -275,6 +302,7 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
 {
 
     //printf("bh_memmap_read_view\n");
+    timestamp_t t0 = get_timestamp();
     int fd = memmap_bases.at(item.data);
     bh_index filesize = item.nelem * item.esize;
     bh_index counters[BH_MAXDIM];
@@ -291,9 +319,9 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
         if ((pages.empty() || pages.back() != page) )
         {
             pthread_mutex_lock(&read_mutex);
-            if (pages_map.count(page) == 0)
+            if (pages_map[fd].count(page) == 0)
             {
-                pages_map[page] = true;
+                pages_map[fd][page] = true;
                 bh_read_page(page, filesize, item.data, fd);
                 __sync_fetch_and_add(&num_prefetch, 1);
             }
@@ -316,6 +344,9 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
 
         }
     }
+    timestamp_t t1 = get_timestamp();
+    double secs = (t1 - t0) / 1000000.0L;
+    prefetch_timing += secs;
     return BH_SUCCESS;
 }
 
@@ -327,7 +358,6 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
 bh_error bh_memmap_read_base(bh_base *ary)
 {
 
-    printf("READING ALL FROM FILE!!! AUCH..\n");
     int fid = memmap_bases.at(ary->data);
     bh_index size = bh_base_size(ary);
     mprotect(ary->data, size, PROT_WRITE);
@@ -363,4 +393,5 @@ void bh_memmap_stats()
     //printf("    # of segfaults:  %i(%i) \n", num_segfaults, num_segfaults_reads);
     //printf("    # of prefecthes: %i \n", num_prefetch);
     printf("%i, %i, %i\n", num_segfaults, num_segfaults_reads, num_prefetch);
+    printf("prefetch timing: %g sec\n", prefetch_timing);
 }
