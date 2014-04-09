@@ -75,7 +75,6 @@ void ioqueue_add_item(const ioqueue_item& item);
  */
 bh_error bh_init_memmap(void)
 {
-    //printf("bh_memmap : \033[1mInit of library\033[0m \n");
     num_segfaults = 0;
     pthread_create( &iothread, NULL, &bh_ioconsumer, NULL);
     return BH_SUCCESS;
@@ -116,7 +115,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
     else if (mode == 2) {
         fileflag |= O_TRUNC;
     }
-    fileflag |= O_DIRECT;
+    //fileflag |= O_DIRECT;
     bh_intp size_in_bytes = bh_base_size(operands[0].base);
     // Open file with the right parameters
     int fd = open(fpath, fileflag | O_CREAT, (mode_t)0600);
@@ -183,13 +182,9 @@ bh_error bh_close_memmap(bh_base* ary)
  */
 bh_error bh_flush_memmap(bh_base* ary)
 {
-    printf("IN FLUSH\n");
-    //printf("FLUSH| %p->%p\n", ary, ary->data);
     int fd = memmap_bases.at(ary->data);
-
     for (std::map<bh_index, bool>::iterator iter  = pages_map[fd].begin(); iter != pages_map[fd].end(); iter++)
     {
-        printf("iter->first = %p (%li)\n", iter->first, ary->data);
         const long int offset = iter->first - (const long int)ary->data;
         if (pwrite(fd, (void*)iter->first, BLOCK_SIZE, offset) == 0)
         {
@@ -251,7 +246,7 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
     ssize_t err = pread(fd, buffer, pagesize, offset);
     if(mremap(buffer, pagesize, pagesize, MREMAP_FIXED|MREMAP_MAYMOVE, (void *)PAGE_ALIGN(page)) == MAP_FAILED)
     {
-        printf("MREMAP FAILED\n");
+        fprintf(stderr, "remap operation in bh_memmap could not remap from into array: %s\n", strerror(errno));
     }
 
     return BH_SUCCESS;
@@ -357,7 +352,6 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
  */
 bh_error bh_memmap_read_base(bh_base *ary)
 {
-
     int fid = memmap_bases.at(ary->data);
     bh_index size = bh_base_size(ary);
     mprotect(ary->data, size, PROT_WRITE);
@@ -389,9 +383,5 @@ void* bh_ioconsumer(void * args)
 
 void bh_memmap_stats()
 {
-    //printf("bh_memmap stats:\n");
-    //printf("    # of segfaults:  %i(%i) \n", num_segfaults, num_segfaults_reads);
-    //printf("    # of prefecthes: %i \n", num_prefetch);
     printf("%i, %i, %i\n", num_segfaults, num_segfaults_reads, num_prefetch);
-    printf("prefetch timing: %g sec\n", prefetch_timing);
 }

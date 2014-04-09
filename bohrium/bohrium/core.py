@@ -1226,7 +1226,7 @@ def flush(A):
         Flush the content of a file mapped array to disk
         @param A, memmaped array with write access.
     '''
-    bridge.extmethod_exec("memmap_flush", A, A, A)
+    bridge.extmethod_exec("memmap_flush", array([0]), A, array([0]))
 
 
 def close(A):

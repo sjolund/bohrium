@@ -151,6 +151,19 @@ static bh_error inspect(bh_instruction *instr)
     int nop = bh_operands_in_instruction(instr);
     bh_view *operands = bh_inst_operands(instr);
 
+
+    //printf("INSPECT 0PCODE: %li | ", instr->opcode);
+    //for(bh_intp o=0; o<nop; ++o)
+    //{
+    //    if(!bh_is_constant(&operands[o])){
+    //        if (bh_is_memmap(operands[o].base) == 1)
+    //            printf("(\033[1mmmap\033[0m)");
+    //        printf("(%p)->%p, ", operands[o], operands[o].base->data);
+    //    }
+    //}
+    //printf("\n");
+
+
     if (instr->opcode == BH_MEMMAP_OPCODE)
     {
         // MEMMAP file method.
@@ -162,19 +175,41 @@ static bh_error inspect(bh_instruction *instr)
         instr->opcode = BH_NONE;
     }
 
-    //printf("INSPECT 0PCODE: %li | ", instr->opcode);
-    //for(bh_intp o=0; o<nop; ++o)
-    //{
-    //    if(!bh_is_constant(&operands[o])){
-    //        if (bh_is_memmap(operands[o].base) == 1)
-    //            printf("(\033[1mmmap\033[0m)");
-    //        printf("(%p).%p->%p, ", operands[o], operands[o].base, operands[o].base->data);
-    //    }
-    //}
-    //printf("\n");
+    if (instr->opcode == BH_MEMMAP_FLUSH_OPCODE)
+    {
+        if (batch.size() > 0)
+        {
+            // Create a new bhir to make flush instructions
+            bh_ir new_bhir;
+            bh_error e = bh_ir_create(&new_bhir, (bh_intp)batch.size(), &batch[0]);
+            if(e != BH_SUCCESS)
+                return e;
+            e = child->execute(&new_bhir);
+            if(e != BH_SUCCESS)
+                return e;
+            bh_ir_destroy(&new_bhir);
+            batch.clear();
+        }
+        bh_flush_memmap(operands[1].base);
+        instr->opcode = BH_NONE;
+    }
+
 
     if (instr->opcode == BH_MEMMAP_CLOSE_OPCODE)
     {
+        if (batch.size() > 0)
+        {
+            // Create a new bhir to make flush instructions
+            bh_ir new_bhir;
+            bh_error e = bh_ir_create(&new_bhir, (bh_intp)batch.size(), &batch[0]);
+            if(e != BH_SUCCESS)
+                return e;
+            e = child->execute(&new_bhir);
+            if(e != BH_SUCCESS)
+                return e;
+            bh_ir_destroy(&new_bhir);
+            batch.clear();
+        }
         bh_close_memmap(operands[0].base);
         instr->opcode = BH_NONE;
     }
@@ -188,6 +223,7 @@ static bh_error inspect(bh_instruction *instr)
     if (instr->opcode == BH_SYNC && bh_is_memmap(operands[0].base) == 1)
     {
         bh_memmap_read_base(operands[0].base);
+        instr->opcode = BH_NONE;
     }
 
 
@@ -202,8 +238,7 @@ static bh_error inspect(bh_instruction *instr)
 
     if (instr->opcode != BH_NONE &&
         instr->opcode != BH_FREE &&
-        instr->opcode != BH_DISCARD &&
-        instr->opcode != BH_MEMMAP_FLUSH_OPCODE)
+        instr->opcode != BH_DISCARD)
     {
         for(bh_intp o=1; o<nop; ++o)
         {
@@ -227,29 +262,8 @@ static bh_error inspect(bh_instruction *instr)
         }
     }
 
-    if (instr->opcode == BH_MEMMAP_FLUSH_OPCODE)
-    {
-        if (batch.size() > 0)
-        {
-            for (int i =0; i < (int)batch.size(); i++)
-                printf("BATCH: %i %i, ", i, batch[i].opcode);
-            // Create a new bhir to make flush instructions
-            bh_ir new_bhir;
-            bh_error e = bh_ir_create(&new_bhir, (bh_intp)batch.size(), &batch[0]);
-            if(e != BH_SUCCESS)
-                return e;
-            //e = child->execute(&new_bhir);
-            //if(e != BH_SUCCESS)
-            //    return e;
-            bh_ir_destroy(&new_bhir);
-            batch.clear();
-            printf("After read\n");
-        }
-
-        //bh_flush_memmap(operands[0].base);
-        instr->opcode = BH_NONE;
-    }
-    batch.push_back(*instr);
+    if (instr->opcode != BH_NONE)
+        batch.push_back(*instr);
     return BH_SUCCESS;
 }
 
