@@ -25,316 +25,94 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <stdexcept>
 
-// Only used by html function
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-#include <fstream>
-#include <string>
-#include <set>
-
 namespace bh
 {
     Flow::Flow(bh_intp ninstr, const bh_instruction *instr_list) 
-        : ninstructions(ninstr)
+        : ninstr(ninstr)
         , bh_instructions(instr_list)
         , instructions((Instruction*)malloc(sizeof(Instruction)*ninstr))
     {
-        bh_intp nttid = 0; // Next timetable id
         for(bh_intp i=0; i<ninstr; i++)
         {
             const bh_instruction *bh_instr = &instr_list[i];
             Instruction& instr = instructions[i];
             instr = Instruction(i,bh_instr);
 
-            std::map<bh_intp,bh_intp> timesteps; // std::map<timestepTable, timestep> 
+            std::set<Instruction&> deps;
             for(bh_intp o = 0; o < bh_operands_in_instruction(bh_instr); ++o)
             {
                 const bh_view *op = &(bh_instr->operand[o]);
                 if(bh_is_constant(op))
                     continue;
                 auto bi = bases.find(op->base);
+                Access access(instr,o);
                 if (bi == bases.end())
                 {
-                    // Maintain the chronological list of bases
-                    baseList.push_back(op->base);
-                    bases[op->base] = std::multiset<Node>();
+                    bases[op->base] = std::vector<Access>(1,access);
                 } else {
-                    // Get timestep
-                    const std::multiset<Node>& sameBase = bi->second;
-                    auto ni = sameBase.crbegin();
-                    for (; ni != sameBase.crend(); ++ni)
-                    {
-                        if(!(o == 0) && !ni->write())
-                            continue;//No possible conflict when both is read only
-                        if(!bh_view_disjoint(op, ni->view()))
-                            break;
-                    }
-                    if (ni == sameBase.crend()) // No other instructions we have to be after
-                    {
-                        if (ni == sameBase.crbegin()) // No other instructions accessing same base
-                            continue;
-                        else if (timesteps.find(sameBase.crbegin()->timestepTable()) == timesteps.end())
-                            timesteps[sameBase.crbegin()->timestepTable()] = 0;
-                    } else {
-                        bh_intp ts = ni->timestep() + 1;
-                        if (timesteps.find(ni->timestepTable()) == timesteps.end())
-                        {
-                            timesteps[ni->timestepTable()] = ts;
-                        } else {
-                            timesteps[ni->timestepTable()] = MAX(timesteps[ni->timestepTable()],ts);
-                        }
-                        instr.timestep = MAX(instr.timestep,ts);
-                    }
+                    bi.second.push_back(access);
+                    deps.insert(depends(access).instr);
                 }
             }
-            switch (timesteps.size())
+            auto lastDep = deps.crbegin();
+            if (deps.size > 0 && lastDep->canInsert(instr))
             {
-            case 0:
-            {   // Create a new timestep table containing the instruction 
-//                std::cout << "creating timestepTables[" << nttid << "] instr: " << i << std::endl;
-                assert (instr.timestep == 0);
-                instr.timestepTable = nttid;
-                assert (timestepTables.find(nttid) == timestepTables.end());
-                timestepTables.insert(std::make_pair(nttid,
-                               std::vector<std::vector<bh_intp> >(1,std::vector<bh_intp>(1,i))));
-                ++nttid;
-                break;
-            }
-            case 1:
-            {   // Add the instruction to the corect timestep table 
-                instr.timestepTable = timesteps.begin()->first; 
-//                std::cout << "table: " << instr.timestepTable << " (" << timesteps.begin()->second << 
-//                    "), timestep: " << instr.timestep << " instr: " << i << std::endl;
-                assert (instr.timestep == timesteps.begin()->second);
-                auto ttsit = timestepTables.find(instr.timestepTable);
-                assert (ttsit != timestepTables.end());
-                std::vector<std::vector<bh_intp> >&  timestepTable = ttsit->second;
-                if (instr.timestep < timestepTable.size())
-                {
-                    timestepTable[instr.timestep].push_back(i);
-                } else {
-                    assert (instr.timestep == timestepTable.size());
-                    timestepTable.push_back(std::vector<bh_intp>(1,i));
-                }
-                break;
-            }
-            default:
-            {   // Merge the timestep tables and insert the instruction into the merged table
-                auto tsi = timesteps.begin();
-                // Find the primary table (the one where the timestep maches)
-                while (tsi->second < instr.timestep) 
-                    ++tsi;
-                assert (tsi != timesteps.end());
-                assert (tsi->second == instr.timestep);
-                instr.timestepTable = tsi->first;
-                auto ttsit = timestepTables.find(instr.timestepTable);
-                assert (ttsit != timestepTables.end());
-                std::vector<std::vector<bh_intp> >& timestepTable = ttsit->second;
-                timesteps.erase(tsi); // Delete the primary table reference. The rest will be merged in
-                for (tsi = timesteps.begin(); tsi != timesteps.end(); ++tsi)
-                {
-                    bh_intp table_ = tsi->first;
-                    bh_intp delta = instr.timestep - tsi->second; // timestep delta
-//                    std::cout << "merging " << instr.timestepTable << " <- " << table_ << " delta: " << 
-//                        delta << std::endl; 
-                    assert (delta >= 0);
-                    auto ttsit_ = timestepTables.find(table_);
-                    assert (ttsit_ != timestepTables.end());
-                    const std::vector<std::vector<bh_intp> >& timestepTable_ = ttsit_->second;
-                    for (const std::vector<bh_intp>& timestep: timestepTable_)
-                    {
-                        for (bh_intp iidx: timestep)
-                        {
-                            Instruction& i = instructions[iidx];
-                            i.timestepTable = instr.timestepTable;
-                            i.timestep += delta;
-//                            std::cout << "--- " << iidx << " " << i.timestep << " " <<  timestepTable.size() << std::endl;
-                            if (i.timestep < timestepTable.size())
-                            {
-                                timestepTable[i.timestep].push_back(iidx);
-                            } else {
-                                assert (i.timestep == timestepTable.size());
-                                timestepTable.push_back(std::vector<bh_intp>(1,iidx));
-                            }
-                        }
-                    }
-                    // Delete the obsolete timetable
-//                    std::cout << "deleting timestepTables[" << table_ << "]" << std::endl;
-                    timestepTables.erase(ttsit_);
-                }
-                // insert the new instruction
-//                std::cout << "table: " << instr.timestepTable << ", timestep: " << instr.timestep << 
-//                    " instr: " << i << std::endl;
-                if (instr.timestep < timestepTable.size())
-                {
-                    timestepTable[instr.timestep].push_back(i);
-                } else {
-                    assert (instr.timestep == timestepTable.size());
-                    timestepTable.push_back(std::vector<bh_intp>(1,i));
-                }
-            }
-            }
-            for(bh_intp o = 0; o < bh_operands_in_instruction(bh_instr); ++o)
-            {   // Insert Nodes into bases now that the instr.timestep is set 
-                const bh_view *op = &(bh_instr->operand[o]);
-                if(bh_is_constant(op))
-                    continue;
-                auto bi = bases.find(op->base);
-                assert (bi != bases.end());
-                bi->second.insert(Node(instr,o));
-            }            
-        }
-        clustering();
-    }
-
-    void Flow::clustering()
-    {
-        for (const auto tti: timestepTables)
-        {
-            const std::vector< std::vector< bh_intp > >& timesteps = tti.second;
-            for (bh_intp iid: timesteps[0])
-                subDAG(iid);
-            for (size_t ts = 1; ts < timesteps.size(); ++ts)
-            {
-                const std::vector<bh_intp> iids = timesteps[ts];
-                for (bh_intp iid: iids)
-                {
-                    const bh_instruction *bh_instr = &bh_instructions[iid];
-                    for(bh_intp o = 0; o < bh_operands_in_instruction(bh_instr); ++o)
-                    {
-                        const bh_view* op = &(bh_instr->operand[o]);
-                        if(bh_is_constant(op))
-                            continue;
-                        const std::multiset<Node>& nodes = bases[op->base];
-                        Node node(instructions[iid],o);
-                        auto ni = nodes.find(node); // Find equivilant node
-                        assert (ni != nodes.end());
-                        // Find last node in previous timestep
-                        while (ni != nodes.begin() && ni->timestep() >= ts -1)
-                            --ni;
-                        if (ni->timestep() < ts -1)
-                            ++ni;
-                        // Try to merege with all nodes up to self
-                        while (*ni != node)
-                        {
-                            merge(subDAG(iid),subDAG(ni->instr.index));
-                            ++ni;
-                            assert (ni != nodes.end());
-                            assert (ni->timestep() <= ts);
-                        }
-                    }
-                }
+                Subdsg& sd = *lastdep;
+                instr.subDag = sd.id;
+                sd.instructions.insert(instr);
+                for(auto d = lastDep+1; d != deps.crend(); ++d )
+                    sd.deps.insert(*d);
+            } else {
+                instr.subDag = instr.id;
+                subDags[instr.subDag] = SubDAG(instr,deps);
             }
         }
     }
 
-
-    std::multiset<Flow::Node> Flow::conflicts(const Node& node) const
+    const Flow::Access& Flow::depends(const Access& access) const
     {
         //Search through all nodes with the same base as 'node'
-        auto sbit = bases.find(node.base());
+        auto sbit = bases.find(access.base());
         assert (sbit != bases.end());
-        const std::multiset<Node>& sameBase = sbit->second;
-        
-        // Find same or equivalent node
-        auto endit = sameBase.find(node); 
-        assert(endit != sameBase.end()); //'node' must be found in 'same_base'
-        
-        std::multiset<Node> res;
+        const std::vector<Access>& sameBase = sbit->second;
         //Now continue iterating through possible conflicts
-        for(auto it = sameBase.begin() ; it != endit; ++it)
+        for(const Access& ac: sameBase)
         {
-            if(!node.write() && !it->write())
-                continue;//No possible conflict when both is read only
-            
-            if(node.instr == it->instr)
-                continue;//No possible conflict within the same instruction
-            
-            if(!bh_view_disjoint(node.view(), it->view()))
-            {
-                res.insert(*it);
-            }
+            if(!access.write() && !ac.write())
+                continue; //No possible conflict when both is read only
+            if(access.instr == ac.instr)
+                continue; //No possible conflict within the same instruction
+            if(!bh_view_disjoint(access.view(), ac.view()))
+                return ac;
         }
-        return res;
     }
     
-    std::set<bh_intp> Flow::conflicts(const Instruction& instr) const
+    bool Flow::SubDAG::canInsert(const Instruction& instr) const;
     {
-        std::set<bh_intp> res;
-        for(bh_intp o = 0; o < bh_operands_in_instruction(instr.instr); ++o)
-        {
-            if(bh_is_constant(&(instr.instr->operand[o])))
-                continue;
-            for(const Node n: conflicts(Node(instr,o)))
-            {
-                res.insert(n.instr.index);
-            }
-        }
-        return res;
-    }
-
-    bh_intp Flow::subDAG(bh_intp iid)
-    {
-        Instruction& instr = instructions[iid];
-        if (instr.subDAG == -1)
-        {
-            instr.subDAG = instr.index;
-            // assert that we are actually ADDING a subDAG
-            bool adding = subDAGs.insert(std::make_pair(instr.subDAG,std::vector<bh_intp>(1,instr.index))).second;
-            assert(adding);
-        } else {
-            assert(subDAGs.find(instr.subDAG) != subDAGs.end());
-        }
-        return instr.subDAG;
-    }
-
-    inline const bh_view* Flow::view(bh_intp i, bh_intp o) const
-    { return &bh_instructions[i].operand[o]; }
-
-    bool Flow::merge(bh_intp id1, bh_intp id2)
-    {
-        auto sdi1 = subDAGs.find(id1);
-        auto sdi2 = subDAGs.find(id2);
-        assert(sdi1 != subDAGs.end() && sdi2 != subDAGs.end());
-        if (id1 == id2)
-        {
+        if (instr.opcode() == BH_FREE || instr.opcode() == BH_DISCARD)
             return true;
-        }
-        for (bh_intp iid1: sdi1->second)
+        for (const Instruction& i: instructions)
         {
-            if (bh_instructions[iid1].opcode == BH_FREE || bh_instructions[iid1].opcode == BH_DISCARD)
+            if (i.opcode() == BH_FREE || i.opcode() == BH_DISCARD)
                 continue;
-            for (bh_intp iid2: sdi2->second)
+            for(bh_intp o = 1; o < i.operands(); ++o)
             {
-                if (bh_instructions[iid2].opcode == BH_FREE || bh_instructions[iid2].opcode == BH_DISCARD)
-                    continue;
-                for(bh_intp o = 1; o < bh_operands_in_instruction(&bh_instructions[iid2]); ++o)
-                {
-                    if (!(bh_view_disjoint(view(iid1,0), view(iid2,o)) || 
-                          bh_view_aligned(view(iid1,0), view(iid2,o))))
-                        return false;
-                }
-                if (!(bh_view_disjoint(view(iid1,0), view(iid2,0)) || 
-                      bh_view_aligned(view(iid1,0), view(iid2,0))))
+                if (!(bh_view_disjoint(insrt.view(0), i.view(o)) || 
+                      bh_view_aligned(instr.view(0), i.view(o))))
                     return false;
-                for(bh_intp o = 1; o < bh_operands_in_instruction(&bh_instructions[iid1]); ++o)
-                {
-                    if (!(bh_view_disjoint(view(iid1,o), view(iid2,0)) || 
-                          bh_view_aligned(view(iid1,o), view(iid2,0))))
-                        return false;
-                }
+            }
+            if (!(bh_view_disjoint(instr.view(0), i.view(0)) || 
+                  bh_view_aligned(instr.view(0), i.view(0))))
+                return false;
+            for(bh_intp o = 1; o < instr.operands(); ++o)
+            {
+                if (!(bh_view_disjoint(instr.view(o), i.view(0)) || 
+                      bh_view_aligned(instr.view(o), i.view(0))))
+                    return false;
             }
         }
-        for (bh_intp iid: sdi2->second)
-        {
-            instructions[iid].subDAG = id1;
-        }
-        sdi1->second.insert(sdi1->second.end(),sdi2->second.begin(),sdi2->second.end());
-        subDAGs.erase(sdi2);
         return true;
     }
-
 
     //Private class for sorting the 'dag_deps' and 'dag_deps'
     struct topological_sort
@@ -380,14 +158,13 @@ namespace bh
         assert(bhir->dag_list == NULL);
         
         //A set of dependencies for each instruction index in the flow
-        std::vector<std::set<bh_intp> > instr_deps(ninstructions); // flow_instr* -> bh_intp
+        std::vector<std::set<bh_intp> > instr_deps(ninstr);
         //Map between flow and bhir sub-DAG indices
         std::map<bh_intp, bh_intp> dag_f2b;
         //Number of sub-DAGs
         size_t ndags = 0;
 
         //Initiate the sub-DAGs
-        //for(vector<flow_instr>::const_iterator i=flow_instr_list.begin(); i!=flow_instr_list.end(); i++)
         for (bh_intp i = 0; i < ninstructions; ++i)
         {
             const Instruction instr = instructions[i];
@@ -427,18 +204,18 @@ namespace bh
         if(bhir->dag_list == NULL)
             throw std::bad_alloc();
 
-        // Lets sort the sub-dags topologically
-        // {
-        //     topological_sort top = topological_sort(dag_deps);
-        //     std::vector<bh_intp> sorted = top.get_map();
-        //     const std::vector<std::set<bh_intp> > t_deps(dag_deps);
-        //     const std::vector<std::set<bh_intp> > t_nodes(dag_nodes); // flow_instr* -> bh_intp
-        //     for(size_t i=0; i<sorted.size(); ++i)
-        //     {
-        //         dag_deps[i] = t_deps[sorted[i]];
-        //         dag_nodes[i] = t_nodes[sorted[i]];
-        //     }
-        // }
+        Lets sort the sub-dags topologically
+        {
+            topological_sort top = topological_sort(dag_deps);
+            std::vector<bh_intp> sorted = top.get_map();
+            const std::vector<std::set<bh_intp> > t_deps(dag_deps);
+            const std::vector<std::set<bh_intp> > t_nodes(dag_nodes); // flow_instr* -> bh_intp
+            for(size_t i=0; i<sorted.size(); ++i)
+            {
+                dag_deps[i] = t_deps[sorted[i]];
+                dag_nodes[i] = t_nodes[sorted[i]];
+            }
+        }
 
         //Create the root DAG where all nodes are sub-DAGs
         {
@@ -517,140 +294,4 @@ namespace bh
                 throw std::bad_alloc();
         }
     }
-
-
-
-    // In order to remove duplicates, we need a view compare function
-    // Only used in html function
-    struct view_compare {
-        bool operator() (const bh_view *v1, const bh_view *v2) const
-        {
-            //First we compare base, ndim, and start
-            int ret = memcmp(v1, v2, 3*sizeof(bh_intp));
-            if(ret == 0)
-            {//Then we compare shape and stride
-                ret = memcmp(v1->shape, v2->shape, v1->ndim*sizeof(bh_index));
-                if(ret == 0)
-                    ret = memcmp(v1->stride, v2->stride, v1->ndim*sizeof(bh_index));
-            }
-            if(ret < 0)
-                return true;
-            else
-                return false;
-        }
-    };
-    // Write the flow object as a html table.
-    void Flow::html(const char* filename)
-    {
-        std::ofstream fs(filename);
-        fs << "<!DOCTYPE html><html><body>\n<div style=\"float:left;\">";
-        fs << "<table border=\"1\" cellpadding=\"5\" style=\"text-align:center\">\n";
-
-        //'table' contains a string for each cell in the html table (excl. the header)
-        //such that table[x][y] returns the string at coordinate (x,y).
-        //We write to 'table' before writing to file.
-        std::map<uint64_t, std::map<uint64_t, std::string> > table;
-        
-        //Create a map over all views in each base
-        std::map<const bh_base *, std::set<const bh_view*,view_compare> > view_in_base;
-        for(auto const& base: bases)
-        {
-            for(const Node& node: base.second)
-            {        
-                view_in_base[base.first].insert(node.view());
-            }
-        }
-        bh_intp timesteps = 0;
-        //Fill 'table'
-        uint64_t ncol=0;
-        for (const bh_base* base: baseList)
-        {
-            for (auto v: view_in_base[base])
-            {
-                for(const Node& n: bases[base])
-                {
-                    if(bh_view_identical(n.view(), v))
-                    {
-                        char str[100];
-                        snprintf(str, 100, "%ld<sub>%s</sub><sup>%ld</sup>", 
-                                 (long) n.instr.index, n.write()?"W":"R", (long) n.instr.subDAG);
-                        table[n.instr.timestep][ncol] += str;
-                        timesteps = MAX(n.instr.timestep,timesteps);
-                    }
-                }
-                ncol++;
-            }
-        }
-        ++timesteps;
-        //Write base header
-        fs << "<tr>\n";
-        for (const bh_base* base: baseList)
-        {
-            fs << "\t<td colspan=\"" <<view_in_base[base].size() << "\">" << base << "<br>";
-            fs << " (#elem: " << base->nelem << ", dtype: " << bh_type_text(base->type);
-            fs << ")</td>\n";
-        }
-        fs << "</tr>\n";
-        
-        //Write view header
-        fs << "<tr>\n";
-        for (const bh_base* base: baseList)
-        {
-            for (auto v: view_in_base[base])
-            {
-                fs << "\t<td>";
-                fs << v->start << "(";
-                for(bh_intp i=0; i < v->ndim; ++i)
-                {
-                    fs << v->shape[i];
-                    if(i < v->ndim-1)
-                        fs << ",";
-                }
-                fs << ")(";
-                for(bh_intp i=0; i < v->ndim; ++i)
-                {
-                    fs << v->stride[i];
-                    if(i < v->ndim-1)
-                        fs << ",";
-                }
-                fs << ")</td>\n";
-            }
-        }
-        fs << "</tr>\n";
-        
-        //Write 'table'
-        for(uint64_t row=0; row<timesteps; ++row)
-        {
-            fs << "<tr>\n";
-            for(uint64_t col=0; col<ncol; ++col)
-            {
-                if(table[row].count(col) == 1)
-                {
-                    fs << "\t<td>" << table[row][col] << "</td>\n";
-                }
-                else
-                {
-                    fs << "\t<td></td>\n";
-                }
-            }
-            fs << "</tr>\n";
-        }
-        fs << "</table></div>\n";
-        //Write the instruction list
-        fs << "<div style=\"float:right;\"><table  border=\"1\">\n";
-        for (const auto &subDAG: subDAGs)
-        {
-            fs << "<tr><td>\n";
-            for (bh_intp iid: subDAG.second)
-            {
-                char buf[100000];
-                bh_sprint_instr(&bh_instructions[iid], buf, "<br>");
-                fs << "<b>" << iid << "</b>)" << buf << "<br>";
-            }
-            fs << "</tr></td>\n";
-        }
-        fs << "</table></div></body></html>\n\n";
-        fs.close();
-    }
-
 }
