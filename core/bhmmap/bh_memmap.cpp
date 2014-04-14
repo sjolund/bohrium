@@ -242,11 +242,22 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
         pagesize = filesize - offset;
     }
     void *buffer = mmap(0, pagesize, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+    if (buffer == MAP_FAILED)
+    {
+        fprintf(stderr, "Could not create buffer for read operation: %s\n", strerror(errno));
+        return BH_ERROR;
+    }
 
-    ssize_t err = pread(fd, buffer, pagesize, offset);
+    if (pread(fd, buffer, pagesize, offset) == -1)
+    {
+        fprintf(stderr, "Could not read the from file: %s\n", strerror(errno));
+        return BH_ERROR;
+    }
+
     if(mremap(buffer, pagesize, pagesize, MREMAP_FIXED|MREMAP_MAYMOVE, (void *)PAGE_ALIGN(page)) == MAP_FAILED)
     {
         fprintf(stderr, "remap operation in bh_memmap could not remap from into array: %s\n", strerror(errno));
+        return BH_ERROR;
     }
 
     return BH_SUCCESS;
