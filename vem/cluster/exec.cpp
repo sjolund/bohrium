@@ -95,21 +95,54 @@ bh_error exec_shutdown(void)
     return BH_SUCCESS;
 }
 
+int BH_MEMMAP_OPCODE = -1;
+int BH_MEMMAP_FLUSH_OPCODE = -1;
+int BH_MEMMAP_CLOSE_OPCODE = -1;
+
 /* Component interface: extmethod (see bh_component.h) */
 bh_error exec_extmethod(const char *name, bh_opcode opcode)
 {
-    bh_extmethod_impl extmethod;
-    bh_error err = bh_component_extmethod(&myself, name, &extmethod);
-    if(err != BH_SUCCESS)
-        return err;
-
-    if(extmethod_op2impl.find(opcode) != extmethod_op2impl.end())
+    if (strcmp("memmap", name) == 0)
     {
-        printf("[CLUSTER-VEM] Warning, multiple registrations of the same"
-               "extension method '%s' (opcode: %d)\n", name, (int)opcode);
+        if (BH_MEMMAP_OPCODE == -1){
+            // The memmap method has been registered.
+            // The opcode needs to be associated with the memmap function for
+            // future use.
+            BH_MEMMAP_OPCODE = opcode;
+            return bh_init_memmap();
+        }
+        return BH_SUCCESS;
     }
-    extmethod_op2impl[opcode] = extmethod;
-    return BH_SUCCESS;
+    else if (strcmp("memmap_flush", name) == 0)
+    {
+        if (BH_MEMMAP_FLUSH_OPCODE == -1){
+            // Registering the flush command
+            BH_MEMMAP_FLUSH_OPCODE = opcode;
+            return BH_SUCCESS;
+        }
+    }
+    else if (strcmp("memmap_close", name) == 0)
+    {
+        if (BH_MEMMAP_CLOSE_OPCODE == -1){
+            // Registering the flush command
+            BH_MEMMAP_CLOSE_OPCODE = opcode;
+            return BH_SUCCESS;
+        }
+    }
+    else
+    {
+        bh_error err = bh_component_extmethod(&myself, name, &extmethod);
+        if(err != BH_SUCCESS)
+            return err;
+
+        if(extmethod_op2impl.find(opcode) != extmethod_op2impl.end())
+        {
+            printf("[CLUSTER-VEM] Warning, multiple registrations of the same"
+                   "extension method '%s' (opcode: %d)\n", name, (int)opcode);
+        }
+        extmethod_op2impl[opcode] = extmethod;
+        return BH_SUCCESS;
+    }
 }
 
 /* Execute to instruction locally at the master-process
@@ -292,6 +325,13 @@ static bh_error execute_instr(bh_instruction *inst)
         case BH_NONE:
         {
             break;
+        }
+        case BH_MEMMAP:
+        case BH_MEMMAP_FLUSH_OPCODE:
+        case BH_MEMMAP_CLOSE_OPCODE:
+        {
+            printf("exec BH_MEMMAP\n");
+
         }
         default:
         {
