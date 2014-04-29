@@ -131,7 +131,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
         }
         if (write(fd, "", 1) == -1)
         {
-            fprintf(stderr, "bh_create_memmap() could not write to file \"%s\"\n", fpath);
+            fprintf(stderr, "bh_create_memmap() could not test write to file \"%s\"\n", fpath);
             return BH_ERROR;
         }
     }
@@ -141,6 +141,8 @@ bh_error bh_create_memmap(bh_instruction *instr)
     // Attach fd and together with address space to the signal handler
     attach_signal(fd, (uintptr_t)operands[0].base->data, size_in_bytes, bh_sighandler_memmap);
     // -rw@base->data, to make sure that future access to the array will be handled by custom signal handler
+
+    printf("mprotect %p -rw\n", (void *)operands[0].base->data);
     mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
     pthread_mutex_lock(&fids_mutex);
     fids[fd] = operands[0].base;
@@ -226,7 +228,7 @@ bh_error bh_hint_memmap(bh_view* view)
     // Determine if the full data array is already read from disk.
     bh_index num_pages = (bh_base_size(view->base)/BLOCK_SIZE);
     int fd = memmap_bases.at(view->base->data);
-    if (num_pages > pages_map[fd].size())
+    if ((unsigned)num_pages > pages_map[fd].size())
     {
         ioqueue_add_item(*view);
     }
@@ -241,10 +243,24 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
     if (filesize < (BLOCK_SIZE+offset)){
         pagesize = filesize - offset;
     }
+
+    mprotect((void *)PAGE_ALIGN(page), pagesize, PROT_WRITE);
+    if (pread(fd, (void *)PAGE_ALIGN(page), pagesize, offset) == -1)
+    {
+        fprintf(stderr, "Could not read the from file: %s\n", strerror(errno));
+        return BH_ERROR;
+    }
+    mprotect((void *)PAGE_ALIGN(page), pagesize, PROT_WRITE | PROT_READ);
+
+    /*
     void *buffer = mmap(0, pagesize, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     if (buffer == MAP_FAILED)
     {
+        printf("pagesize: %li \n", pagesize);
+        bh_memmap_stats();
         fprintf(stderr, "Could not create buffer for read operation: %s\n", strerror(errno));
+
+        exit(EXIT_FAILURE);
         return BH_ERROR;
     }
 
@@ -256,10 +272,13 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
 
     if(mremap(buffer, pagesize, pagesize, MREMAP_FIXED|MREMAP_MAYMOVE, (void *)PAGE_ALIGN(page)) == MAP_FAILED)
     {
+        printf("mremap %p(%p) +rw b@(%p) \n", PAGE_ALIGN(page), page, buffer);
+        bh_memmap_stats();
         fprintf(stderr, "remap operation in bh_memmap could not remap from into array: %s\n", strerror(errno));
+        exit(-1);
         return BH_ERROR;
     }
-
+    */
     return BH_SUCCESS;
 }
 
@@ -277,7 +296,7 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
     pthread_mutex_lock(&fids_mutex);
     bh_base* base = fids[idx];
     bh_index filesize = bh_base_size(base);
-    bh_index offset = PAGE_ALIGN(addr) - (uintptr_t)base->data;
+    //bh_index offset = PAGE_ALIGN(addr) - (uintptr_t)base->data;
     pthread_mutex_unlock(&fids_mutex);
     pthread_mutex_lock(&read_mutex);
     if (pages_map[idx].count(PAGE_ALIGN(addr)) == 0)
@@ -307,7 +326,6 @@ int bh_is_memmap(bh_base *ary)
 bh_error bh_memmap_read_view(const ioqueue_item& item)
 {
 
-    //printf("bh_memmap_read_view\n");
     timestamp_t t0 = get_timestamp();
     int fd = memmap_bases.at(item.data);
     bh_index filesize = item.nelem * item.esize;
@@ -365,8 +383,13 @@ bh_error bh_memmap_read_base(bh_base *ary)
 {
     int fid = memmap_bases.at(ary->data);
     bh_index size = bh_base_size(ary);
-    mprotect(ary->data, size, PROT_WRITE);
     ssize_t err = pread(fid, ary->data, size, 0);
+    if (err == -1)
+    {
+        fprintf(stderr, "bh_memmap_read_base: could not read the from file: %s\n", strerror(errno));
+        return BH_ERROR;
+    }
+    printf("mprotect %p +rw \n", ary->data);
     mprotect(ary->data, size, PROT_READ| PROT_WRITE);
     return BH_SUCCESS;
 }
