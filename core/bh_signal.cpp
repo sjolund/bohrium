@@ -173,15 +173,7 @@ int attach_signal(signed long idx, // id to execute call back function with
     //printf("Attaching Signal (%p, %p)\n", (void*)start, (void*)end);
     int ret = addspace(m);
     pthread_mutex_unlock(&mspace_mutex);
-    // Setup mprotect for the area
-    //if (mprotect((void *)start, size, PROT_NONE) == -1)
-    //{
-    //    int errsv = errno;
-    //    printf("Could not not mprotect array, error: %s.\n", strerror(errsv));
-    //    return -1;
-    //}
 
-    //print_spaces();
     return 0;
 }
 

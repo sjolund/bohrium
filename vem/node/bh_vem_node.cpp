@@ -152,13 +152,13 @@ static bh_error inspect(bh_instruction *instr)
     bh_view *operands = bh_inst_operands(instr);
 
 
-    //printf("INSPECT 0PCODE: %li | ", instr->opcode);
+    //printf("INSPECT 0PCODE: %li \t| ", instr->opcode);
     //for(bh_intp o=0; o<nop; ++o)
     //{
     //    if(!bh_is_constant(&operands[o])){
     //        if (bh_is_memmap(operands[o].base) == 1)
     //            printf("(\033[1mmmap\033[0m)");
-    //        printf("(%p)->%p, ", operands[o], operands[o].base->data);
+    //        printf("(%p)->%p, ", operands[o].base, operands[o].base->data);
     //    }
     //}
     //printf("\n");
@@ -175,6 +175,17 @@ static bh_error inspect(bh_instruction *instr)
         instr->opcode = BH_NONE;
     }
 
+    //printf("INSPECT 0PCODE: %li | ", instr->opcode);
+    //for(bh_intp o=0; o<nop; ++o)
+    //{
+    //    if(!bh_is_constant(&operands[o])){
+    //        if (bh_is_memmap(operands[o].base) == 1)
+    //            printf("(\033[1mmmap\033[0m)");
+    //        printf("(%p)->%p, ", operands[o], operands[o].base->data);
+    //    }
+    //}
+    //printf("\n");
+
     if (instr->opcode == BH_MEMMAP_FLUSH_OPCODE)
     {
         if (batch.size() > 0)
@@ -188,6 +199,8 @@ static bh_error inspect(bh_instruction *instr)
             if(e != BH_SUCCESS)
                 return e;
             bh_ir_destroy(&new_bhir);
+
+            printf("BATCH SIZE FLUSH: %li \n", batch.size());
             batch.clear();
         }
         bh_flush_memmap(operands[1].base);
@@ -250,7 +263,7 @@ static bh_error inspect(bh_instruction *instr)
     }
 
     //And remove discared arrays
-    if(instr->opcode == BH_DISCARD and bh_is_memmap(operands[0].base) == 0)
+    if(instr->opcode == BH_DISCARD) // and bh_is_memmap(operands[0].base) == 0)
     {
         bh_base *base = operands[0].base;
 
@@ -262,19 +275,34 @@ static bh_error inspect(bh_instruction *instr)
         }
     }
 
-    if (instr->opcode != BH_NONE)
+    if (instr->opcode != BH_NONE){
         batch.push_back(*instr);
+    }
     return BH_SUCCESS;
 }
 
 /* Component interface: execute (see bh_component.h) */
 bh_error bh_vem_node_execute(bh_ir* bhir)
 {
+    bh_error ret;
     bh_uint64 start = bh_timer_stamp();
     //Inspect the BhIR for new base arrays starting at the root DAG
     bh_ir_map_instr(bhir, &bhir->dag_list[0], &inspect);
-    //bh_ir_create(bhir, batch.size(), &batch[0]);
-    bh_error ret = child->execute(bhir);
+    if (batch.size() > 0)
+    {
+        //for(std::vector<bh_instruction>::size_type i = 0; i != batch.size(); i++) {
+        //    bh_pprint_instr(&batch[i]);
+        //}
+        bh_ir new_bhir;
+        bh_ir_create(&new_bhir, batch.size(), &batch[0]);
+        bh_error ret = child->execute(&new_bhir);
+        bh_ir_destroy(&new_bhir);
+        batch.clear();
+    }
+    else
+        return BH_SUCCESS;
+
+    //bh_error ret = child->execute(bhir);
 
     bh_timer_add(exec_timing, start, bh_timer_stamp());
 
