@@ -25,6 +25,7 @@ If not, see <http://www.gnu.org/licenses/>.
 
 #include <sched.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 int pgrid_myrank, pgrid_worldsize;
 
@@ -100,6 +101,11 @@ void pgrid_init(void)
 
     printf("[CLUSTER] rank %d running on %s:%d%s\n",
             pgrid_myrank, hostname, sched_getcpu(), buf);
+
+    //Lets make sure that OMPI_COMM_WORLD_SIZE is set even when using MPICH
+    char str[15];
+    sprintf(str, "%d", pgrid_worldsize);
+    setenv("OMPI_COMM_WORLD_SIZE", str, 0);
 
 }/* pgrid_init */
 

@@ -68,6 +68,8 @@ bh_error bh_vem_node_init(const char* name)
 
     exec_timing = bh_timer_new("node-execution");
 
+    init_signal();
+
     return BH_SUCCESS;
 }
 

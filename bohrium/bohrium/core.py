@@ -1193,7 +1193,7 @@ def visualize(a, mode, colormap, min, max):
     bridge.extmethod_exec("visualizer", a, args, a)
 
 
-def memmap(filename, dtype=uint8, mode="r+", offset=0, shape=None, order='C'):
+def memmap(filename, shape, dtype=uint8, mode="r+", offset=0, order='C'):
     '''
         memmap file extension method.
 
@@ -1205,6 +1205,10 @@ def memmap(filename, dtype=uint8, mode="r+", offset=0, shape=None, order='C'):
         @param: order, memory layout, row-major or column-major('C' or 'F')
         @return: memory mapped bohrium array
     '''
+    import os
+    import operator
+    worldsize = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 1))
+
     modes = {'r': 0,
              'r+': 1,
              'w+': 2,
@@ -1212,10 +1216,34 @@ def memmap(filename, dtype=uint8, mode="r+", offset=0, shape=None, order='C'):
     orders = {'C': 0,
               'F': 1}
 
+    #NB: we use the worlsize to duplicate 'args' and 'path' to all MPI processes
+    #and to make sure that all arrays have same shape
+
     path = array([int8(ord(char)) for char in filename], bohrium=True)
     args = array([int64(modes[mode]),
                   int64(offset),
                   int64(orders[order])], bohrium=True)
+
+    size = reduce(operator.mul, shape, 1)
+    if path.size <> size:
+        t = zeros(size,dtype=path.dtype)
+        t[:path.size] = path
+        path = t
+    if args.size <> size:
+        t = zeros(size,dtype=args.dtype)
+        t[:args.size] = args
+        args = t
+
+    assert args.size == path.size == size
+    assert size%worldsize == 0
+    chunksize = size/worldsize
+    for n in xrange(0,size,chunksize):
+        path[n:n+chunksize] = path[:chunksize]
+        args[n:n+chunksize] = args[:chunksize]
+
+    args = args.reshape(shape)
+    path = path.reshape(shape)
+
     mapped = empty(shape, dtype=dtype, bohrium=True)
     bridge.extmethod_exec("memmap", mapped, path, args)
     return mapped

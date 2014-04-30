@@ -84,7 +84,7 @@ bh_error bh_vem_cluster_extmethod(const char *name, bh_opcode opcode)
 
     //Send the component name
     dispatch_reset();
-    dispatch_add2payload(sizeof(bh_opcode), (void*)opcode);
+    dispatch_add2payload(sizeof(bh_opcode), (void*)&opcode);
     dispatch_add2payload(strlen(name)+1, name);
     dispatch_send(BH_CLUSTER_DISPATCH_EXTMETHOD);
 
