@@ -122,10 +122,17 @@ static void expandarrays(void)
  */
 int init_signal(void){
     struct sigaction sact;
+    //sigset_t mask;
+    //sigemptyset(&mask);
+    //sigaddset(&mask,SIGSEGV);
+    //sigprocmask(SIG_BLOCK,&mask,NULL);
+    //sigemptyset(&sact.sa_mask);
+    //sigaddset(&sact.sa_mask, );
 
     sigfillset(&(sact.sa_mask));
     sact.sa_flags = SA_SIGINFO | SA_ONSTACK;
     sact.sa_sigaction = sighandler;
+    sigprocmask( SIG_BLOCK, NULL, &sact.sa_mask );
     sigaction(SIGSEGV, &sact, &sact);
     if (init == 0)
     {

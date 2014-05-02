@@ -68,8 +68,6 @@ bh_error bh_vem_node_init(const char* name)
 
     exec_timing = bh_timer_new("node-execution");
 
-    init_signal();
-
     return BH_SUCCESS;
 }
 
@@ -202,7 +200,6 @@ static bh_error inspect(bh_instruction *instr)
                 return e;
             bh_ir_destroy(&new_bhir);
 
-            printf("BATCH SIZE FLUSH: %li \n", batch.size());
             batch.clear();
         }
         bh_flush_memmap(operands[1].base);
@@ -250,7 +247,6 @@ static bh_error inspect(bh_instruction *instr)
         }
     #endif
 
-
     if (instr->opcode != BH_NONE &&
         instr->opcode != BH_FREE &&
         instr->opcode != BH_DISCARD)
@@ -286,6 +282,7 @@ static bh_error inspect(bh_instruction *instr)
 /* Component interface: execute (see bh_component.h) */
 bh_error bh_vem_node_execute(bh_ir* bhir)
 {
+
     bh_error ret;
     bh_uint64 start = bh_timer_stamp();
     //Inspect the BhIR for new base arrays starting at the root DAG

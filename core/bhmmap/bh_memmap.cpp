@@ -102,6 +102,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
 
     // Parse file arguments
     char* fpath = (char*)(operands[1].base->data);
+    printf("Filepath %s \n", fpath);
     bh_int64 mode = fargs[0];
     //bh_intp offset = (bh_intp)fargs[1];
     //bh_int64 order = fargs[2];
@@ -117,6 +118,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
     }
     //fileflag |= O_DIRECT;
     bh_intp size_in_bytes = bh_base_size(operands[0].base);
+    printf("Pages: %li \n", size_in_bytes/BLOCK_SIZE);
     // Open file with the right parameters
     int fd = open(fpath, fileflag | O_CREAT, (mode_t)0600);
 
@@ -142,7 +144,6 @@ bh_error bh_create_memmap(bh_instruction *instr)
     attach_signal(fd, (uintptr_t)operands[0].base->data, size_in_bytes, bh_sighandler_memmap);
     // -rw@base->data, to make sure that future access to the array will be handled by custom signal handler
 
-    printf("mprotect %p -rw\n", (void *)operands[0].base->data);
     mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
     pthread_mutex_lock(&fids_mutex);
     fids[fd] = operands[0].base;
@@ -244,15 +245,15 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
         pagesize = filesize - offset;
     }
 
-    mprotect((void *)PAGE_ALIGN(page), pagesize, PROT_WRITE);
-    if (pread(fd, (void *)PAGE_ALIGN(page), pagesize, offset) == -1)
-    {
-        fprintf(stderr, "Could not read the from file: %s\n", strerror(errno));
-        return BH_ERROR;
-    }
-    mprotect((void *)PAGE_ALIGN(page), pagesize, PROT_WRITE | PROT_READ);
+    //mprotect((void *)PAGE_ALIGN(page), pagesize, PROT_WRITE);
+    //if (pread(fd, (void *)PAGE_ALIGN(page), pagesize, offset) == -1)
+    //{
+    //    fprintf(stderr, "Could not read the from file: %s\n", strerror(errno));
+    //    return BH_ERROR;
+    //}
+    //mprotect((void *)PAGE_ALIGN(page), pagesize, PROT_WRITE | PROT_READ);
 
-    /*
+
     void *buffer = mmap(0, pagesize, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
     if (buffer == MAP_FAILED)
     {
@@ -278,7 +279,8 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
         exit(-1);
         return BH_ERROR;
     }
-    */
+    munmap(buffer, pagesize);
+
     return BH_SUCCESS;
 }
 
@@ -302,7 +304,7 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
     if (pages_map[idx].count(PAGE_ALIGN(addr)) == 0)
     {
         bh_read_page(addr, filesize, base->data, idx);
-        pages_map[idx][addr] = true;
+        pages_map[idx][PAGE_ALIGN(addr)] = true;
         __sync_fetch_and_add(&num_segfaults_reads, 1);
     }
     pthread_mutex_unlock(&read_mutex);
@@ -417,5 +419,5 @@ void* bh_ioconsumer(void * args)
 
 void bh_memmap_stats()
 {
-    printf("%i, %i, %i\n", num_segfaults, num_segfaults_reads, num_prefetch);
+    printf("%i, %i, %i(%i)\n", num_segfaults, num_segfaults_reads, num_prefetch, num_segfaults_reads + num_prefetch);
 }
