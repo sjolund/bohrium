@@ -5,6 +5,7 @@ Core
 The ``core`` module provide the essential functions, such as all the array creation functions, diagonal and matrix multiplication.
 
 """
+import math
 import numpy
 from numpy import *
 import bohriumbridge as bridge
@@ -1135,13 +1136,13 @@ def arange(start, stop=None, step=1, dtype=None, bohrium=True):
     if (not stop):
         stop = start
         start = type(stop)(0)
-    size = int(ceil((float(stop) - float(start)) / float(step)))
-    if (dtype):
-        start = dtype(start)
-        stop  = dtype(stop)
-        step  = dtype(step)
-    else:
+    size = int(math.ceil((float(stop) - float(start)) / float(step)))
+    if (dtype is None):
         dtype = int64
+    else:
+        start = numpy.dtype(dtype).type(start)
+        stop  = numpy.dtype(dtype).type(stop)
+        step  = numpy.dtype(dtype).type(step)
     return range(size,dtype=dtype) * step + start
 
 def range(size, dtype=uint64):
@@ -1149,15 +1150,16 @@ def range(size, dtype=uint64):
         raise ValueError("size must be an integer")
     if (size < 1):
         raise ValueError("size must be greater than 0")
-    if (dtype == int8 or
-        dtype == int16 or
-        dtype == int32 or
-        dtype == uint8 or
-        dtype == uint16 or
-        dtype == uint32 or
-        dtype == float16 or
-        dtype == float32 or
-        dtype == complex64):
+    dtype = numpy.dtype(dtype).type
+    if (dtype is int8 or
+        dtype is int16 or
+        dtype is int32 or
+        dtype is uint8 or
+        dtype is uint16 or
+        dtype is uint32 or
+        dtype is float16 or
+        dtype is float32 or
+        dtype is complex64):
         A = empty(size,dtype=uint32,bohrium=True)
     else:
         A = empty(size,dtype=uint64,bohrium=True)
@@ -1169,12 +1171,13 @@ def range(size, dtype=uint64):
     else:
         return A
 
-
 def visualize(a, mode, colormap, min, max):
     if not (a.ndim == 2 or a.ndim == 3):
         raise ValueError("Input must be 2-D or 3-D.")
     if not a.bohrium:
         raise ValueError("Input must be a Bohrium array")
+    if a.dtype == numpy.float32:
+        raise ValueError("For now visualize only supports float32 arrays")
 
     if mode == "2d":
         flat = True
@@ -1187,11 +1190,109 @@ def visualize(a, mode, colormap, min, max):
             flat = False
             cube = True
     else:
-        raise ValueError("Unknown mode '%s'" % mode)
+        raise ValueError("Unknown mode '%s'"%mode)
 
+    for s in a.shape:
+        if s < 16:
+            raise ValueError("Input shape must be greater than 15 element in each dimension")
+    bridge.flush()#We will not delay the visualization
     args = array([float(colormap), float(flat), float(cube), float(min), float(max)], bohrium=True)
-    bridge.extmethod_exec("visualizer", a, args, a)
+    bridge.extmethod_exec("visualizer",a,args,a)
 
+def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=float, bohrium=True):
+    """
+    Return evenly spaced numbers over a specified interval.
+
+    Returns `num` evenly spaced samples, calculated over the
+    interval [`start`, `stop` ].
+
+    The endpoint of the interval can optionally be excluded.
+
+    Parameters
+    ----------
+    start : scalar
+        The starting value of the sequence.
+    stop : scalar
+        The end value of the sequence, unless `endpoint` is set to False.
+        In that case, the sequence consists of all but the last of ``num + 1``
+        evenly spaced samples, so that `stop` is excluded.  Note that the step
+        size changes when `endpoint` is False.
+    num : int, optional
+        Number of samples to generate. Default is 50.
+    endpoint : bool, optional
+        If True, `stop` is the last sample. Otherwise, it is not included.
+        Default is True.
+    retstep : bool, optional
+        If True, return (`samples`, `step`), where `step` is the spacing
+        between samples.
+
+    Returns
+    -------
+    samples : ndarray
+        There are `num` equally spaced samples in the closed interval
+        ``[start, stop]`` or the half-open interval ``[start, stop)``
+        (depending on whether `endpoint` is True or False).
+    step : float (only if `retstep` is True)
+        Size of spacing between samples.
+
+
+    See Also
+    --------
+    arange : Similiar to `linspace`, but uses a step size (instead of the
+             number of samples).
+    logspace : Samples uniformly distributed in log space.
+
+    Examples
+    --------
+    >>> np.linspace(2.0, 3.0, num=5)
+        array([ 2.  ,  2.25,  2.5 ,  2.75,  3.  ])
+    >>> np.linspace(2.0, 3.0, num=5, endpoint=False)
+        array([ 2. ,  2.2,  2.4,  2.6,  2.8])
+    >>> np.linspace(2.0, 3.0, num=5, retstep=True)
+        (array([ 2.  ,  2.25,  2.5 ,  2.75,  3.  ]), 0.25)
+
+    Graphical illustration:
+
+    >>> import matplotlib.pyplot as plt
+    >>> N = 8
+    >>> y = np.zeros(N)
+    >>> x1 = np.linspace(0, 10, N, endpoint=True)
+    >>> x2 = np.linspace(0, 10, N, endpoint=False)
+    >>> plt.plot(x1, y, 'o')
+    [<matplotlib.lines.Line2D object at 0x...>]
+    >>> plt.plot(x2, y + 0.5, 'o')
+    [<matplotlib.lines.Line2D object at 0x...>]
+    >>> plt.ylim([-0.5, 1])
+    (-0.5, 1)
+    >>> plt.show()
+
+    """
+    if (not bohrium):
+        #TODO: add copy=False to .astype()
+        return numpy.linspace(start, stop, num=num, endpoint=endpoint, retstep=retstep).astype(dtype)
+    num = int(num)
+    if num <= 0:
+        return array([], dtype=dtype)
+    if endpoint:
+        if num == 1:
+            return array([numpy.dtype(dtype).type(start)])
+        step = (stop-start)/float((num-1))
+    else:
+        step = (stop-start)/float(num)
+    y = range(num,dtype=dtype) * step + start
+    if retstep:
+        return y, step
+    else:
+        return y
+    
+def load(file, bohrium=True):
+    A = numpy.load(file)
+    A.bohrium = bohrium
+    return A
+
+def save(file, arr):
+    arr.bohrium=False
+    numpy.save(file,arr)
 
 def memmap(filename, shape, dtype=uint8, mode="r+", offset=0, order='C'):
     '''

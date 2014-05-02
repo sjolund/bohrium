@@ -35,6 +35,7 @@ If not, see <http://www.gnu.org/licenses/>.
 #include "bh_memory.h"
 #include "bh_ir.h"
 #include "bh_ir_map.h"
+#include "bh_signal.h"
 
 #ifdef __cplusplus
 /* C++ includes go here */
@@ -45,6 +46,9 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #endif
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define MAX(a, b) ((a) >= (b) ? (a) : (b))
 
 /* Find the base array for a given view
  *
@@ -266,6 +270,15 @@ DLLEXPORT bool bh_view_disjoint(const bh_view *a, const bh_view *b);
  * @return The boolean answer
  */
 DLLEXPORT bool bh_view_identical(const bh_view *a, const bh_view *b);
+
+/* Determines whether two views are aligned and points
+ * to the same base array.
+ *
+ * @a The first view
+ * @b The second view
+ * @return The boolean answer
+ */
+DLLEXPORT bool bh_view_aligned(const bh_view *a, const bh_view *b);
 
 #ifdef __cplusplus
 }

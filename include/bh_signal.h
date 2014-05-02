@@ -21,6 +21,10 @@ If not, see <http://www.gnu.org/licenses/>.
 #ifndef __BH_SIGNAL_H
 #define __BH_SIGNAL_H
 
+#ifndef _XOPEN_SOURCE
+    #define _XOPEN_SOURCE
+#endif
+
 #include <unistd.h>
 #include <errno.h>
 #include <sys/mman.h>
@@ -38,10 +42,10 @@ extern "C" {
 
 int init_signal(void);
 
-int attach_signal(signed long idx,
-                  uintptr_t start,
-                  long int size,
-                  void (*callback)(unsigned long, uintptr_t));
+int attach_signal(signed long idx,//callback id
+                  uintptr_t start,//Start memory address
+                  long int size,  //Size of the memory (in bytes)
+                  void (*callback)(unsigned long, uintptr_t));//The callback function
 
 int detach_signal(signed long idx, void (*callback));
 

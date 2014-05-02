@@ -258,6 +258,8 @@ void bh_flag_constant(bh_view* o)
 
 inline int gcd(int a, int b)
 {
+    if (b==0)
+        return a;
     int c = a % b;
     while(c != 0)
     {
@@ -291,6 +293,8 @@ bool bh_view_disjoint(const bh_view *a, const bh_view *b)
     for (int i = 0; i < a->ndim; ++i)
     {
         stride = gcd(a->stride[i], b->stride[i]);
+        if (stride == 0) // stride is 0 in both views: dimension is virtual
+            continue;
         int as = astart / stride;
         int bs = bstart / stride;
         int ae = as + a->shape[i] * (a->stride[i]/stride);
@@ -328,6 +332,37 @@ bool bh_view_identical(const bh_view *a, const bh_view *b)
         if(a->shape[i] != b->shape[i])
             return false;
         if(a->stride[i] != b->stride[i])
+            return false;
+    }
+    return true;
+}
+
+/* Determines whether two views are aligned and points
+ * to the same base array.
+ *
+ * @a The first view
+ * @b The second view
+ * @return The boolean answer
+ */
+bool bh_view_aligned(const bh_view *a, const bh_view *b)
+{
+    if(bh_is_constant(a) || bh_is_constant(b))
+        return false;
+    if(a->base != b->base)
+        return false;
+    if(a->start != b->start)
+        return false;
+    for(int ia=0,ib=0; ia<a->ndim && ib<b->ndim; ++ia,++ib)
+    {
+        while (a->stride[ia] == 0)
+            if (++ia >= a->ndim)
+                break;
+        while (b->stride[ib] == 0)
+            if (++ib >= b->ndim)
+                break;
+        if(a->shape[ia] != b->shape[ib])
+            return false;
+        if(a->stride[ia] != b->stride[ib])
             return false;
     }
     return true;

@@ -25,6 +25,7 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include <complex>
 #include <list>
+#include <map>
 
 #include "bh.h"
 #include "iterator.hpp"
@@ -170,6 +171,8 @@ public:
     multi_array& operator()(const T& n);            // Update
     multi_array& operator()(multi_array<T>& rhs);
 
+    multi_array& operator()(const void* data);      // Update / copy from a void pointer
+
     multi_array& operator=(const T& rhs);           // Initialization / assignment.
     multi_array& operator=(multi_array<T>& rhs);    // Initialization / assignment.
 
@@ -214,14 +217,15 @@ public:
     multi_array& operator--(int);
 
     void link();                            // Bohrium Runtime Specifics
-    void link(bh_base *base_ptr);     // Bohrium Runtime Specifics
+    void link(bh_base *base_ptr);           // Bohrium Runtime Specifics
     bh_base* unlink();
 
     bh_base* getBase() const;
     bool getTemp() const;
     void setTemp(bool temp);
     bool linked() const;
-    bool initialized() const;
+    bool initialized() const;               // Determine if the array is initialized (has a bh_base)
+    bool allocated() const;                 // Determine if the array is intitialized and data for it is allocated
     void sync();
 
 protected:
@@ -283,6 +287,9 @@ public:
     template <typename Ret, typename In>    // pow(...,2), reduce(..., 2)
     void enqueue(bh_opcode opcode, multi_array<Ret>& op0, multi_array<Ret>& op1, const In& op2);
 
+    template <typename Ret, typename In1, typename In2>
+    void enqueue_extension(const std::string& name, multi_array<Ret>& op0, multi_array<In1>& op2, multi_array<In2>& op3);
+
     size_t flush();
     size_t get_queue_size();
 
@@ -307,6 +314,9 @@ private:
                                                 // Bohrium
     bh_component        bridge;
     bh_component_iface  *runtime;
+
+    std::map<std::string, bh_opcode> extensions;// Register of extensions
+    size_t extension_count;
 
     bh_instruction  queue[BH_CPP_QUEUE_MAX];    // Bytecode queue
     size_t          ext_in_queue;
