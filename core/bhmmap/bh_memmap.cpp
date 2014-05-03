@@ -116,7 +116,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
     else if (mode == 2) {
         fileflag |= O_TRUNC;
     }
-    //fileflag |= O_DIRECT;
+    fileflag |= O_DIRECT;
     bh_intp size_in_bytes = bh_base_size(operands[0].base);
     printf("Pages: %li \n", size_in_bytes/BLOCK_SIZE);
     // Open file with the right parameters
@@ -149,6 +149,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
     fids[fd] = operands[0].base;
     pthread_mutex_unlock(&fids_mutex);
     memmap_bases[operands[0].base->data] = fd;
+    printf("After create\n");
     return BH_SUCCESS;
 }
 
@@ -159,7 +160,9 @@ bh_error bh_create_memmap(bh_instruction *instr)
  */
 bh_error bh_close_memmap(bh_base* ary)
 {
+    printf("Before close\n");
     int fid = memmap_bases.at(ary->data);
+    printf("Gonewrong?\n");
     pages_map.erase(fid);
 
     memmap_bases.erase(ary->data);

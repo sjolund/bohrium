@@ -3,6 +3,7 @@
 #This is collection of help functions for the NumPy benchmarks.
 
 import bohrium as np
+import bohriumbridge as bridge
 import getopt
 import sys
 import datetime
@@ -65,11 +66,11 @@ class Benchmark:
         self.dtype = eval("np.%s"%self.info['dtype'])
 
     def start(self):
-        np.flush()
+        bridge.flush()
         self.info['totaltime'] = time.time()
 
     def stop(self):
-        np.flush()
+        bridge.flush()
         self.info['totaltime'] = time.time() - self.info['totaltime']
 
     def pprint(self):
