@@ -25,7 +25,6 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <bh_memmap.h>
 #include <set>
 #include <bh_timing.hpp>
-
 #include "bh_vem_node.h"
 
 
@@ -45,6 +44,9 @@ static bh_intp exec_timing;
     //Number of elements executed
     static bh_intp total_execution_size = 0;
 #endif
+
+int prefetch = 0;
+
 
 /* Component interface: init (see bh_component.h) */
 bh_error bh_vem_node_init(const char* name)
@@ -67,7 +69,10 @@ bh_error bh_vem_node_init(const char* name)
         return err;
 
     exec_timing = bh_timer_new("node-execution");
-
+    char* prefetch_env = getenv("BH_IO_PREFETCH");
+    if (NULL != prefetch_env) {
+       prefetch = atoi(prefetch_env);
+    }
     return BH_SUCCESS;
 }
 
@@ -253,7 +258,7 @@ static bh_error inspect(bh_instruction *instr)
     {
         for(bh_intp o=1; o<nop; ++o)
         {
-            if(!bh_is_constant(&operands[o])){
+            if((!bh_is_constant(&operands[o])) && prefetch > 0){
                 if (bh_is_memmap(operands[o].base) == 1)
                     bh_hint_memmap(&operands[o]);
             }

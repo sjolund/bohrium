@@ -1309,7 +1309,6 @@ def memmap(filename, shape, dtype=uint8, mode="r+", offset=0, order='C'):
     import os
     import operator
     worldsize = int(os.environ.get('OMPI_COMM_WORLD_SIZE', 1))
-    print "Worldsize: ", worldsize
 
     modes = {'r': 0,
              'r+': 1,

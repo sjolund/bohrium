@@ -48,6 +48,7 @@ extern "C" {
 #define PAGE_SIZE getpagesize()
 #define BLOCK_SIZE PAGE_SIZE
 #define PAGE_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(PAGE_SIZE-1)))))
+#define BLOCK_ALIGN(address) ((uintptr_t) (((uintptr_t)address) & (~((uintptr_t)(BLOCK_SIZE-1)))))
 
 
 long int BH_MEMMAP_OPCODE = -1;

@@ -24,6 +24,7 @@ If not, see <http://www.gnu.org/licenses/>.
 /** I/O Queue
  */
 
+
 typedef unsigned long long timestamp_t;
 
 static timestamp_t get_timestamp ()
@@ -102,7 +103,6 @@ bh_error bh_create_memmap(bh_instruction *instr)
 
     // Parse file arguments
     char* fpath = (char*)(operands[1].base->data);
-    printf("Filepath %s \n", fpath);
     bh_int64 mode = fargs[0];
     //bh_intp offset = (bh_intp)fargs[1];
     //bh_int64 order = fargs[2];
@@ -118,7 +118,6 @@ bh_error bh_create_memmap(bh_instruction *instr)
     }
     fileflag |= O_DIRECT;
     bh_intp size_in_bytes = bh_base_size(operands[0].base);
-    printf("Pages: %li \n", size_in_bytes/BLOCK_SIZE);
     // Open file with the right parameters
     int fd = open(fpath, fileflag | O_CREAT, (mode_t)0600);
 
@@ -143,13 +142,11 @@ bh_error bh_create_memmap(bh_instruction *instr)
     // Attach fd and together with address space to the signal handler
     attach_signal(fd, (uintptr_t)operands[0].base->data, size_in_bytes, bh_sighandler_memmap);
     // -rw@base->data, to make sure that future access to the array will be handled by custom signal handler
-
     mprotect((void *)operands[0].base->data, size_in_bytes, PROT_NONE);
     pthread_mutex_lock(&fids_mutex);
     fids[fd] = operands[0].base;
     pthread_mutex_unlock(&fids_mutex);
     memmap_bases[operands[0].base->data] = fd;
-    printf("After create\n");
     return BH_SUCCESS;
 }
 
@@ -160,9 +157,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
  */
 bh_error bh_close_memmap(bh_base* ary)
 {
-    printf("Before close\n");
     int fid = memmap_bases.at(ary->data);
-    printf("Gonewrong?\n");
     pages_map.erase(fid);
 
     memmap_bases.erase(ary->data);
@@ -242,11 +237,12 @@ bh_error bh_hint_memmap(bh_view* view)
 
 bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int fd)
 {
-    bh_index offset = PAGE_ALIGN(page) - (uintptr_t)data_p;
+    uint64_t offset = page - (uintptr_t)data_p;
     size_t pagesize = BLOCK_SIZE;
     if (filesize < (BLOCK_SIZE+offset)){
         pagesize = filesize - offset;
     }
+
 
     //mprotect((void *)PAGE_ALIGN(page), pagesize, PROT_WRITE);
     //if (pread(fd, (void *)PAGE_ALIGN(page), pagesize, offset) == -1)
@@ -261,6 +257,7 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
     if (buffer == MAP_FAILED)
     {
         printf("pagesize: %li \n", pagesize);
+        printf("offset: %lu \n", offset);
         bh_memmap_stats();
         fprintf(stderr, "Could not create buffer for read operation: %s\n", strerror(errno));
 
@@ -270,13 +267,19 @@ bh_error bh_read_page(bh_index page, bh_index filesize, bh_data_ptr data_p, int 
 
     if (pread(fd, buffer, pagesize, offset) == -1)
     {
-        fprintf(stderr, "Could not read the from file: %s\n", strerror(errno));
+        printf("pagesize: %li \n", pagesize);
+        printf("offset: %lu \n", offset);
+        bh_memmap_stats();
+        fprintf(stderr, "Could not read the from file: %s (%li) %p - %p = %p\n", strerror(errno), offset, page, data_p, (page-(uintptr_t)data_p));
+        exit(EXIT_FAILURE);
         return BH_ERROR;
     }
 
-    if(mremap(buffer, pagesize, pagesize, MREMAP_FIXED|MREMAP_MAYMOVE, (void *)PAGE_ALIGN(page)) == MAP_FAILED)
+    if(mremap(buffer, pagesize, pagesize, MREMAP_FIXED|MREMAP_MAYMOVE, (void *)BLOCK_ALIGN(page)) == MAP_FAILED)
     {
-        printf("mremap %p(%p) +rw b@(%p) \n", PAGE_ALIGN(page), page, buffer);
+        printf("pagesize: %li \n", pagesize);
+        printf("offset: %lu \n", offset);
+        printf("mremap %p(%p) +rw b@(%p) \n", BLOCK_ALIGN(page), page, buffer);
         bh_memmap_stats();
         fprintf(stderr, "remap operation in bh_memmap could not remap from into array: %s\n", strerror(errno));
         exit(-1);
@@ -304,10 +307,10 @@ void bh_sighandler_memmap(unsigned long idx, uintptr_t addr)
     //bh_index offset = PAGE_ALIGN(addr) - (uintptr_t)base->data;
     pthread_mutex_unlock(&fids_mutex);
     pthread_mutex_lock(&read_mutex);
-    if (pages_map[idx].count(PAGE_ALIGN(addr)) == 0)
+    if (pages_map[idx].count(BLOCK_ALIGN(addr)) == 0)
     {
         bh_read_page(addr, filesize, base->data, idx);
-        pages_map[idx][PAGE_ALIGN(addr)] = true;
+        pages_map[idx][BLOCK_ALIGN(addr)] = true;
         __sync_fetch_and_add(&num_segfaults_reads, 1);
     }
     pthread_mutex_unlock(&read_mutex);
@@ -345,6 +348,8 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
             index += counters[dim] * item.view.stride[dim];
         }
         bh_index page = PAGE_ALIGN((bh_index) item.data+index*item.esize);
+        if (page != (bh_index)item.data)
+            page = BLOCK_ALIGN((bh_index) item.data+index*item.esize);
         if ((pages.empty() || pages.back() != page) )
         {
             pthread_mutex_lock(&read_mutex);
