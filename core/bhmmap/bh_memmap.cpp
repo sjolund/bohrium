@@ -54,7 +54,7 @@ pthread_t iothread;
 pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t  queue_not_empty_condition = PTHREAD_COND_INITIALIZER;
 
-
+int cores = 1;
 int num_segfaults;
 int num_segfaults_reads;
 int num_prefetch;
@@ -78,6 +78,11 @@ bh_error bh_init_memmap(void)
 {
     num_segfaults = 0;
     pthread_create( &iothread, NULL, &bh_ioconsumer, NULL);
+    char* cores_env = getenv("OMP_NUM_THREADS");
+    if (NULL != cores_env) {
+       cores = atoi(cores_env);
+    }
+
     return BH_SUCCESS;
 }
 
@@ -352,15 +357,6 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
             page = BLOCK_ALIGN((bh_index) item.data+index*item.esize);
         if ((pages.empty() || pages.back() != page) )
         {
-            pthread_mutex_lock(&read_mutex);
-            if (pages_map[fd].count(page) == 0)
-            {
-                pages_map[fd][page] = true;
-                bh_read_page(page, filesize, item.data, fd);
-                __sync_fetch_and_add(&num_prefetch, 1);
-            }
-
-            pthread_mutex_unlock(&read_mutex);
             pages.push_back(page);
         }
 
@@ -378,6 +374,19 @@ bh_error bh_memmap_read_view(const ioqueue_item& item)
 
         }
     }
+    for (long i = 0; i < pages.size(); i++){
+        pthread_mutex_lock(&read_mutex);
+        bh_index page = pages[(((i % cores) * pages.size()) / cores) + (i / cores)];
+        if (pages_map[fd].count(page) == 0)
+        {
+            pages_map[fd][page] = true;
+            bh_read_page(page, filesize, item.data, fd);
+            __sync_fetch_and_add(&num_prefetch, 1);
+        }
+
+        pthread_mutex_unlock(&read_mutex);
+    }
+
     timestamp_t t1 = get_timestamp();
     double secs = (t1 - t0) / 1000000.0L;
     prefetch_timing += secs;
