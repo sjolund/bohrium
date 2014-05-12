@@ -136,7 +136,7 @@ bh_error bh_create_memmap(bh_instruction *instr)
     else if (mode == 2) {
         fileflag |= O_TRUNC;
     }
-    fileflag |= O_DIRECT;
+    //fileflag |= O_DIRECT;
     bh_intp size_in_bytes = bh_base_size(operands[0].base);
     // Open file with the right parameters
     int fd = open(fpath, fileflag | O_CREAT, (mode_t)0600);

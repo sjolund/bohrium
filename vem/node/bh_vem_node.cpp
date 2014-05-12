@@ -73,6 +73,7 @@ bh_error bh_vem_node_init(const char* name)
     if (NULL != prefetch_env) {
        prefetch = atoi(prefetch_env);
     }
+    init_signal();
     return BH_SUCCESS;
 }
 
