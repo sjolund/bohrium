@@ -34,7 +34,21 @@ static timestamp_t get_timestamp ()
     return  now.tv_usec + (timestamp_t)now.tv_sec * 1000000;
 }
 
+struct view_item {
+    bh_intp       ndim;
 
+    /// Index of the start element
+    bh_index      start;
+
+    /// Number of elements in each dimention
+    bh_index      shape[BH_MAXDIM];
+
+    /// The stride for each dimention
+    bh_index      stride[BH_MAXDIM];
+    view_item() : start(0), ndim(0) {}
+    view_item(const bh_view& v) : ndim(v.ndim), start(v.start) {
+    }
+};
 
 struct ioqueue_item {
     bh_view     view;
@@ -62,6 +76,7 @@ double prefetch_timing;
 
 pthread_mutex_t read_mutex = PTHREAD_MUTEX_INITIALIZER;
 std::map<int, std::map<bh_index, bool>> pages_map;
+std::map<int, std::vector<view_item>> bh_views_map;
 
 
 pthread_mutex_t fids_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -222,6 +237,34 @@ void ioqueue_add_item(const ioqueue_item& item)
     pthread_mutex_unlock( &queue_mutex );
 }
 
+bool bh_compare_view(const bh_view& view, int fd)
+{
+    if ( bh_views_map.find(fd) == bh_views_map.end() ) {
+        return false;
+    }
+    for (int i = 0 ; i < bh_views_map.at(fd).size(); i++ )
+    {
+        bool flag = true;
+        view_item view2 = bh_views_map.at(fd)[i];
+        if (view2.ndim != view.ndim)
+            flag = false;
+        if (view2.start != view.start)
+            flag = false;
+        for (int j = 0; j < view2.ndim; j++)
+        {
+            if (view2.stride[j] != view.stride[j])
+                flag = false;
+            if (view2.shape[j] != view.shape[j])
+                flag = false;
+        }
+        if (flag)
+        {
+            return flag;
+        }
+
+    }
+    return false;
+}
 
 /** Adds a hint to the I/O queue in form of a execution list.
  *
@@ -232,8 +275,15 @@ bh_error bh_hint_memmap(bh_view* view)
     // Determine if the full data array is already read from disk.
     bh_index num_pages = (bh_base_size(view->base)/BLOCK_SIZE);
     int fd = memmap_bases.at(view->base->data);
-    if ((unsigned)num_pages > pages_map[fd].size())
+    if ((unsigned)num_pages > pages_map[fd].size() && !bh_compare_view(*view, fd))
     {
+        view_item item(*view);
+        for (int i=0; i< view->ndim; i++)
+        {
+            item.stride[i] = view->stride[i];
+            item.shape[i] = view->shape[i];
+        }
+        bh_views_map[fd].push_back(item);
         ioqueue_add_item(*view);
     }
     return BH_SUCCESS;
