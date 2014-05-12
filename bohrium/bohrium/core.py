@@ -1176,7 +1176,7 @@ def visualize(a, mode, colormap, min, max):
         raise ValueError("Input must be 2-D or 3-D.")
     if not a.bohrium:
         raise ValueError("Input must be a Bohrium array")
-    if a.dtype == numpy.float32:
+    if a.dtype != numpy.float32:
         raise ValueError("For now visualize only supports float32 arrays")
 
     if mode == "2d":
@@ -1284,7 +1284,7 @@ def linspace(start, stop, num=50, endpoint=True, retstep=False, dtype=float, boh
         return y, step
     else:
         return y
-    
+
 def load(file, bohrium=True):
     A = numpy.load(file)
     A.bohrium = bohrium
@@ -1293,6 +1293,18 @@ def load(file, bohrium=True):
 def save(file, arr):
     arr.bohrium=False
     numpy.save(file,arr)
+
+
+def fromfile(file, dtype=uint8, count=-1, sep='', bohrium=True):
+    A = numpy.fromfile(file, dtype=dtype, count=count, sep=sep)
+    A.bohrium = bohrium
+    return A
+
+
+def memmap2(file, shape, mode="r+", dtype=uint8, offset=0, order='C', bohrium=True):
+    A = numpy.memmap(file, shape=shape, mode=mode, dtype=dtype, order=order)
+    return A
+
 
 def memmap(filename, shape, dtype=uint8, mode="r+", offset=0, order='C'):
     '''
