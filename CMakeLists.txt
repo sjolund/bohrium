@@ -60,7 +60,7 @@ add_subdirectory(extmethods/fftw)
 if(NOT USE_CXX98)
     add_subdirectory(bridge/cpp)
     add_subdirectory(bridge/c)
-    add_subdirectory(bridge/bhpy)
+#    add_subdirectory(bridge/bhpy)
 endif()
 
 install(DIRECTORY thirdparty/Random123/include/Random123 DESTINATION include)

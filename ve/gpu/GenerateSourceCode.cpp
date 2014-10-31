@@ -22,70 +22,39 @@ If not, see <http://www.gnu.org/licenses/>.
 #include <stdexcept>
 #include "GenerateSourceCode.hpp"
 
-void generateGIDSource(const std::vector<bh_index>& shape, std::ostream& source)
+void generateGIDSource(size_t ndim, std::ostream& source)
 {
-    size_t ndim = shape.size();
     assert(ndim > 0);    
     source << "\tconst size_t gidx = get_global_id(0);\n";
-#ifdef STATIC_KERNEL
-    source << "\tif (gidx >= " << shape[ndim-1] << ")\n\t\treturn;\n";
-#else
     source << "\tif (gidx >= ds0)\n\t\treturn;\n";
-#endif
     if (ndim > 1)
     {
         source << "\tconst size_t gidy = get_global_id(1);\n";
-#ifdef STATIC_KERNEL
-        source << "\tif (gidy >= " << shape[ndim-2] << ")\n\t\treturn;\n";
-#else
         source << "\tif (gidy >= ds1)\n\t\treturn;\n";
-#endif
     }
     if (ndim > 2)
     {
         source << "\tconst size_t gidz = get_global_id(2);\n";
-#ifdef STATIC_KERNEL
-        source << "\tif (gidz >= " << shape[ndim-3] << ")\n\t\treturn;\n";
-#else
         source << "\tif (gidz >= ds2)\n\t\treturn;\n";
-#endif
     }
 }
 
-void generateOffsetSource(const std::vector<bh_view>& views, unsigned int id, std::ostream& source)
+void generateOffsetSource(size_t ndim, unsigned int id, std::ostream& source)
 {
-    const bh_view& operand = views[id];
-    const bh_index ndim = operand.ndim;
     assert(ndim > 0);
     for (size_t d = ndim-1; d > 2; --d)
     {
-#ifdef STATIC_KERNEL
-        source << "ids" << d << "*" << operand.stride[ndim-(d+1)] << " + ";
-#else
         source << "ids" << d << "*v" << id << "s" << d+1 << " + ";
-#endif
     }
     if (ndim > 2)
     {
-#ifdef STATIC_KERNEL
-        source << "gidz*" << operand.stride[ndim-3] << " + ";
-#else
         source << "gidz*v" << id << "s3 + ";
-#endif
     }
     if (ndim > 1)
     {
-#ifdef STATIC_KERNEL
-        source << "gidy*" << operand.stride[ndim-2] << " + ";
-#else
         source << "gidy*v" << id << "s2 + ";
-#endif
     }
-#ifdef STATIC_KERNEL
-    source << "gidx*" << operand.stride[ndim-1] << " + " << operand.start;
-#else
     source << "gidx*v" << id << "s1 + v" << id << "s0";
-#endif
 }
 
 #define TYPE ((type[1] == OCL_COMPLEX64) ? "float" : "double")
@@ -199,8 +168,8 @@ void generateInstructionSource(const bh_opcode opcode,
             if (isFloat(type[1]))
                 source << indent << parameters[0] << " = pow(" << parameters[1] << ", " << parameters[2] << ");\n";
             else
-                source << indent << parameters[0] << " = pow((float)" << parameters[1] << ", (float)" << 
-                    parameters[2] << ");\n";   
+                source << indent << "IPOW(" << parameters[0] << ", " << parameters[1] << ", " << 
+                    parameters[2] << ")\n";   
             break;
         case BH_MOD:
             if (isFloat(type[1]))
@@ -355,6 +324,9 @@ void generateInstructionSource(const bh_opcode opcode,
             break;
         case BH_RANGE:
             source << indent << parameters[0] << " = gidx;\n";
+            break;
+        case BH_RANDOM:
+            source << indent << parameters[0] << " = random("  << parameters[1] << ", gidx);\n";
             break;
         default:
 #ifdef DEBUG

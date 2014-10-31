@@ -184,26 +184,26 @@ if __name__ == "__main__":
         sys.exit(-1)
 
     components = [\
-                  ("OPCODES","core/codegen",True),\
-                  ("CORE-INIPARSER","core/iniparser",True),\
-                  ("CORE-BHIR", "core/bhir", True),\
-                  ("CORE", "core", True),\
-                  ("THIRDPARTY", "thirdparty", True),\
-                  ("VE-GPU", "ve/gpu", False),\
-                  ("VE-CPU", "ve/cpu", True),\
-                  ("VEM-NODE", "vem/node", True),\
-                  ("VEM-CLUSTER", "vem/cluster", False),\
-                  ("VEM-PROXY", "vem/proxy", False),\
-                  ("FILTER-RANGE", "filter/range", False),\
-                  ("FILTER-PPRINT", "filter/pprint", True),\
-                  ("FILTER-VALIDATE", "filter/validate", True),\
-                  ("FILTER-TRANSITIVE-REDUCTION", "filter/transitive_reduction", True),\
-                  ("EXT-METHOD-MATMUL", "extmethods/matmul", True),\
-                  ("EXT-METHOD-VISUALIZER", "extmethods/visualizer", False),\
-                  ("EXT-METHOD-FFTW", "extmethods/fftw", False),\
-                  ("BRIDGE-C++", "bridge/cpp", True),\
-                  ("BRIDGE-C", "bridge/c", True),\
-                  ("BRIDGE-BHPY", "bridge/bhpy", True),\
+                  # ("OPCODES","core/codegen",True),\
+                  # ("CORE-INIPARSER","core/iniparser",True),\
+                  # ("CORE-BHIR", "core/bhir", True),\
+                  # ("CORE", "core", True),\
+                  # ("THIRDPARTY", "thirdparty", True),\
+                  # ("VE-GPU", "ve/gpu", False),\
+                  # ("VE-CPU", "ve/cpu", True),\
+                  # ("VEM-NODE", "vem/node", True),\
+                  # ("VEM-CLUSTER", "vem/cluster", False),\
+                  # ("VEM-PROXY", "vem/proxy", False),\
+                  # ("FILTER-RANGE", "filter/range", False),\
+                  # ("FILTER-PPRINT", "filter/pprint", True),\
+                  # ("FILTER-VALIDATE", "filter/validate", True),\
+                  # ("FILTER-TRANSITIVE-REDUCTION", "filter/transitive_reduction", True),\
+                  # ("EXT-METHOD-MATMUL", "extmethods/matmul", True),\
+                  # ("EXT-METHOD-VISUALIZER", "extmethods/visualizer", False),\
+                  # ("EXT-METHOD-FFTW", "extmethods/fftw", False),\
+                  # ("BRIDGE-C++", "bridge/cpp", True),\
+                  # ("BRIDGE-C", "bridge/c", True),\
+                  # ("BRIDGE-BHPY", "bridge/bhpy", True),\
 #                  ("BHNUMPY", "bohrium", True),\
 #                  ("FILTER-POWER", "filter/power", False),\
 #                  ("FILTER-FUSION", "filter/fusion", False),\

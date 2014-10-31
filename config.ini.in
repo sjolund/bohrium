@@ -41,9 +41,13 @@ libs = ${CMAKE_INSTALL_PREFIX}/lib/libbh_matmul.so,${CMAKE_INSTALL_PREFIX}/lib/l
 
 [gpu]
 type = ve
-ocldir = ${CMAKE_INSTALL_PREFIX}/share/bh/ocl_source
-include = ${CMAKE_INSTALL_PREFIX}/share/bh/include
-impl = ${CMAKE_INSTALL_PREFIX}/lib/libbh_ve_gpu.so
+include = ${CMAKE_INSTALL_PREFIX}/share/bohrium/include
+impl = ${CMAKE_INSTALL_PREFIX}/lib/libbh_ve_gpu${CMAKE_SHARED_LIBRARY_SUFFIX}
+libs = ${CMAKE_INSTALL_PREFIX}/lib/libbh_ve_gpu${CMAKE_SHARED_LIBRARY_SUFFIX}
+# kernel = {[both],fixed,dynamic}
+kernel = both
+# compile = {[async],sync}
+compile = async
 children = cpu
 
 #
