@@ -25,6 +25,7 @@ def main():
 
     B.start()
     R = gauss(S)
+    R.bohrium=False
     B.stop()
 
     B.pprint()

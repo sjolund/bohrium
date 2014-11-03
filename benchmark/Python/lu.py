@@ -1,33 +1,36 @@
-# A port from scimark2's LU.c
-# But with no pivoting!
-# Translated by Brian Vinter
-
-import bohrium as np
 import util
 
-def main():
+import bohrium as np
+from bohriumbridge import flush
 
+def lu(a):
+    """
+    Performe LU decomposition on the matrix a so A = L*U
+    """
+    u = a.copy()
+    l = np.zeros_like(a)
+    np.diagonal(l)[:] = 1.0
+    for c in xrange(1,u.shape[0]):
+        l[c:,c-1] = (u[c:,c-1]/u[c-1,c-1:c])
+        u[c:,c-1:] = u[c:,c-1:] - l[c:,c-1][:,None] * u[c-1,c-1:]
+        flush()
+    return (l,u)
+
+def main():
     B = util.Benchmark()
     N = B.size[0]
-    I = B.size[1]
 
-    A       = np.random.random((N,N),       bohrium=B.bohrium)
-    pivot   = np.empty((N), dtype=float,    bohrium=B.bohrium)
-    ONE     = np.empty((1), dtype=float,    bohrium=B.bohrium)
+    S = np.random.random((N, N), dtype=B.dtype,bohrium=False)
+    if util.Benchmark().bohrium:
+        S.bohrium=True
 
-    pivot[:]    = 0.0
-    ONE[0:-1]   = 1.0
 
     B.start()
-    for j in xrange(I):
-        if j < N-1:
-            recp =  ONE / A[j:j+1,j:j+1]
-            A[j:,j:] *= recp[0,:]
-
-        if (j < N-1):
-            t1 = A[j+1:,j+1:] - A[j+1:,j] * A[j,j+1:]
-            A[j+1:,j+1:] = t1
+    (L,U) = lu(S)
+    L.bohrium=False
+    U.bohrium=False
     B.stop()
+
     B.pprint()
 
 if __name__ == "__main__":
