@@ -14,6 +14,7 @@ print "Solving",D, "dimensional",world.shape,"problem with", \
     len([i for i in it.product([None,None,None], repeat=D)]), "point stencil."
 B.start()
 nds.solve(world,I)
+world.bohrium=False
 B.stop()
 B.pprint()
 
