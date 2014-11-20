@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
+#add_definitions("-DBH_TIMING_SUM")
+
 include_directories(../../include)
 
 file(GLOB SRC *.cpp)
