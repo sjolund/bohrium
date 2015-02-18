@@ -54,16 +54,13 @@ purge_ko:
 	rm -f ~/.local/var/bohrium/objects/*
 
 purge_krn:
-	rm -rf ~/.local/share/bohrium/templates
-	rm -rf ~/.local/var/bohrium/kernels
-	rm -rf ~/.local/var/bohrium/objects
+	rm -rf ~/.local/share/bohrium/templates/*
+	rm -rf ~/.local/var/bohrium/kernels/*
+	rm -rf ~/.local/var/bohrium/objects/*
 
 #
 # Remove installed stuff specific to the cpu-engine
-purge_cpu:
-	rm -rf ~/.local/share/bohrium/templates
-	rm -rf ~/.local/var/bohrium/kernels
-	rm -rf ~/.local/var/bohrium/objects
+purge_cpu: purge_krn
 	rm -rf ~/.local/var/bohrium/scripts
 	rm -f ~/.local/lib/libbh_ve_cpu.*
 	rm -f ~/.local/include/bohrium/tac.h
@@ -131,9 +128,12 @@ gauss_fsd: prep_fsd
 
 #
 # Tests
+gentest:
+	BH_VE_CPU_JIT_FUSION=1 BH_VE_CPU_JIT_DUMPSRC=1 ./gentest.py
+	
 test:
-	BH_VE_CPU_JIT_FUSION=1 BH_VE_CPU_JIT_DUMPSRC=1 $(BH_PYTHON) $(ROOT)/test/numpy/numpytest.py
-	BH_VE_CPU_JIT_FUSION=0 BH_VE_CPU_JIT_DUMPSRC=1 $(BH_PYTHON) $(ROOT)/test/numpy/numpytest.py
+	BH_VE_CPU_JIT_FUSION=1 BH_VE_CPU_JIT_DUMPSRC=1 $(BH_PYTHON) $(ROOT)/test/python/numpytest.py
+	BH_VE_CPU_JIT_FUSION=0 BH_VE_CPU_JIT_DUMPSRC=1 $(BH_PYTHON) $(ROOT)/test/python/numpytest.py
 
 graphs:
 	python ./create_svg.py ./ /tmp/

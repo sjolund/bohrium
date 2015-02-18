@@ -11,12 +11,13 @@ namespace engine{
 namespace cpu{
 namespace codegen{
 
-Operand::Operand(operand_t operand, uint32_t id) : operand_(operand), id_(id) {}
+Operand::Operand(void) : operand_(NULL), id_(0) {}
+Operand::Operand(operand_t* operand, uint32_t id) : operand_(operand), id_(id) {}
 
 string Operand::name(void)
 {
     stringstream ss;
-    ss << "a" << id_;
+    ss << "opd" << id_;
     return ss.str();
 }
 
@@ -27,17 +28,31 @@ string Operand::first(void)
     return ss.str();
 }
 
-string Operand::current(void)
+string Operand::walker(void)
 {
     stringstream ss;
-    ss << name() << "_current";
+    ss << name();
     return ss.str();
 }
 
-string Operand::nelem(void)
+string Operand::walker_val(void)
 {
     stringstream ss;
-    ss << name() << "_nelem";
+    switch(operand_->layout) {
+        case SCALAR:
+        case SCALAR_CONST:
+        case SCALAR_TEMP:
+            ss << walker();
+            break;
+
+        case CONTIGUOUS:
+        case STRIDED:
+        case SPARSE:
+            ss << _deref(walker());
+            break;
+        default:    // TOOD: Throw an exception here...
+            break;
+    }
     return ss.str();
 }
 
@@ -63,14 +78,12 @@ string Operand::stride(void)
 }
 
 string Operand::layout(void) {
-    // operand_.layout
-    return "";
+    return layout_text(operand_->layout);    
 }
 
 string Operand::etype(void)
 {
-    //operand_.etype
-    return "";
+    return etype_to_ctype_text(operand_->etype);
 }
 
 }}}}

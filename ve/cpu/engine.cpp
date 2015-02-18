@@ -344,7 +344,8 @@ bh_error Engine::execute(bh_ir* bhir)
 
         block.clear();
         block.compose(*krnl);
-        
+
+                
         if (jit_fusion && \
             (block.narray_tacs() > 1)) {                // FUSE_MODE
 

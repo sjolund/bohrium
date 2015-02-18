@@ -1,5 +1,5 @@
-#ifndef BH_CPU_LIBS
-#define BH_CPU_LIBS
+#ifndef BH_CPU_KERNEL_LIBS
+#define BH_CPU_KERNEL_LIBS
 #include <assert.h>
 #include <stdarg.h>
 #include <string.h>
@@ -10,6 +10,7 @@
 #include <math.h>
 #include <Random123/philox.h>
 #include <tac.h>
+
 #if defined(_OPENMP)
 #include <omp.h>
 #else
@@ -55,33 +56,9 @@ void KRN_{{SYMBOL}}(operand_t** args, iterspace_t* iterspace)
     //
     // Argument unpacking
     //
-    {{#ARGUMENT}}
-    ///////////////////////////////////////////////////
-    // Argument {{NR}} - [{{#SCALAR}}SCALAR{{/SCALAR}}{{#SCALAR_CONST}}SCALAR_CONST{{/SCALAR_CONST}}{{#SCALAR_TEMP}}SCALAR_TEMP{{/SCALAR_TEMP}}{{#ARRAY}}ARRAY{{/ARRAY}}]
-    //
-    {{#SCALAR}}
-    {{TYPE}}* const a{{NR}}_first = *(args[{{NR}}]->data);
-    assert(a{{NR}}_first != NULL);
-    {{/SCALAR}}
-
-    {{#SCALAR_CONST}}
-    {{TYPE}}* const a{{NR}}_first = *(args[{{NR}}]->data);
-    assert(a{{NR}}_first != NULL);
-    {{/SCALAR_CONST}}
-
-    {{#ARRAY}}
-    const int64_t  a{{NR}}_ndim   = args[{{NR}}]->ndim;    
-    int64_t* const a{{NR}}_shape  = args[{{NR}}]->shape;
-    int64_t* const a{{NR}}_stride = args[{{NR}}]->stride;
-    {{TYPE}}* const a{{NR}}_first = ({{TYPE}}*)(*(args[{{NR}}]->data)) + args[{{NR}}]->start;
-
-    assert(a{{NR}}_first != NULL);
-    {{/ARRAY}}
-
-    {{/ARGUMENT}}
-    
+    {{ARGUMENTS}}
     //
     // Operation(s)
     //
-    {{>OPERATIONS}}
+    {{WALKER}}
 }

@@ -1,4 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
+set(BRIDGE_C true CACHE BOOL "BRIDGE-C: Build the C-bridge.")
+if(NOT BRIDGE_C)
+    return()
+endif()
 
 include_directories(../../include)
 include_directories(../cpp/bxx)
@@ -29,7 +33,6 @@ if(PYTHONINTERP_FOUND)
     install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/codegen/output/bh_c.h DESTINATION include/bohrium COMPONENT bohrium)
     install(TARGETS bhc DESTINATION lib COMPONENT bohrium)
 
-    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../../include/bh_type.h DESTINATION include/bohrium COMPONENT bohrium)
 else()
     message(STATUS "The C-Bridge cannot be build!")
 endif()

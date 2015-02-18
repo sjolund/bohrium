@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 2.8)
+set(FUSER_OPTIMAL true CACHE BOOL "FUSER-OPTIMAL: Build OPTIMAL fuser.")
+if(NOT FUSER_OPTIMAL)
+    return()
+endif()
+
 include_directories(../../include)
 
 find_package(OpenMP COMPONENTS bohrium)
