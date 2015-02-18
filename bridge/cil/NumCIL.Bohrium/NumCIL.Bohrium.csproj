@@ -55,6 +55,7 @@
     <Compile Include="..\codegen\output\BohriumAccessorFactory.cs">
       <Link>BohriumAccessorFactory.cs</Link>
     </Compile>
+    <Compile Include="Disposer.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
