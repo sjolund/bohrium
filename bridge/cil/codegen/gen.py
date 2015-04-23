@@ -80,7 +80,7 @@ def main():
         ('BohriumDataAccessor.ctpl',    'BohriumDataAccessor.cs',       (types, reductions)),
         ('TypedApplyImplementors.ctpl', 'TypedApplyImplementors.cs',    (types, reductions, op_map)),
         ('BohriumAccessorFactory.ctpl', 'BohriumAccessorFactory.cs',    types),
-        ('PInvoke-operations.ctpl',     'PInvoke-operations.cs',        op_map)
+        ('PInvoke-operations.ctpl',     'PInvoke-operations.cs',        (types, op_map))
     ]
 
     render( gens, tmpl_dir, output_dir )

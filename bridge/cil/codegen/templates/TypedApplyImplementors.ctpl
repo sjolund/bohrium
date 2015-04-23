@@ -112,6 +112,9 @@ namespace NumCIL.Bohrium
 %end for
 %end if
 %end for
+%if not $bh_ctype in ["bool8", "uint8", "uint16", "uint32", "uint64", "complex64", "complex128"]
+            new Tuple<Type, Action<ma_${bh_ctype}, ma_${bh_ctype}>>(typeof(NumCIL.Generic.Operators.ISign), PInvoke.bh_multi_array_${bh_ctype}_sign),
+%end if
         };
 
         private Tuple<Type, Action<ma_${bh_ctype}, ma_${bh_ctype}, ma_${bh_ctype}>>[] m_binOps = 

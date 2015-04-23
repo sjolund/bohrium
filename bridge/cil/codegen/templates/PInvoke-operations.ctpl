@@ -14,6 +14,9 @@ using System.Runtime.InteropServices;
 
 %include "codegen/templates/typemap.cs"
 
+%set $ops = $data[0]
+%set $methods = $data[1]
+
 namespace NumCIL.Bohrium
 {
     internal static partial class PInvoke 
@@ -22,7 +25,7 @@ namespace NumCIL.Bohrium
         [DllImport("libbhc", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
         public extern static void bh_runtime_flush();
 
-%for $op, $opcode, $opname, $opcount, $typesigs, $cilname in $data
+%for $op, $opcode, $opname, $opcount, $typesigs, $cilname in $methods
 %if $opcode == "BH_IDENTITY"
 %for $op1_type, $op2_type in $typesigs
         [DllImport("libbhc", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
@@ -34,7 +37,7 @@ namespace NumCIL.Bohrium
 
 // Binary functions
 
-%for $op, $opcode, $opname, $opcount, $typesigs, $cilname in $data
+%for $op, $opcode, $opname, $opcount, $typesigs, $cilname in $methods
 %if $opcode != "BH_IDENTITY" and opcount == 3
 %for $op1_type, $op2_type, $op3_type in $typesigs
         [DllImport("libbhc", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
@@ -51,7 +54,7 @@ namespace NumCIL.Bohrium
 
 // Unary functions
 
-%for $op, $opcode, $opname, $opcount, $typesigs, $cilname in $data
+%for $op, $opcode, $opname, $opcount, $typesigs, $cilname in $methods
 %if $opcode != "BH_IDENTITY" and opcount == 2
 %for $op1_type, $op2_type in $typesigs
         [DllImport("libbhc", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
@@ -59,6 +62,15 @@ namespace NumCIL.Bohrium
 %slurp
 %end for
 
+%end if
+%end for
+
+// Sign method
+
+%for $ctype, $bh_atype, $bh_ctype, $bh_enum in $ops
+%if not $bh_ctype in ["bool8", "uint8", "uint16", "uint32", "uint64", "complex64", "complex128"]
+        [DllImport("libbhc", SetLastError = true, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Auto)]
+        public extern static void bh_multi_array_${bh_ctype}_sign(bh_multi_array_${bh_ctype}_p @out, bh_multi_array_${bh_ctype}_p lhs);
 %end if
 %end for
     }
