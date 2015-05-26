@@ -185,11 +185,12 @@ class Ufunc(object):
                 bhcs.append(get_bhc(arg))
 
         #Some simple optimizations
-        if self.info['name'] == "power" and np.isscalar(bhcs[2]) and bhcs[2] == 2:
+        """if self.info['name'] == "power" and np.isscalar(bhcs[2]) and bhcs[2] == 2:
             #Replace power of 2 with a multiplication
             target.ufunc(multiply, bhcs[0], bhcs[1], bhcs[1])
         else:
-            target.ufunc(self, *bhcs)
+            target.ufunc(self, *bhcs)"""
+        target.ufunc(self, *bhcs)
 
         if out is None or dtype_equal(out_dtype, out.dtype):
             return args[0]
