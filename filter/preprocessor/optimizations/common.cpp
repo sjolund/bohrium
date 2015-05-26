@@ -29,7 +29,6 @@ void remove_unused_identity_backwards(bh_ir *bhir, int start, int stop) {
         }
         else if (bh_operands(instr->opcode) > 1) {
             if (freed.count(instr->operand[0].base) == 1) {
-                printf("REMOVE UNUSED IDENTITY at index: %d\n", start);
                 instr->opcode = BH_NONE;
                 // make free and discard BH_NONE
 

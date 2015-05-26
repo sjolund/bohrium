@@ -14,7 +14,7 @@
 
 using namespace std;
 
-#define DEBUG (true)
+#define DEBUG (false)
 #define TIMER (false)
 
 void preprocessor_filter::preprocess(bh_ir *bhir)
@@ -51,14 +51,12 @@ void preprocessor_filter::preprocess(bh_ir *bhir)
 }
 
 void preprocessor_filter::gc() {
-    printf("length of bases_ before clear: %d\n", bases_.size());
     for(size_t size = bases_.size(); size > 0; --size) {
         //delete bases_.back();
 
         free(bases_.back());
         bases_.pop_back();
     }
-    printf("length of bases_ after clear: %d\n", bases_.size());
 }
 
 
