@@ -416,3 +416,27 @@ void build_similar_view2(const bh_view *referenceView, const bh_base *base, bh_v
     memcpy(output, (bh_view*)referenceView, sizeof((bh_view)*referenceView));
     output->base = (bh_base*)base;
 }
+
+void insertView(bh_ir& bhir, std::vector<bh_instruction>::iterator iter, bh_opcode opcode, const bh_view *out) {
+    bh_instruction instr;
+    instr.opcode = opcode;
+    instr.operand[0] = *out;
+    bhir.instr_list.insert(iter, instr);
+}
+
+void insertView(bh_ir& bhir, std::vector<bh_instruction>::iterator iter, bh_opcode opcode, const bh_view *out, const bh_view *in1) {
+    bh_instruction instr;
+    instr.opcode = opcode;
+    instr.operand[0] = *out;
+    instr.operand[1] = *in1;
+    bhir.instr_list.insert(iter, instr);
+}
+
+void insertView(bh_ir& bhir, std::vector<bh_instruction>::iterator iter, bh_opcode opcode, const bh_view *out, const bh_view *in1, const bh_view *in2) {
+    bh_instruction instr;
+    instr.opcode = opcode;
+    instr.operand[0] = *out;
+    instr.operand[1] = *in1;
+    instr.operand[2] = *in2;
+    bhir.instr_list.insert(iter, instr);
+}

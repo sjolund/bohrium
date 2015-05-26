@@ -57,7 +57,17 @@ void Optimization::power(bh_ir *bhir) {
                     bh_instruction multiply = { (bh_opcode)BH_MULTIPLY };
                     memcpy(&multiply.operand, &operand, sizeof(operand));
 
+
                     mult_sequence.push_back(multiply);
+                    
+
+                    /*insertView(*bhir
+                        , mult_sequence.end()
+                        , BH_MULTIPLY
+                        , &bhir->instr_list[i].operand[0]
+                        , &bhir->instr_list[i].operand[0]
+                        , &bhir->instr_list[i].operand[mult_operand_sequence.top()]
+                    );*/
                     mult_operand_sequence.pop();
                 }
                 bhir->instr_list.insert(bhir->instr_list.begin()+i+1, mult_sequence.begin(), mult_sequence.end());

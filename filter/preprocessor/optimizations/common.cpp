@@ -25,32 +25,27 @@ void remove_unused_identity_backwards(bh_ir *bhir, int start, int stop) {
     for (; start >= stop; start--) {
         instr = &bhir->instr_list[start];
         if (instr->opcode == (bh_opcode)BH_FREE) {
+            // base is added to the list of free'd bases
             freed.insert( {{instr->operand[0].base, start}} );
         }
         else if (bh_operands(instr->opcode) > 1) {
             if (freed.count(instr->operand[0].base) == 1) {
+                // Unused assignment of base - can be a NONE operation
                 instr->opcode = BH_NONE;
-                // make free and discard BH_NONE
-
-                //bh_instruction *instr2 = &bhir->instr_list[freed.find(instr->operand[0].base)->second];
                 freed.erase(instr->operand[0].base);
-
-                /*instr2->opcode = BH_NONE;
-                if ((instr2+1)->opcode == BH_DISCARD) {
-                    (instr2+1)->opcode = BH_NONE;
-                }*/
             }
             else {
                 if (!bh_is_constant(&instr->operand[1])) {
+                    // base is used and no preceeding operations can be NONE on behave of base
                     freed.erase(instr->operand[1].base);
                 }
                 if (bh_operands(instr->opcode) == 3 && !bh_is_constant(&instr->operand[2])) {
+                    // base is used and no preceeding operations can be NONE on behave of base
                     freed.erase(instr->operand[2].base);
                 }
             }
         }
     }
-    //cout << "After remove"<<endl;
 }
 
 // Common shifted array operation

@@ -35,3 +35,7 @@ bh_view build_flat_view(const bh_base * base, bh_index nelem);
 bh_view build_similar_view(const bh_view *referenceView, const bh_base *base);
 
 void build_similar_view2(const bh_view *referenceView, const bh_base *base, bh_view *output);
+
+void insertView(bh_ir& bhir, std::vector<bh_instruction>::iterator iter, bh_opcode opcode, const bh_view *out);
+void insertView(bh_ir& bhir, std::vector<bh_instruction>::iterator iter, bh_opcode opcode, const bh_view *out, const bh_view *in1);
+void insertView(bh_ir& bhir, std::vector<bh_instruction>::iterator iter, bh_opcode opcode, const bh_view *out, const bh_view *in1, const bh_view *in2);
