@@ -119,6 +119,7 @@ def benchmark(W,I):
         elapsed += B.elapsed()
     B.pprint()
     R = np.add.reduce(np.add.reduce(R))
+    R = R.item()
     print ("Result with W="+str(W)+": " + str(R))
     print ("Elapsed (average over 10):" + str(elapsed/ntimes))
 

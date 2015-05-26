@@ -1,6 +1,8 @@
 import shutil
 import my_power
 import my_common
+import my_common4
+import my_common3d
 import mc
 import shallow_water
 import black_scholes
@@ -35,6 +37,7 @@ def main():
         n = 5000
         n = 2000
         max_exponent = 100
+        max_exponent = 5
         x = range(2,max_exponent+1)
         #x = [(2**e)-1 for e in range(2,12)]
 
@@ -77,16 +80,43 @@ def main():
         # common test (part of Shallow water)
         #x = range(100,1001,100)
         x = range(500,5001,500)
-        x = range(3000,5001,500)
+        #x = range(3000,5001,500)
         #x = range(500,4001,500)
-        #x = [5000]
         I = 1
         measures = [my_common.benchmark(w, I) for w in x]
         (time, res) = [list(t) for t in zip(*measures)]
+        print("time: " + str(time))
+        print("res: " + str(res))
         results['common'] = {'x':x, 'y':time, 'result':res[-1]}
+
+    if 'common4' in to_run:
+        # common test (part of Shallow water)
+        #x = range(100,1001,100)
+        x = range(500,5001,500)
+        #x = range(3000,5001,500)
+        #x = range(500,4001,500)
+        I = 1
+        measures = [my_common4.benchmark(w, I) for w in x]
+        (time, res) = [list(t) for t in zip(*measures)]
+        print("time: " + str(time))
+        print("res: " + str(res))
+        results['common4'] = {'x':x, 'y':time, 'result':res[-1]}
+
+    if 'common3d' in to_run:
+        # common test (part of Shallow water)
+        #x = range(100,1001,100)
+        x = range(50,301,50)
+        #x = range(3000,5001,500)
+        #x = range(500,4001,500)
+        I = 1
+        measures = [my_common3d.benchmark(w, I) for w in x]
+        (time, res) = [list(t) for t in zip(*measures)]
+        print("time: " + str(time))
+        print("res: " + str(res))
+        results['common3d'] = {'x':x, 'y':time, 'result':res[-1]}
     
 
-
+    print("result: " + str(results))
     outfile = open(file, "wb" )
     pickle.dump(results, outfile)
 

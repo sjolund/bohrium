@@ -47,8 +47,11 @@ def benchmark(n, exponent):
         elapsed += B.elapsed()
     B.pprint()
     R = np.add.reduce(np.add.reduce(R))
-    print ("Result: " + str(R))
+    print ("Result for exponent="+str(exponent)+": " + str(R))
     print ("Elapsed (average over 10):" + str(elapsed/ntimes))
+
+    #if not np.isscalar(R):
+    R = R.item()
 
     return (elapsed/ntimes, R)
 

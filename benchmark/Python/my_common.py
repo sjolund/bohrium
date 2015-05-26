@@ -43,6 +43,9 @@ def benchmark(N,I):
     print ("Result for N="+str(N)+": " + str(R))
     print ("Elapsed (average over 10):" + str(elapsed/ntimes))
 
+    #if not np.isscalar(R):
+    R = R.item()
+
     return (elapsed/ntimes, R)
 
 def main():

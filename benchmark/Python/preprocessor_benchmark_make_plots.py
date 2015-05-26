@@ -88,6 +88,32 @@ def main():
         ys = [y1,y2]
         plot_comparison(xs, ys, 'common', 'n', ["filter on", "filter off"], timestamp, showFig=True)
         plot_speedup(xs, ys, 'common', 'n', timestamp, showFig=True)
+
+    if 'common4' in to_run:
+        # my_common
+        filterOn = results_filterOn['common4']
+        filterOff = results_filterOff['common4']
+        (x1,y1,res1) = (filterOn['x'],filterOn['y'],filterOn['result'])
+        (x2,y2,res2) = (filterOff['x'],filterOff['y'],filterOff['result'])
+        print ("Difference is: %s" % (str(abs(res1 - res2))))
+        assert (abs(res1 - res2)<1.0e-10), "results are not equal: %s and %s" % (str(res1), str(res2))     # random data - cannot assert
+        xs = [x1,x2]
+        ys = [y1,y2]
+        plot_comparison(xs, ys, 'common4', 'n', ["filter on", "filter off"], timestamp, showFig=True)
+        plot_speedup(xs, ys, 'common4', 'n', timestamp, showFig=True)
+
+    if 'common3d' in to_run:
+        # my_common
+        filterOn = results_filterOn['common3d']
+        filterOff = results_filterOff['common3d']
+        (x1,y1,res1) = (filterOn['x'],filterOn['y'],filterOn['result'])
+        (x2,y2,res2) = (filterOff['x'],filterOff['y'],filterOff['result'])
+        print ("Difference is: %s" % (str(abs(res1 - res2))))
+        assert (abs(res1 - res2)<1.0e-10), "results are not equal: %s and %s" % (str(res1), str(res2))     # random data - cannot assert
+        xs = [x1,x2]
+        ys = [y1,y2]
+        plot_comparison(xs, ys, 'common3d', 'n', ["filter on", "filter off"], timestamp, showFig=True)
+        plot_speedup(xs, ys, 'common3d', 'n', timestamp, showFig=True)
     
 
 if __name__ == "__main__":
