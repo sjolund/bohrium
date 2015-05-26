@@ -355,7 +355,7 @@ void Optimization::common(bh_ir *bhir) {
                     bhir->instr_list[(*iter)+expand[e]].operand[1] = build_similar_view(&referenceView2, resultBases[expand[e]]);
 
                 }
-                remove_unused_identity_backwards(bhir, min((int)(*iter)+expand.back()+3, (int)bhir->instr_list.size()), (*iter));
+                remove_unused_identity_backwards(bhir, min((int)(*iter)+expand.back()+3, (int)bhir->instr_list.size()-1), (*iter));
             }
 
             // Do operations on base
@@ -426,7 +426,36 @@ void Optimization::common(bh_ir *bhir) {
                 #endif
 
             }
-            remove_unused_identity_backwards(bhir, min((int)i+expand.back()+3, (int)bhir->instr_list.size()), max(0, (int)(i-expand.size())));
+            remove_unused_identity_backwards(bhir, min((int)i+expand.back()+3, (int)bhir->instr_list.size()-1), max(0, (int)(i-expand.size())));
+
+            std::vector<bh_instruction> freeDiscardInstructions;
+            for (auto& x: resultBases) {
+
+                /*bh_view view;
+
+                view.ndim = 1;
+                view.start = 0;
+                view.shape[BH_MAXDIM];
+                view.stride[BH_MAXDIM];
+
+                view.base = x.second;*/
+                
+                bh_instruction instr;
+                instr.opcode = BH_FREE;
+                //instr.operand[0].base = x.second;
+                instr.operand[0] = build_flat_view(x.second, x.second->nelem);
+                freeDiscardInstructions.push_back(instr);
+
+                bh_instruction instr2;
+                instr2.opcode = BH_DISCARD;
+                instr2.operand[0] = build_flat_view(x.second, x.second->nelem);
+                freeDiscardInstructions.push_back(instr2);
+                
+
+            }
+            int offset = min((int)i+(int)identical.back()+expand.back()+1, (int)bhir->instr_list.size()-1);
+            bhir->instr_list.insert(bhir->instr_list.begin()+offset, freeDiscardInstructions.begin(), freeDiscardInstructions.end());
+
             i += expand.back();
             
 
