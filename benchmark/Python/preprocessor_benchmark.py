@@ -4,6 +4,7 @@ import power_precission_test
 import my_common
 import my_common4
 import my_common3d
+import my_common_exp
 import mc
 import shallow_water
 import black_scholes
@@ -122,6 +123,18 @@ def main():
         print("time: " + str(time))
         print("res: " + str(res))
         results['common3d'] = {'x':x, 'y':time, 'result':res[-1]}
+
+    if 'commonexp' in to_run:
+        # common test (part of Shallow water)
+        #x = range(100,1001,100)
+        x = range(500,5001,500)
+        #x = range(500,4001,500)
+        I = 1
+        measures = [my_common_exp.benchmark(w, I) for w in x]
+        (time, res) = [list(t) for t in zip(*measures)]
+        print("time: " + str(time))
+        print("res: " + str(res))
+        results['commonexp'] = {'x':x, 'y':time, 'result':res[-1]}
     
 
     print("result: " + str(results))
