@@ -14,7 +14,7 @@
 
 using namespace std;
 
-#define DEBUG (false)
+#define DEBUG (true)
 #define DEBUG2 (false)
 #define DBPOINTS (false)
 
@@ -72,7 +72,7 @@ void Optimization::common(bh_ir *bhir) {
             printf("\n0.3 \n");
         #endif
 
-        if (bh_operands(instr->opcode) < 2) {
+        if (bh_operands(instr->opcode) < 2 || operation_datamanagement(instr->opcode)) {
             continue;
         }
 
@@ -120,11 +120,14 @@ void Optimization::common(bh_ir *bhir) {
             printf("\n1.5 \n");
         #endif
 
-        #if DEBUG
-            //printf("\n\nidentical list length: %d\n\n\n\n", identical.size());
+        #if DEBUG2
+            printf("\n\nidentical list length: %d\n\n\n\n", identical.size());
         #endif
 
         if (identical.size() > 0) {
+            #if DEBUG
+                printf("\nMATCHING found\n");
+            #endif
             #if DBPOINTS
                 printf("\n1.6 \n");
             #endif
@@ -143,7 +146,7 @@ void Optimization::common(bh_ir *bhir) {
             
             if (tempReferenceView != NULL) {
                 referenceView = *tempReferenceView;
-                #if DEBUG
+                #if DEBUG2
                     printf("\nreferenceView \n");
                     helper_pprint_view(&referenceView);
                 #endif
@@ -325,7 +328,7 @@ void Optimization::common(bh_ir *bhir) {
             
 
             #if DEBUG
-                helper_pprint_instr_list(bhir);
+                printf("\nCOMMON optimization applied!\n");
             #endif
 
 
@@ -452,11 +455,6 @@ void Optimization::common(bh_ir *bhir) {
 
             i += expand.back();
             
-
-            #if DEBUG
-                printf("\n\nCommon shifted array operation:\n\n");
-                helper_pprint_instr_list(bhir);
-            #endif
         }
     
     }
