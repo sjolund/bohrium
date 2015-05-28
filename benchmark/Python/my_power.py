@@ -24,7 +24,7 @@ def power_init(photo='datasets/Hell.jpg'):
     return rgb
 """
 
-def model(N, dtype=np.float32):
+def model(N, dtype=np.float64):
     """Construct pseudo-data representing price samples?"""
 
     np.random.seed(seed=1)

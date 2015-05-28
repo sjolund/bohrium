@@ -1,6 +1,6 @@
 import shutil
 import my_power
-#import power_precission_test
+import power_precission_test
 import my_common
 import my_common4
 import my_common3d
@@ -48,7 +48,7 @@ def main():
 
     if 'powercorrectness' in to_run:
 
-        (x,y) = power_precission_test.benchmark()
+        (x,y) = power_precission_test.benchmark(n=10)
         print("m: "+str(x))
         print("y: "+str(y))
         results['powercorrectness'] = {'x':x, 'y':y, 'result':0}

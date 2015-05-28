@@ -7,14 +7,14 @@ import util
 import bohrium as np
 
 
-def benchmark():
+def benchmark(n, dtype=np.float64):
     B = util.Benchmark()
 
     np.random.seed(seed=1)
 
-    m = np.array(np.random.random([N]), dtype=dtype)
+    m = np.array(np.random.random(n), dtype=dtype)
     m = m*10
 
     R = np.power(m, 31)
 
-    return (m, R.tolist())
+    return (m.tolist(), R.tolist())

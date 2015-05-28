@@ -46,18 +46,27 @@ def main():
 
     if 'powercorrectness' in to_run:
 
-        filterOn = results_filterOn['power']
-        filterOff = results_filterOff['power']
+        filterOn = results_filterOn['powercorrectness']
+        filterOff = results_filterOff['powercorrectness']
         (x1,y1) = (filterOn['x'],filterOn['y'])
         (x2,y2) = (filterOff['x'],filterOff['y'])
-        for i in range(x1):
-            assert (x1[i] == x2[i]), "xs are not equal"
+        for i in range(len(x1)):
+            assert (x1[i] == x2[i]), "xs are not equal: %s and %s. Difference is: %s" % (str(x1[i]), str(x2[i]), str(abs(x1[i] - x2[i])))
 
+        # sort the lists
+        x1, y1, y2 = zip(*sorted(zip(x1, y1, y2)))
+
+        print ("\n\\begin{table}[H]\n\\centering\n\\begin{tabular}{llll}")
+        print ("x & $x^{31}$ (filter on) & $x^{31}$ (filter off) & difference ($\\mbox{on}-\\mbox{off}$)  \\\\ \\hline")
         res = []
-        for i in range(x1):
-            res.push(y1[i]-y2[i])
-        print("m: "+str(x1))
-        print("y: "+str(res))
+        for i in range(len(y1)):
+            print("%s & %s & %s & %s \\\\" % (str(x1[i]), str(y1[i]), str(y2[i]), str(y1[i] - y2[i])))
+            #print("values are: %s and %s. Difference is: %s" % (str(y1[i]), str(y2[i]), str(abs(y1[i] - y2[i]))))
+            res.append(y1[i]-y2[i])
+        print ("\\end{tabular}\n\\caption{}\\label{tab:}\n\\end{table}\n")
+
+        print("x: "+str(x1))
+        print("y-diff: "+str(res))
 
     if 'black_scholes' in to_run:
         # Black scholes
