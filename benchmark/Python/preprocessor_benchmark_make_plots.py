@@ -44,6 +44,21 @@ def main():
         plot_comparison(xs, ys, 'power', 'Exponent', ["filter on", "filter off"], timestamp, showFig=True)
         plot_speedup(xs, ys, 'power', 'Exponent', timestamp, showFig=True)
 
+    if 'powercorrectness' in to_run:
+
+        filterOn = results_filterOn['power']
+        filterOff = results_filterOff['power']
+        (x1,y1) = (filterOn['x'],filterOn['y'])
+        (x2,y2) = (filterOff['x'],filterOff['y'])
+        for i in range(x1):
+            assert (x1[i] == x2[i]), "xs are not equal"
+
+        res = []
+        for i in range(x1):
+            res.push(y1[i]-y2[i])
+        print("m: "+str(x1))
+        print("y: "+str(res))
+
     if 'black_scholes' in to_run:
         # Black scholes
         filterOn = results_filterOn['black_scholes']

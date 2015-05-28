@@ -1,5 +1,6 @@
 import shutil
 import my_power
+#import power_precission_test
 import my_common
 import my_common4
 import my_common3d
@@ -44,6 +45,13 @@ def main():
         measures = [my_power.benchmark(n, e) for e in x]
         (time, res) = [list(t) for t in zip(*measures)]
         results['power'] = {'x':x, 'y':time, 'result':res[-1]}
+
+    if 'powercorrectness' in to_run:
+
+        (x,y) = power_precission_test.benchmark()
+        print("m: "+str(x))
+        print("y: "+str(y))
+        results['powercorrectness'] = {'x':x, 'y':y, 'result':0}
 
 
     if 'black_scholes' in to_run:
