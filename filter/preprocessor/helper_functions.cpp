@@ -277,55 +277,62 @@ bool identical_instr(const bh_instruction *a, const bh_instruction *b) {
 
     if (a->opcode != b->opcode)
         return false;
-    if (bh_operands(a->opcode) < 3)
-        // must have 3 operands?????????????????????????????????
+    if (bh_operands(a->opcode) == 1)
         return false;
-    if (bh_is_constant(&a->operand[1]))
-    {
-        if (bh_is_constant(&b->operand[1])) {
-            if (constants_identical(&a->constant, &b->constant)
-                && bh_view_same_base(&a->operand[2], &b->operand[2]))
-                return true;
-            else
-                return false;
+    if (bh_operands(a->opcode) == 2) {
+        if (!bh_is_constant(&a->operand[1]) && !bh_is_constant(&b->operand[1])) {
+            return bh_view_same_base(&a->operand[1], &b->operand[1]);
         }
-        if (operation_commutative(a->opcode) && bh_is_constant(&b->operand[2])) {
-            if (constants_identical(&a->constant, &b->constant)
-                && bh_view_same_base(&a->operand[2], &b->operand[1]))
-                return true;
-            else
-                return false;
-        }
-    }
-    else if (bh_is_constant(&a->operand[2]))
-    {
-        if (operation_commutative(a->opcode) && bh_is_constant(&b->operand[1])) {
-            if (constants_identical(&a->constant, &b->constant)
-                && bh_view_same_base(&a->operand[1], &b->operand[2]))
-                return true;
-            else
-                return false;
-        }
-        if (bh_is_constant(&b->operand[2])) {
-            if (constants_identical(&a->constant, &b->constant)
-                && bh_view_same_base(&a->operand[1], &b->operand[1]))
-                return true;
-            else
-                return false;
-        }
+        return false;
     }
     else {
-        if (bh_view_same_base(&a->operand[1], &b->operand[1]) 
-            && bh_view_same_base(&a->operand[2], &b->operand[2])
-            && bh_view_equally_shifted(&a->operand[1], &a->operand[2])
-            && bh_view_equally_shifted(&b->operand[1], &b->operand[2]))
-            return true;
-        if (operation_commutative(a->opcode)
-            && bh_view_same_base(&a->operand[1], &b->operand[2]) 
-            && bh_view_same_base(&a->operand[2], &b->operand[1])
-            && bh_view_equally_shifted(&a->operand[1], &a->operand[2])
-            && bh_view_equally_shifted(&b->operand[1], &b->operand[2]))
-            return true;
+        if (bh_is_constant(&a->operand[1]))
+        {
+            if (bh_is_constant(&b->operand[1])) {
+                if (constants_identical(&a->constant, &b->constant)
+                    && bh_view_same_base(&a->operand[2], &b->operand[2]))
+                    return true;
+                else
+                    return false;
+            }
+            if (operation_commutative(a->opcode) && bh_is_constant(&b->operand[2])) {
+                if (constants_identical(&a->constant, &b->constant)
+                    && bh_view_same_base(&a->operand[2], &b->operand[1]))
+                    return true;
+                else
+                    return false;
+            }
+        }
+        else if (bh_is_constant(&a->operand[2]))
+        {
+            if (operation_commutative(a->opcode) && bh_is_constant(&b->operand[1])) {
+                if (constants_identical(&a->constant, &b->constant)
+                    && bh_view_same_base(&a->operand[1], &b->operand[2]))
+                    return true;
+                else
+                    return false;
+            }
+            if (bh_is_constant(&b->operand[2])) {
+                if (constants_identical(&a->constant, &b->constant)
+                    && bh_view_same_base(&a->operand[1], &b->operand[1]))
+                    return true;
+                else
+                    return false;
+            }
+        }
+        else {
+            if (bh_view_same_base(&a->operand[1], &b->operand[1]) 
+                && bh_view_same_base(&a->operand[2], &b->operand[2])
+                && bh_view_equally_shifted(&a->operand[1], &a->operand[2])
+                && bh_view_equally_shifted(&b->operand[1], &b->operand[2]))
+                return true;
+            if (operation_commutative(a->opcode)
+                && bh_view_same_base(&a->operand[1], &b->operand[2]) 
+                && bh_view_same_base(&a->operand[2], &b->operand[1])
+                && bh_view_equally_shifted(&a->operand[1], &a->operand[2])
+                && bh_view_equally_shifted(&b->operand[1], &b->operand[2]))
+                return true;
+        }
     }
 
     return false;
