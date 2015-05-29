@@ -70,9 +70,9 @@ def create_comparison_plot(xs, ys, colors, labels, timestamp, cpus, showFig=Fals
 def plot_comparison(xs, ys, name, xlabel, labels, timestamp, showFig=False):
     xs = np.array(xs)
     ys = np.array(ys)
-    print("shape:")
-    print(np.shape(xs))
-    print(len(np.shape(xs)))
+    #print("shape:")
+    #print(np.shape(xs))
+    #print(len(np.shape(xs)))
     if (len(np.shape(xs)) == 1):
         x_n = 1
     else:
@@ -82,7 +82,7 @@ def plot_comparison(xs, ys, name, xlabel, labels, timestamp, showFig=False):
     else:
         y_n = len(ys)
     assert x_n == y_n, "xs and ys must have same dimension. They have %s and %s" % (str(np.shape(xs)), str(np.shape(ys)))
-    print 'x_n: ' + str(x_n)
+    #print 'x_n: ' + str(x_n)
 
     fig, ax = plt.subplots()
     

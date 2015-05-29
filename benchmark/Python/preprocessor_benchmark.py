@@ -37,7 +37,6 @@ def main():
     
     if 'power' in to_run:
         n = 5000
-        n = 2000
         max_exponent = 100
         max_exponent = 5
         x = range(2,max_exponent+1)
@@ -46,6 +45,14 @@ def main():
         measures = [my_power.benchmark(n, e) for e in x]
         (time, res) = [list(t) for t in zip(*measures)]
         results['power'] = {'x':x, 'y':time, 'result':res[-1]}
+
+    if 'powerodd' in to_run:
+        n = 5000
+        x = [(2**e)-1 for e in range(2,12)]
+
+        measures = [my_power.benchmark(n, e) for e in x]
+        (time, res) = [list(t) for t in zip(*measures)]
+        results['powerodd'] = {'x':x, 'y':time, 'result':res[-1]}
 
     if 'powercorrectness' in to_run:
 
