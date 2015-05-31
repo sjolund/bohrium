@@ -24,7 +24,7 @@ void preprocessor_filter::preprocess(bh_ir *bhir)
     #endif
 
     std::vector<Optimization*> optimizations;
-    //optimizations.push_back(new Optimization(COMMON, &bases_));
+    optimizations.push_back(new Optimization(COMMON, &bases_));
     optimizations.push_back(new Optimization(POWER, &bases_));
 
     std::vector<Optimization*>::iterator it;
@@ -37,8 +37,8 @@ void preprocessor_filter::preprocess(bh_ir *bhir)
     #if TIMER
         auto end = chrono::high_resolution_clock::now();    
         auto dur = end - begin;
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(dur).count();
-        cout << "Apply filters duration: " << ms << endl;
+        auto ms = std::chrono::duration_cast<std::chrono::microseconds>(dur).count();
+        cout << "Apply filters duration in microseconds: " << ms << endl;
     #endif
     #if DEBUG
         printf("\nAfter running optimizations\n");

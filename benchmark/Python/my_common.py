@@ -31,6 +31,9 @@ def benchmark(N,I):
     B = util.Benchmark()
     ntimes = 10
 
+    (a,b) = model(N, dtype=B.dtype) # Construct pseudo-data
+    R0 = common(a,b)   # Run the model
+
     elapsed = 0.0
     for i in range(ntimes):
         (a,b) = model(N, dtype=B.dtype) # Construct pseudo-data

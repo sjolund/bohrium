@@ -110,8 +110,12 @@ def benchmark(W,I):
     B = util.Benchmark()
     ntimes = 10
 
+    M = model(W, W, dtype=B.dtype)
+    R0 = simulate(M, I, visualize=False)
+
     elapsed = 0.0
     for i in range(ntimes):
+        print("iteration:"+str(i))
         M = model(W, W, dtype=B.dtype)
         B.start()
         R = simulate(M, I, visualize=False)

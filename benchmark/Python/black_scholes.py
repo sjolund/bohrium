@@ -62,6 +62,9 @@ def benchmark(N,I):
     B = util.Benchmark()
     ntimes = 10
 
+    S = model(N, dtype=B.dtype)              # Construct pseudo-data
+    R0 = price(S, I, visualize=False)   # Run the model
+
     elapsed = 0.0
     for i in range(ntimes):
         S = model(N, dtype=B.dtype)              # Construct pseudo-data
@@ -74,7 +77,9 @@ def benchmark(N,I):
     print ("Result: " + str(R[0]))
     print ("Elapsed (average over 10):" + str(elapsed/ntimes))
 
-    return (elapsed/ntimes, R[0])
+    R = R[0].item()
+
+    return (elapsed/ntimes, R)
 
 def main():
     B = util.Benchmark()

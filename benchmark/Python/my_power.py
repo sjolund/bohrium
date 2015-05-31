@@ -38,6 +38,9 @@ def benchmark(n, exponent):
     B = util.Benchmark()
     ntimes = 10
 
+    a = model(n)
+    R0 = np.power(a, exponent)
+
     elapsed = 0.0
     for i in range(ntimes):
         a = model(n)

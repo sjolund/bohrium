@@ -38,7 +38,7 @@ def main():
     if 'power' in to_run:
         n = 5000
         max_exponent = 100
-        max_exponent = 5
+        #max_exponent = 5
         x = range(2,max_exponent+1)
         #x = [(2**e)-1 for e in range(2,12)]
 
@@ -66,7 +66,6 @@ def main():
         # black scholes
         #x = range(500,5001,500)
         x = [n**2 for n in range(500,5001,500)]
-        #x = [100]
         I = 10
         measures = [black_scholes.benchmark(N, I) for N in x]
         (time, res) = [list(t) for t in zip(*measures)]
@@ -83,6 +82,7 @@ def main():
         #x = range(100,1001,100)
         x = range(100,1001,100)
         x = range(500,5001,500)
+        x = [500, 1000]
         #x = [1000]
         #x = [100]
         I = 100
