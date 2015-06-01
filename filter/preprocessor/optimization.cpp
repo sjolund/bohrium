@@ -3,10 +3,6 @@
 
 using namespace std;
 
-#define DEBUG (false)
-
-
-
 Optimization::Optimization(optimization_name name, std::vector<bh_base*> *basesPtr) : name_(name), basesPtr_(basesPtr) {}
 void Optimization::optimize(bh_ir *bhir) {
     switch(name_) {

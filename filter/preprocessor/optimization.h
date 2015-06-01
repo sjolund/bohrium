@@ -5,7 +5,6 @@ enum optimization_name {
     COMMON
 };
 
-// Base class
 class Optimization 
 {
     public:
@@ -23,18 +22,3 @@ class Optimization
         void power(bh_ir *bhir);
         void common(bh_ir *bhir);
 };
-
-/*Optimization::Optimization(optimization_name thingy) : thingy_(thingy) {}
-void Optimization::optimize() {
-    switch(thingy_) {
-        case POWER:
-            power();
-            break;
-        case COMMON:
-            nogetandet();
-            break;
-        default:
-            exception
-    }
-}*/
-

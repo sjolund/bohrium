@@ -24,16 +24,19 @@ void preprocessor_filter::preprocess(bh_ir *bhir)
     #endif
 
     std::vector<Optimization*> optimizations;
-    //optimizations.push_back(new Optimization(COMMON, &bases_));
+    optimizations.push_back(new Optimization(COMMON, &bases_));
     optimizations.push_back(new Optimization(POWER, &bases_));
 
     std::vector<Optimization*>::iterator it;
+
     #if TIMER
         auto begin = chrono::high_resolution_clock::now();
     #endif
+
     for(it = optimizations.begin(); it < optimizations.end(); it++){
         (*it)->optimize(bhir);
     }
+
     #if TIMER
         auto end = chrono::high_resolution_clock::now();    
         auto dur = end - begin;
@@ -42,9 +45,6 @@ void preprocessor_filter::preprocess(bh_ir *bhir)
     #endif
     #if DEBUG
         printf("\nAfter running optimizations\n");
-    #endif
-
-    #if DEBUG
         helper_pprint_instr_list(bhir);
     #endif
     

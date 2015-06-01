@@ -28,8 +28,6 @@ bool has_equally_shaped_references(const bh_view *view, std::vector<bh_instructi
 
 bool has_constant(const bh_instruction *instr);
 
-//bh_view* create_result_view(bh_type type, bh_index nelem);
-
 bh_view build_flat_view(const bh_base * base, bh_index nelem);
 
 bh_view build_similar_view(const bh_view *referenceView, const bh_base *base);
