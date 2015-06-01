@@ -9,13 +9,13 @@ res_filterOff="results/filterOff.p"
 
 echo "collect time measures with preprocessor filter"
 cp $src_filterOn $dst
-python preprocessor_benchmark.py $res_filterOn
+dython preprocessor_benchmark.py $res_filterOn
 #valgrind dython preprocessor_benchmark.py $res_filterOn
 
 
 echo "collect time measures without preprocessor filter"
 cp $src_filterOff $dst
-python preprocessor_benchmark.py $res_filterOff
+dython preprocessor_benchmark.py $res_filterOff
 #valgrind dython preprocessor_benchmark.py $res_filterOff
 
 

@@ -1,6 +1,5 @@
 from plot import *
 import shutil
-import my_power
 import time
 import pickle
 import sys
