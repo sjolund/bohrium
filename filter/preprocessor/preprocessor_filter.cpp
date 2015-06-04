@@ -14,7 +14,7 @@
 
 using namespace std;
 
-#define DEBUG (false)
+#define DEBUG (true)
 #define TIMER (false)
 
 void preprocessor_filter::preprocess(bh_ir *bhir)
