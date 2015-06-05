@@ -13,50 +13,50 @@ using namespace std;
 #define DEBUG (true)
 
 
-/*typedef struct
+typedef struct
 {
-    bh_view*      view;
+    bh_view      view;
     int       exponent;
     int      index;
-}power_cache;
-*/
+}cache_item;
+
 
 
 class Power_cache
 {
     public:
-        void add(bh_base *base, int exponent, int index) {
+        void add(bh_base *base, int exponent, cache_item item) {
             if (previous_powers.count(base) == 0) {
-                previous_powers.insert({{base, new map<int, int>()}});
+                previous_powers.insert({{base, new map<int, cache_item>()}});
             }
-            previous_powers[base]->insert({{exponent, index}});
+            previous_powers[base]->insert({{exponent, item}});
             #if DEBUG
-                cout << "Added power cahce with exponent: " << exponent << ", index: " << index << " and base: " << base << endl;
+                cout << "Added power cahce with exponent: " << exponent << ", index: " << item.index << " and base: " << base << endl;
             #endif
         }
-        int get_closest(bh_base *base, int exponent) {
+        cache_item* get_closest(bh_base *base, int exponent) {
             if (previous_powers.count(base) > 0) {
-                int idx = -1;
+                cache_item* item = NULL;
                 #if DEBUG
                     cout << "Try finding closest" << endl;
                 #endif
-                for (std::map<int,int>::iterator it=previous_powers[base]->begin(); it!=previous_powers[base]->end(); ++it) {
+                for (std::map<int,cache_item>::iterator it=previous_powers[base]->begin(); it!=previous_powers[base]->end(); ++it) {
                     if (it->first > exponent)
                         break;
-                    idx = it->second;
+                    item = &it->second;
                 }
                 #if DEBUG
-                    cout << "Closest idx found: " << idx << endl;
+                    cout << "Closest idx found: " << item->index << endl;
                 #endif
-                return idx;
+                return item;
             }
             #if DEBUG
                 cout << "No closest found" << endl;
             #endif
-            return -1;
+            return NULL;
         }
     private:
-        std::unordered_map< bh_base*, map<int, int>* > previous_powers;
+        std::unordered_map< bh_base*, map<int, cache_item>* > previous_powers;
 };
 
 // Power-multipy replacement
@@ -78,18 +78,21 @@ void Optimization::power_cache(bh_ir *bhir) {
                 int exponent = const_get_int(&bhir->instr_list[i]);
                 int exponent_original = exponent;
                 bh_base* base_to_cache = bhir->instr_list[i].operand[1].base;
+                bh_view view = bhir->instr_list[i].operand[1];
 
                 if (exponent > 1) {
 
-                    int closest = power_cache.get_closest(bhir->instr_list[i].operand[1].base, exponent);
+                    cache_item* item = power_cache.get_closest(bhir->instr_list[i].operand[1].base, exponent);
+                    int closest = -1;
 
                     #if DEBUG
                         cout << "closest: " << closest << endl;
                     #endif
 
-                    //if (closest != -1 && bh_view_equally_shifted(&bhir->instr_list[i].operand[1], &bhir->instr_list[closest].operand[1])) {
-                    if (closest != -1) {
-                        exponent -= const_get_int(&bhir->instr_list[closest]);
+                    if (item != NULL && bh_view_equally_shifted(&bhir->instr_list[i].operand[1], &item->view)) {
+                    //if (item != NULL) {
+                        closest = item->index;
+                        exponent -= item->exponent;
                     }
 
                     std::vector<bh_instruction> instr_sequence;
@@ -133,7 +136,7 @@ void Optimization::power_cache(bh_ir *bhir) {
                         printf("\n5\n");
                     #endif
 
-                    if (closest != -1) {
+                    if (item != NULL) {
                         if (exponent == 0) {
                             bhir->instr_list[i].opcode = (bh_opcode)BH_IDENTITY;
                             bhir->instr_list[i].operand[1] = bhir->instr_list[closest].operand[0]; 
@@ -142,9 +145,18 @@ void Optimization::power_cache(bh_ir *bhir) {
                             bh_instruction multiply = { (bh_opcode)BH_MULTIPLY };
                             multiply.operand[0] = bhir->instr_list[i].operand[0];
                             multiply.operand[1] = bhir->instr_list[closest].operand[0];
+                            #if DEBUG
+                                printf("\n5.1\n");
+                            #endif
 
                             if (exponent > 1) {
-                                multiply.operand[2] = instr_sequence.back().operand[0];
+                                #if DEBUG
+                                    printf("\n5.2\n");
+                                #endif
+                                multiply.operand[2] = bhir->instr_list[i].operand[0];
+                                #if DEBUG
+                                    printf("\n5.25\n");
+                                #endif
                             }
                             if (exponent == 1) {
                                 #if DEBUG
@@ -166,7 +178,7 @@ void Optimization::power_cache(bh_ir *bhir) {
 
                     // Find possible datamanagement instructions for reused base
                     int offset = 0;
-                    if (closest != -1) {
+                    if (item != NULL) {
                         for(std::size_t j = closest; j < i; ++j){
                             if (operation_datamanagement(bhir->instr_list[j].opcode) && bhir->instr_list[j].operand[0].base == bhir->instr_list[closest].operand[0].base) {
                                 instr_sequence.push_back(bhir->instr_list[j]);
@@ -184,7 +196,13 @@ void Optimization::power_cache(bh_ir *bhir) {
                         cout << "i: " << i << ", instr_sequence size: " << instr_sequence.size() << ", -1or0: " << (exponent == 1 ? 1 : 0) << ", offset: " << offset << endl;
                         cout << "calculated offset: " << i+instr_sequence.size()-(exponent == 1 ? 1 : 0)+offset << endl;
                     #endif
-                    power_cache.add(base_to_cache, exponent_original, i+instr_sequence.size()-(exponent == 1 ? 1 : 0)+offset*2);
+
+                    cache_item new_item = {
+                        view,                                                     // view
+                        exponent_original,                                        // exponent
+                        i+instr_sequence.size()-(exponent == 1 ? 1 : 0)+offset*2  // index
+                    };
+                    power_cache.add(base_to_cache, exponent_original, new_item);
                     #if DEBUG
                         printf("\n7\n");
                     #endif

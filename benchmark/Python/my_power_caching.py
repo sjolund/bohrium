@@ -51,13 +51,14 @@ def benchmark(N,I):
 def main():
     B = util.Benchmark()
     N = 500
+    N = 2
 
     S = model(N)
     B.start()
     R = polynomial(S)   # Run the model
     B.stop()
     B.pprint()
-    #print ("Result: " + str(R[0]))
+    print ("Result: " + str(R[0]))
     print ("Elapsed (average over 10):" + str(B.elapsed()))
     B.stop()
     
