@@ -2,6 +2,7 @@
 
 enum optimization_name {
     POWER,
+    POWER_CACHE,
     COMMON
 };
 
@@ -20,5 +21,6 @@ class Optimization
         }
 
         void power(bh_ir *bhir);
+        void power_cache(bh_ir *bhir);
         void common(bh_ir *bhir);
 };

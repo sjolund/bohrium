@@ -9,6 +9,9 @@ void Optimization::optimize(bh_ir *bhir) {
         case POWER:
             power(bhir);
             break;
+        case POWER_CACHE:
+            power_cache(bhir);
+            break;
         case COMMON:
             common(bhir);
             break;
