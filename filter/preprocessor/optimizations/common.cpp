@@ -9,6 +9,8 @@
 
 using namespace std;
 
+#define DEBUG (false)
+
 void remove_unused_identity_backwards(bh_ir *bhir, int start, int stop) {
     bh_instruction *instr;
     std::unordered_map<bh_base*, int> freed;
@@ -86,7 +88,9 @@ void Optimization::common(bh_ir *bhir) {
             }
         }
 
-
+        #if DEBUG
+            cout << "Finished searcing for identicals. Found: " << identical.size() << endl;
+        #endif
         if (identical.size() > 0) {
             // Expand indenticals (offsets)
             // Make hard copy, since it can be overwritten at a later point.
@@ -137,6 +141,9 @@ void Optimization::common(bh_ir *bhir) {
                     for (std::vector<std::size_t>::iterator iter = identical.begin(); iter < identical.end(); iter++) {
                         if ((*iter)+o >= bhir->instr_list.size()) {
                             is_identical = false;
+                            #if DEBUG
+                                cout << "1 " << endl;
+                            #endif
                             break;
                         }
                         instr2 = &bhir->instr_list[(*iter)+o];
@@ -147,6 +154,9 @@ void Optimization::common(bh_ir *bhir) {
                         
                         if (instr->opcode != instr2->opcode) {
                             is_identical = false;
+                            #if DEBUG
+                                cout << "2 " << endl;
+                            #endif
                             break;
                         }
 
@@ -154,11 +164,17 @@ void Optimization::common(bh_ir *bhir) {
                             if (resultOneOffset != -1) {
                                 if (bhir->instr_list[(*iter)+resultOneOffset].operand[0].base != viewOne->base){
                                     is_identical = false;
+                                    #if DEBUG
+                                        cout << "3 " << endl;
+                                    #endif
                                     break;
                                 }
                             }
                             else if (!bh_view_equally_shifted(&referenceView2, viewOne)) {
                                 is_identical = false;
+                                #if DEBUG
+                                    cout << "4 " << endl;
+                                #endif
                                 break;
                             }
                         }
@@ -167,11 +183,17 @@ void Optimization::common(bh_ir *bhir) {
                             if (resultTwoOffset != -1) {
                                 if (bhir->instr_list[(*iter)+resultTwoOffset].operand[0].base != viewTwo->base) {
                                     is_identical = false;
+                                    #if DEBUG
+                                        cout << "5 " << endl;
+                                    #endif
                                     break;
                                 }
                             }
                             else if (!bh_view_equally_shifted(&referenceView2, viewTwo)) {
                                 is_identical = false;
+                                #if DEBUG
+                                    cout << "6 " << endl;
+                                #endif
                                 break;
                             }
                         }
@@ -179,6 +201,9 @@ void Optimization::common(bh_ir *bhir) {
                         if (has_constant(instr)
                             && (!has_constant(instr2)
                                 || !constants_identical(&instr->constant, &instr2->constant))) {
+                            #if DEBUG
+                                cout << "constants not identical " << endl;
+                            #endif
                             is_identical = false;
                             break;
                         }
@@ -195,6 +220,9 @@ void Optimization::common(bh_ir *bhir) {
                     }
                     
                 }
+                #if DEBUG
+                    cout << "expand size: " << expand.size() << endl;
+                #endif
 
                 // Check if all results are used in expanded
                 int lowestIndex = -1;
@@ -204,7 +232,9 @@ void Optimization::common(bh_ir *bhir) {
                     }
                 }
                 expand.resize(max(0,lowestIndex+1));
-                
+                #if DEBUG
+                    cout << "expand size again: " << expand.size() << endl;
+                #endif
 
             }
 

@@ -12,18 +12,18 @@ def model(N, dtype=np.float32):
     np.random.seed(seed=1)
 
     a = np.array(np.random.random([N,N]), dtype=dtype)
-    a = a*4.0-2.0 + 60.0 # Price is between 58-62
+    a = a*10.0 # Price is between 58-62
 
     np.random.seed(seed=2)
 
     b = np.array(np.random.random([N,N]), dtype=dtype)
-    b = b*4.0+1
+    b = b*10.0
 
     return (a,b)
 
-def common_exp(a,b):
-    res = (np.exp(a[:,1:])**3*np.exp(b[:,1:])**3/2 - 
-            np.exp(a[:,:-1])**3*np.exp(b[:,:-1])**3/2)
+def expression(a,b):
+    res = (a[:,1:]**6*a[:,1:]**7/2 - 
+            a[:,:-1]**6*a[:,:-1]**7/2)
     return res
 
 def benchmark(N,I):
@@ -31,13 +31,13 @@ def benchmark(N,I):
     ntimes = 10
 
     (a,b) = model(N, dtype=B.dtype) # Construct pseudo-data
-    R0 = common_exp(a,b)   # Run the model
+    R0 = expression(a,b)   # Run the model
 
     elapsed = 0.0
     for i in range(ntimes):
         (a,b) = model(N, dtype=B.dtype) # Construct pseudo-data
         B.start()
-        R = common_exp(a,b)   # Run the model
+        R = expression(a,b)   # Run the model
         B.stop()
         elapsed += B.elapsed()
     B.pprint()
@@ -56,7 +56,7 @@ def main():
     (N, I) = (10,1)
     (a,b) = model(N, dtype=B.dtype) # Construct pseudo-data
     B.start()
-    R = common_exp(a,b)   # Run the model
+    R = expression(a,b)   # Run the model
     B.stop()
     print ("Result for N="+str(N)+": " + str(R))
     print ("Elapsed:" + str(B.elapsed()))

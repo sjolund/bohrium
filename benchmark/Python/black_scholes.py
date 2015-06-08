@@ -104,4 +104,5 @@ def main():
         print (R)
 
 if __name__ == "__main__":
-    main()
+    #main()
+    benchmark(500,1)

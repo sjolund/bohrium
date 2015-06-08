@@ -21,9 +21,9 @@ def model(N, dtype=np.float32):
 
     return (a,b)
 
-def common_exp(a,b):
-    res = (np.exp(a[:,1:])**3*np.exp(b[:,1:])**3/2 - 
-            np.exp(a[:,:-1])**3*np.exp(b[:,:-1])**3/2)
+def common_exp(A,B):
+    res = ((A[:-1,:-1]**2+4*B[:-1,:-1]) - 
+           (A[1:,1:]**2+4*B[1:,1:]))
     return res
 
 def benchmark(N,I):

@@ -1,10 +1,12 @@
 import shutil
 import my_power
+import my_power_caching
 import power_precission_test
 import my_common
 import my_common4
 import my_common3d
 import my_common_exp
+import my_all_benchmark
 import mc
 import shallow_water
 import black_scholes
@@ -54,6 +56,13 @@ def main():
         (time, res) = [list(t) for t in zip(*measures)]
         results['powerodd'] = {'x':x, 'y':time, 'result':res[-1]}
 
+    if 'powercaching' in to_run:
+        ns = range(500,5001,500)
+        #ns = [500, 1000]
+        measures = [my_power_caching.benchmark(n) for n in ns]
+        (time, res) = [list(t) for t in zip(*measures)]
+        results['powercaching'] = {'x':ns, 'y':time, 'result':res[-1]}
+
     if 'powercorrectness' in to_run:
 
         (x,y) = power_precission_test.benchmark(n=10)
@@ -66,6 +75,7 @@ def main():
         # black scholes
         #x = range(500,5001,500)
         x = [n**2 for n in range(500,5001,500)]
+        #x = [500, 1000]
         I = 10
         measures = [black_scholes.benchmark(N, I) for N in x]
         (time, res) = [list(t) for t in zip(*measures)]
@@ -142,6 +152,18 @@ def main():
         print("time: " + str(time))
         print("res: " + str(res))
         results['commonexp'] = {'x':x, 'y':time, 'result':res[-1]}
+
+    if 'all_benchmark' in to_run:
+        # common test (part of Shallow water)
+        #x = range(100,1001,100)
+        x = range(500,5001,500)
+        #x = range(500,4001,500)
+        I = 1
+        measures = [my_all_benchmark.benchmark(w, I) for w in x]
+        (time, res) = [list(t) for t in zip(*measures)]
+        print("time: " + str(time))
+        print("res: " + str(res))
+        results['all_benchmark'] = {'x':x, 'y':time, 'result':res[-1]}
     
 
     print("result: " + str(results))

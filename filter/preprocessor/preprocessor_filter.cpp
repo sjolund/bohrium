@@ -26,7 +26,7 @@ void preprocessor_filter::preprocess(bh_ir *bhir)
     std::vector<Optimization*> optimizations;
     optimizations.push_back(new Optimization(COMMON, &bases_));
     //optimizations.push_back(new Optimization(POWER, &bases_));
-    optimizations.push_back(new Optimization(POWER_CACHE, &bases_));
+    //optimizations.push_back(new Optimization(POWER_CACHE, &bases_));
 
     std::vector<Optimization*>::iterator it;
 

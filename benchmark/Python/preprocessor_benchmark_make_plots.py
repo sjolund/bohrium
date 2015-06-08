@@ -55,6 +55,19 @@ def main():
         plot_comparison(xs, ys, 'powerodd', 'Exponent', ["filter on", "filter off"], timestamp, showFig=True)
         plot_speedup(xs, ys, 'powerodd', 'Exponent', timestamp, showFig=True)
 
+    if 'powercaching' in to_run:
+        # power caching
+        filterOn = results_filterOn['powercaching']
+        filterOff = results_filterOff['powercaching']
+        (x1,y1,res1) = (filterOn['x'],filterOn['y'],filterOn['result'])
+        (x2,y2,res2) = (filterOff['x'],filterOff['y'],filterOff['result'])
+        print ("Difference is: %s" % (str(abs(res1 - res2))))
+        assert (abs(res1 - res2)<1.0e-10), "results are not equal: %s and %s. Difference is: %s" % (str(res1), str(res2), str(abs(res1 - res2)))
+        xs = [x1,x2]
+        ys = [y1,y2]
+        plot_comparison(xs, ys, 'powercaching', 'n', ["filter on", "filter off"], timestamp, showFig=True)
+        plot_speedup(xs, ys, 'powercaching', 'n', timestamp, showFig=True)
+
     if 'powercorrectness' in to_run:
 
         filterOn = results_filterOn['powercorrectness']
@@ -85,8 +98,7 @@ def main():
         filterOff = results_filterOff['black_scholes']
         (x1,y1,res1) = (filterOn['x'],filterOn['y'],filterOn['result'])
         (x2,y2,res2) = (filterOff['x'],filterOff['y'],filterOff['result'])
-        print("res1: " + str(res1))
-        print("res2: " + str(res2))
+        print ("Difference is: %s" % (str(abs(res1 - res2))))
         assert (abs(res1 - res2)<1.0e-10), "results are not equal: %s and %s. Difference is: %s" % (str(res1), str(res2), str(abs(res1 - res2)))
         xs = [x1,x2]
         ys = [y1,y2]
